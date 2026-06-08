@@ -1,0 +1,414 @@
+:root {
+  color: #f7fbff;
+  background: transparent;
+  font-family:
+    Inter,
+    "Segoe UI",
+    "Microsoft YaHei",
+    system-ui,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  cursor: default;
+}
+
+button {
+  border: 0;
+  font: inherit;
+}
+
+.widget {
+  position: relative;
+  width: 390px;
+  height: 236px;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(130deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)),
+    rgba(17, 28, 40, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    inset 0 0 34px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(24px) saturate(1.24);
+  cursor: grab;
+}
+
+.widget:active {
+  cursor: grabbing;
+}
+
+.widget::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(100deg, rgba(255, 255, 255, 0.24), transparent 34%),
+    radial-gradient(circle at 80% 16%, rgba(126, 211, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 20% 90%, rgba(69, 244, 176, 0.12), transparent 35%);
+}
+
+.titlebar,
+.content,
+.status {
+  position: relative;
+  z-index: 1;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  gap: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.titlebar:active,
+.content:active,
+.status:active {
+  cursor: grabbing;
+}
+
+.brand {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  cursor: grab;
+}
+
+.brand-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.brand-name {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-state {
+  overflow: hidden;
+  color: rgba(221, 235, 246, 0.7);
+  font-size: 11px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.traffic-light {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7b8794;
+  box-shadow: 0 0 18px rgba(123, 135, 148, 0.7);
+}
+
+.traffic-light.ready,
+.status-dot.ready,
+.liquid-meter[data-level="ready"] .liquid-fill {
+  background: #2ee885;
+}
+
+.traffic-light.low,
+.status-dot.low,
+.liquid-meter[data-level="low"] .liquid-fill {
+  background: #ffcc3d;
+}
+
+.traffic-light.empty,
+.traffic-light.error,
+.status-dot.empty,
+.status-dot.error,
+.liquid-meter[data-level="empty"] .liquid-fill,
+.liquid-meter[data-level="error"] .liquid-fill {
+  background: #ff5a67;
+}
+
+.traffic-light.loading,
+.status-dot.loading {
+  background: #67b7ff;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.window-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 5px;
+  cursor: default;
+}
+
+.window-actions,
+.window-actions * {
+  cursor: default;
+}
+
+.icon-button,
+.text-button {
+  display: inline-grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  color: rgba(244, 249, 255, 0.86);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.text-button {
+  width: 30px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
+}
+
+.icon-button:hover,
+.text-button:hover,
+.icon-button.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.icon-button:active,
+.text-button:active {
+  transform: translateY(1px);
+}
+
+.icon-button.danger:hover {
+  color: #ffffff;
+  background: rgba(255, 83, 99, 0.78);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  height: 142px;
+  gap: 14px;
+  cursor: grab;
+}
+
+.liquid-meter {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 -20px 38px rgba(255, 255, 255, 0.08);
+}
+
+.glass-rim,
+.shine {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.glass-rim {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 16px 24px rgba(255, 255, 255, 0.1);
+}
+
+.shine {
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.22), transparent 34%);
+}
+
+.liquid-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 0;
+  background: #2ee885;
+  transition:
+    height 420ms ease,
+    background-color 180ms ease;
+}
+
+.wave {
+  position: absolute;
+  top: -16px;
+  left: -18px;
+  width: 160px;
+  height: 32px;
+  border-radius: 45%;
+  background: rgba(255, 255, 255, 0.24);
+  animation: wave 3.6s linear infinite;
+}
+
+.wave-two {
+  top: -11px;
+  left: -28px;
+  opacity: 0.6;
+  animation-duration: 5.2s;
+  animation-direction: reverse;
+}
+
+.meter-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.42);
+}
+
+.meter-copy strong {
+  font-size: 31px;
+  font-weight: 800;
+  line-height: 34px;
+}
+
+.meter-copy span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.quota-panel {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.quota-card {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  height: 38px;
+  padding: 0 11px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.quota-card span {
+  overflow: hidden;
+  color: rgba(225, 237, 248, 0.72);
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quota-card strong {
+  overflow: hidden;
+  max-width: 74px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quota-card.slim strong {
+  font-size: 13px;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: center;
+  height: 28px;
+  gap: 8px;
+  color: rgba(225, 237, 248, 0.72);
+  font-size: 11px;
+  line-height: 14px;
+  cursor: grab;
+}
+
+.status span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+body[data-state="loading"] .refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes wave {
+  from {
+    transform: translateX(0) rotate(0deg);
+  }
+
+  to {
+    transform: translateX(18px) rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

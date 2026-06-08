@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codex 额度小组件</title>
+  </head>
+  <body data-state="loading">
+    <main class="widget" aria-live="polite">
+      <header class="titlebar">
+        <div class="brand">
+          <span id="trafficLight" class="traffic-light loading" aria-hidden="true"></span>
+          <div class="brand-copy">
+            <span id="brandName" class="brand-name">Codex 额度</span>
+            <span id="stateText" class="brand-state">读取中</span>
+          </div>
+        </div>
+        <div class="window-actions">
+          <button id="langBtn" class="text-button" type="button" title="Language" aria-label="Language">
+            EN
+          </button>
+          <button id="pinBtn" class="icon-button active" type="button" title="取消置顶" aria-label="取消置顶">
+            <i data-lucide="pin"></i>
+          </button>
+          <button id="refreshBtn" class="icon-button" type="button" title="刷新" aria-label="刷新">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+          <button id="minimizeBtn" class="icon-button" type="button" title="隐藏" aria-label="隐藏">
+            <i data-lucide="minus"></i>
+          </button>
+          <button id="closeBtn" class="icon-button danger" type="button" title="退出" aria-label="退出">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div id="liquidMeter" class="liquid-meter" aria-label="Codex 剩余额度">
+          <div class="glass-rim"></div>
+          <div id="liquidFill" class="liquid-fill">
+            <div class="wave wave-one"></div>
+            <div class="wave wave-two"></div>
+          </div>
+          <div class="shine"></div>
+          <div class="meter-copy">
+            <strong id="remaining">--%</strong>
+            <span id="remainingLabel">剩余</span>
+          </div>
+        </div>
+
+        <div class="quota-panel">
+          <div class="quota-card primary">
+            <span id="primaryLabel">5小时窗口</span>
+            <strong id="primaryText">--</strong>
+          </div>
+          <div class="quota-card">
+            <span id="secondaryLabel">7天窗口</span>
+            <strong id="secondaryText">--</strong>
+          </div>
+          <div class="quota-card slim">
+            <span id="planLabel">套餐</span>
+            <strong id="planText">--</strong>
+          </div>
+        </div>
+      </section>
+
+      <footer class="status">
+        <span id="statusDot" class="status-dot loading"></span>
+        <span id="statusText">正在读取 Codex 额度...</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
