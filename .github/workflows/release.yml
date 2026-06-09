@@ -1,0 +1,95 @@
+name: 发布 Windows 安装包
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 构建并发布 NSIS
+    runs-on: windows-latest
+    env:
+      CARGO_TERM_COLOR: always
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 校验标签和密钥
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $package = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
+          $expectedTag = "v$($package.version)"
+          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+            throw "发布标签必须和 package.json 版本一致：当前标签=$env:GITHUB_REF_NAME，期望标签=$expectedTag。"
+          }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw "缺少 Repository Secret：TAURI_SIGNING_PRIVATE_KEY。请把 certs/updater.key 的完整内容写入该 Secret。"
+          }
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: 运行 Rust 测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: 运行 Rust 编译检查
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: 生成 Release 产物
+        run: npm run release:github
+
+      - name: 发布到 GitHub Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $package = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
+          $version = [string] $package.version
+          $tag = $env:GITHUB_REF_NAME
+          $releaseDir = "src-tauri/target/release/github-release"
+          $assets = @(
+            "$releaseDir/codex-widget_${version}_windows_x64-setup.exe",
+            "$releaseDir/codex-widget_${version}_windows_x64-setup.exe.sig",
+            "$releaseDir/latest.json"
+          )
+
+          foreach ($asset in $assets) {
+            if (-not (Test-Path -LiteralPath $asset)) {
+              throw "Release 产物不存在：$asset。"
+            }
+          }
+
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --repo $env:GITHUB_REPOSITORY --clobber
+            if ($LASTEXITCODE -ne 0) {
+              throw "上传 Release 产物失败。"
+            }
+          } else {
+            gh release create $tag @assets --repo $env:GITHUB_REPOSITORY --title $tag --notes "Codex 额度小组件 $version"
+            if ($LASTEXITCODE -ne 0) {
+              throw "创建 GitHub Release 失败。"
+            }
+          }

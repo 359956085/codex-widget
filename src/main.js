@@ -3,9 +3,11 @@ import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { check } from "@tauri-apps/plugin-updater";
 import { createElement as createLucideElement, Minus, Pin, PinOff, RefreshCw, X } from "lucide";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const ACTION_ICONS = {
   minus: Minus,
   pin: Pin,
@@ -37,7 +39,13 @@ const i18n = {
     hide: "隐藏",
     exit: "退出",
     unavailable: "未读取到额度数据",
-    openCodex: "打开 Codex"
+    openCodex: "打开 Codex",
+    checkingUpdate: "正在检查更新...",
+    updateAvailable: "发现新版本",
+    updateDownloading: "正在下载更新",
+    updateInstalling: "正在安装更新",
+    updateReady: "更新已安装，重启后生效",
+    updateFailed: "更新检查失败"
   },
   en: {
     brandName: "Codex Quota",
@@ -61,7 +69,13 @@ const i18n = {
     hide: "Hide",
     exit: "Exit",
     unavailable: "No quota data",
-    openCodex: "Open Codex"
+    openCodex: "Open Codex",
+    checkingUpdate: "Checking for updates...",
+    updateAvailable: "Update available",
+    updateDownloading: "Downloading update",
+    updateInstalling: "Installing update",
+    updateReady: "Update installed. Restart to apply.",
+    updateFailed: "Update check failed"
   }
 };
 
@@ -96,7 +110,10 @@ const state = {
   loading: false,
   error: "",
   alwaysOnTop: true,
-  resetTimer: null
+  resetTimer: null,
+  updateStatus: null,
+  updateChecking: false,
+  updateTimer: null
 };
 
 initializeActionIcons();
@@ -162,6 +179,7 @@ async function initialize() {
 
   refreshQuota();
   window.setInterval(refreshQuota, REFRESH_INTERVAL_MS);
+  scheduleUpdateChecks();
 }
 
 async function refreshQuota() {
@@ -203,6 +221,7 @@ function render() {
   const remaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
   const visualState = getVisualState(remaining);
   const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
+  const updateStatusText = formatUpdateStatus(text);
 
   document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
   els.body.dataset.state = mainState;
@@ -226,6 +245,9 @@ function render() {
   } else if (state.loading) {
     els.stateText.textContent = text.loading;
     els.statusText.textContent = text.reading;
+  } else if (updateStatusText) {
+    els.stateText.textContent = stateLabel(visualState, text);
+    els.statusText.textContent = updateStatusText;
   } else {
     els.stateText.textContent = stateLabel(visualState, text);
     els.statusText.textContent = statusLabel(quota, text);
@@ -238,6 +260,88 @@ function render() {
   renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text);
   renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text);
   els.planText.textContent = quota?.planType || text.unknown;
+}
+
+function scheduleUpdateChecks() {
+  checkForUpdates();
+  if (state.updateTimer) window.clearInterval(state.updateTimer);
+  state.updateTimer = window.setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
+}
+
+async function checkForUpdates() {
+  if (!window.__TAURI_INTERNALS__ || state.updateChecking) return;
+
+  state.updateChecking = true;
+  setUpdateStatus({ type: "checking" });
+
+  try {
+    const update = await check();
+    if (!update) {
+      clearUpdateStatus();
+      return;
+    }
+
+    setUpdateStatus({ type: "available", version: update.version });
+    await downloadAndInstallUpdate(update);
+    setUpdateStatus({ type: "ready" });
+  } catch (error) {
+    console.error("自动更新失败", error);
+    setUpdateStatus({ type: "failed" });
+  } finally {
+    state.updateChecking = false;
+    render();
+  }
+}
+
+async function downloadAndInstallUpdate(update) {
+  let downloadedBytes = 0;
+  let totalBytes = 0;
+
+  await update.downloadAndInstall((event) => {
+    if (event.event === "Started") {
+      downloadedBytes = 0;
+      totalBytes = event.data?.contentLength || 0;
+      setUpdateStatus({ type: "downloading", percent: null });
+      return;
+    }
+
+    if (event.event === "Progress") {
+      downloadedBytes += event.data?.chunkLength || 0;
+      const percent = totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : null;
+      setUpdateStatus({ type: "downloading", percent });
+      return;
+    }
+
+    if (event.event === "Finished") {
+      setUpdateStatus({ type: "installing" });
+    }
+  });
+}
+
+function setUpdateStatus(nextStatus) {
+  state.updateStatus = nextStatus;
+  render();
+}
+
+function clearUpdateStatus() {
+  state.updateStatus = null;
+  render();
+}
+
+function formatUpdateStatus(text) {
+  const status = state.updateStatus;
+  if (!status) return "";
+  if (status.type === "checking") return text.checkingUpdate;
+  if (status.type === "available") {
+    return status.version ? `${text.updateAvailable} ${status.version}` : text.updateAvailable;
+  }
+  if (status.type === "downloading") {
+    return typeof status.percent === "number" ? `${text.updateDownloading} ${status.percent}%` : text.updateDownloading;
+  }
+  if (status.type === "installing") return text.updateInstalling;
+  if (status.type === "ready") return text.updateReady;
+  if (status.type === "failed") return text.updateFailed;
+  return "";
 }
 
 function initializeActionIcons() {
@@ -323,7 +427,7 @@ function statusLabel(quota, text) {
 function getVisualState(remaining) {
   if (remaining === null) return "unknown";
   if (remaining === 0) return "empty";
-  if (remaining < 20) return "low";
+  if (remaining < 10) return "low";
   return "ready";
 }
 

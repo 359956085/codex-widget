@@ -79,6 +79,7 @@ fn open_codex() -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::new())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let window = app
                 .get_webview_window(MAIN_WINDOW_LABEL)

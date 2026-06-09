@@ -11,10 +11,16 @@
     "build": "npm run build:frontend",
     "build:frontend": "vite build",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:build:nsis": "tauri build --bundles nsis",
+    "updater:keygen": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"New-Item -ItemType Directory -Path certs -Force | Out-Null; tauri signer generate --write-keys certs/updater.key\"",
+    "tauri:build:nsis:updater": "tauri build --bundles nsis --config src-tauri/tauri.updater.conf.json",
+    "updater:latest": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/create-latest-json.ps1",
+    "release:github": "npm run tauri:build:nsis:updater && npm run updater:latest"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "lucide": "^0.468.0"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Codex 额度小组件",
+  "productName": "CodexWidget",
+  "mainBinaryName": "CodexWidget",
   "version": "0.1.0",
   "identifier": "cn.fengshi.codex-quota-widget",
   "build": {
@@ -32,8 +33,36 @@
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all",
-    "icon": ["icons/icon.ico"]
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "fengshi",
+    "copyright": "Copyright (c) 2026 fengshi",
+    "category": "Utility",
+    "shortDescription": "Codex 额度悬浮小组件。",
+    "longDescription": "用于读取本机 Codex 额度状态的 Windows 桌面悬浮小组件。",
+    "icon": ["icons/icon.ico"],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": false,
+        "compression": "lzma"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJFMDk5ODQxMjEwMDY4QTgKUldTb2FBQWhRWmdKTHBPam9MQWZWRk8ybU55TElianVmY2RhM2ZtRGJhV0xQVE55cC9jWkdRdncK",
+      "endpoints": [
+        "https://github.com/359956085/codex-widget/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
