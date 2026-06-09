@@ -15,6 +15,8 @@ use tokio::time::timeout;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(12);
 const STDERR_TAIL_LIMIT: usize = 4096;
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -324,6 +326,7 @@ impl CodexSession {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true);
+        hide_background_process_window(&mut command);
 
         let mut child = command
             .spawn()
@@ -415,6 +418,15 @@ impl CodexSession {
         let _ = self.stderr_task.await;
     }
 }
+
+#[cfg(windows)]
+fn hide_background_process_window(command: &mut Command) {
+    // 后台额度读取只通过 stdio 通信，不需要让 Codex CLI 创建可见控制台窗口。
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn hide_background_process_window(_command: &mut Command) {}
 
 fn spawn_stderr_tail_task(stderr: ChildStderr, stderr_tail: Arc<Mutex<String>>) -> JoinHandle<()> {
     tokio::spawn(async move {

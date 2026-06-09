@@ -1,6 +1,6 @@
 [package]
 name = "codex-quota-widget"
-version = "0.1.0"
+version = "0.2.0"
 description = "Rust 版 Codex 额度悬浮小组件。"
 authors = ["fengshi"]
 edition = "2021"

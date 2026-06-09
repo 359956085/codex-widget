@@ -106,7 +106,7 @@ src-tauri/target/release/bundle/nsis/
 原始安装包文件名类似：
 
 ```txt
-CodexWidget_0.1.0_x64-setup.exe
+CodexWidget_0.2.0_x64-setup.exe
 ```
 
 当前安装包不做 Windows Authenticode 代码签名，不依赖代码签名证书，也不需要 `signtool.exe`。首次安装时 Windows SmartScreen 可能提示风险，这是未签名安装包的预期现象。
@@ -150,8 +150,8 @@ src-tauri/tauri.conf.json
 然后推送与版本一致的标签，GitHub Actions 会自动构建、生成 updater 签名、整理 `latest.json` 并上传 GitHub Release：
 
 ```powershell
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 Release 产物固定为：
