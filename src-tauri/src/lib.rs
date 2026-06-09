@@ -9,20 +9,20 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position, State, WebviewWindow};
 use tokio::sync::Mutex;
 
-use quota::QuotaSnapshot;
+use quota::{QuotaService, QuotaSnapshot};
 
 const MAIN_WINDOW_LABEL: &str = "main";
 const TRAY_ID: &str = "main-tray";
 
 pub struct AppState {
-    quota_lock: Mutex<()>,
+    quota_service: Mutex<QuotaService>,
     always_on_top: AtomicBool,
 }
 
 impl AppState {
     fn new() -> Self {
         Self {
-            quota_lock: Mutex::new(()),
+            quota_service: Mutex::new(QuotaService::new()),
             always_on_top: AtomicBool::new(true),
         }
     }
@@ -30,9 +30,9 @@ impl AppState {
 
 #[tauri::command]
 async fn get_quota(state: State<'_, AppState>) -> Result<QuotaSnapshot, String> {
-    // Codex app-server 启动成本较高，用互斥锁避免多次刷新并发拉起多个子进程。
-    let _guard = state.quota_lock.lock().await;
-    quota::get_quota().await.map_err(|error| error.to_string())
+    // 长连接会话必须串行使用，避免多个刷新同时读写同一条 stdio 通道。
+    let mut service = state.quota_service.lock().await;
+    service.get_quota().await.map_err(|error| error.to_string())
 }
 
 #[tauri::command]

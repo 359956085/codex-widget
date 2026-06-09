@@ -3,9 +3,16 @@ import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { createIcons, Minus, Pin, PinOff, RefreshCw, X } from "lucide";
+import { createElement as createLucideElement, Minus, Pin, PinOff, RefreshCw, X } from "lucide";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const ACTION_ICONS = {
+  minus: Minus,
+  pin: Pin,
+  "pin-off": PinOff,
+  "refresh-cw": RefreshCw,
+  x: X
+};
 
 const i18n = {
   zh: {
@@ -92,16 +99,7 @@ const state = {
   resetTimer: null
 };
 
-createIcons({
-  icons: {
-    Minus,
-    Pin,
-    PinOff,
-    RefreshCw,
-    X
-  }
-});
-
+initializeActionIcons();
 bindEvents();
 initialize();
 
@@ -201,11 +199,13 @@ function scheduleResetRefresh(resetsAt) {
 function render() {
   const text = i18n[state.locale];
   const quota = state.quota;
+  const hasQuota = Boolean(quota);
   const remaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
   const visualState = getVisualState(remaining);
+  const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
 
   document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
-  els.body.dataset.state = state.error ? "error" : state.loading ? "loading" : visualState;
+  els.body.dataset.state = mainState;
 
   els.brandName.textContent = text.brandName;
   els.remainingLabel.textContent = text.remaining;
@@ -217,11 +217,11 @@ function render() {
   updateActionButton(els.minimizeBtn, "minus", text.hide);
   updateActionButton(els.closeBtn, "x", text.exit);
 
-  els.trafficLight.className = `traffic-light ${state.error ? "error" : state.loading ? "loading" : visualState}`;
-  els.statusDot.className = `status-dot ${state.error ? "error" : state.loading ? "loading" : visualState}`;
+  els.trafficLight.className = `traffic-light ${mainState}`;
+  els.statusDot.className = `status-dot ${state.error ? "error" : mainState}`;
 
   if (state.error) {
-    els.stateText.textContent = text.error;
+    els.stateText.textContent = hasQuota ? stateLabel(visualState, text) : text.error;
     els.statusText.textContent = state.error;
   } else if (state.loading) {
     els.stateText.textContent = text.loading;
@@ -240,12 +240,50 @@ function render() {
   els.planText.textContent = quota?.planType || text.unknown;
 }
 
+function initializeActionIcons() {
+  [
+    [els.pinBtn, "pin"],
+    [els.refreshBtn, "refresh-cw"],
+    [els.minimizeBtn, "minus"],
+    [els.closeBtn, "x"]
+  ].forEach(([button, iconName]) => {
+    setActionButtonIcon(button, iconName);
+  });
+}
+
 function updateActionButton(button, iconName, label) {
   button.title = label;
   button.setAttribute("aria-label", label);
   button.classList.toggle("active", button === els.pinBtn && state.alwaysOnTop);
-  button.innerHTML = `<i data-lucide="${iconName}"></i>`;
-  createIcons({ icons: { Minus, Pin, PinOff, RefreshCw, X } });
+
+  // 图标 DOM 初始化后保持稳定，只在置顶状态切换时替换对应图标，避免每次刷新重建按钮。
+  if (button.dataset.iconName === iconName) return;
+  setActionButtonIcon(button, iconName);
+}
+
+function setActionButtonIcon(button, iconName) {
+  button.dataset.iconName = iconName;
+  button.replaceChildren(createActionIcon(iconName));
+}
+
+function createActionIcon(iconName) {
+  const iconNode = ACTION_ICONS[iconName];
+  if (!iconNode) {
+    console.error("未知按钮图标", iconName);
+    return document.createElement("span");
+  }
+
+  const [tag, attrs, children] = iconNode;
+  return createLucideElement([
+    tag,
+    {
+      ...attrs,
+      "aria-hidden": "true",
+      "data-lucide": iconName,
+      class: `lucide lucide-${iconName}`
+    },
+    children
+  ]);
 }
 
 function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text) {
