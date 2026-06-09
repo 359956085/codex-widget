@@ -1,4 +1,5 @@
 mod quota;
+mod settings;
 
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,6 +11,7 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position, State, Webv
 use tokio::sync::Mutex;
 
 use quota::{QuotaService, QuotaSnapshot};
+use settings::{AppSettings, SettingsService};
 
 const MAIN_WINDOW_LABEL: &str = "main";
 const TRAY_ID: &str = "main-tray";
@@ -29,10 +31,15 @@ impl AppState {
 }
 
 #[tauri::command]
-async fn get_quota(state: State<'_, AppState>) -> Result<QuotaSnapshot, String> {
+async fn get_quota(app: AppHandle, state: State<'_, AppState>) -> Result<QuotaSnapshot, String> {
+    let settings = SettingsService::load(&app).map_err(|error| error.to_string())?;
+    let codex_cli_path = settings.codex_cli_path.as_deref().map(std::path::Path::new);
     // 长连接会话必须串行使用，避免多个刷新同时读写同一条 stdio 通道。
     let mut service = state.quota_service.lock().await;
-    service.get_quota().await.map_err(|error| error.to_string())
+    service
+        .get_quota(codex_cli_path)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -68,18 +75,41 @@ fn set_always_on_top(
 }
 
 #[tauri::command]
-fn open_codex() -> Result<(), String> {
-    let command = quota::resolve_codex_command();
+fn open_codex(app: AppHandle) -> Result<(), String> {
+    let settings = SettingsService::load(&app).map_err(|error| error.to_string())?;
+    let codex_cli_path = settings.codex_cli_path.as_deref().map(std::path::Path::new);
+    let command = quota::resolve_codex_command(codex_cli_path);
     Command::new(&command)
         .spawn()
         .map_err(|error| format!("无法打开 Codex：{}，{}", command.display(), error))?;
     Ok(())
 }
 
+#[tauri::command]
+fn get_settings(app: AppHandle) -> Result<AppSettings, String> {
+    SettingsService::load(&app).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn save_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: AppSettings,
+) -> Result<AppSettings, String> {
+    let previous = SettingsService::load(&app).unwrap_or_default();
+    let saved = SettingsService::save(&app, settings).map_err(|error| error.to_string())?;
+    if previous.codex_cli_path != saved.codex_cli_path {
+        let mut service = state.quota_service.lock().await;
+        service.reset_session().await;
+    }
+    Ok(saved)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::new())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let window = app
                 .get_webview_window(MAIN_WINDOW_LABEL)
@@ -98,7 +128,9 @@ pub fn run() {
             close_app,
             get_always_on_top,
             set_always_on_top,
-            open_codex
+            open_codex,
+            get_settings,
+            save_settings
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用失败");

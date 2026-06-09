@@ -11,13 +11,24 @@
 - 悬浮窗口：液态玻璃风格、无边框、透明背景、默认位于主屏幕右上角。
 - 窗口交互：支持整面板拖动、置顶切换、隐藏和退出。
 - 系统托盘：支持显示或隐藏窗口、刷新额度、切换置顶和退出应用。
-- 自动刷新：默认每 5 分钟刷新一次；如果 Codex 返回重置时间，会在重置后补充刷新。
-- 自动更新：启动后检查一次更新，之后每 6 小时检查一次；发现新版本后自动下载并安装，重启后生效。
-- 界面语言：支持中文和英文界面切换。
+- 设置面板：支持设置 `codex.exe` 路径、自动更新开关、自动更新代理、自动刷新时间和界面语言。
+- 自动刷新：默认每 5 分钟刷新一次，可在设置中调整；如果 Codex 返回重置时间，会在重置后补充刷新。
+- 自动更新：默认开启；启动后检查一次更新，之后每 6 小时检查一次；发现新版本后自动下载并安装，重启后生效。
+- 界面语言：支持中文和英文界面切换，语言入口位于设置面板。
 
 ## 隐私说明
 
 应用只调用本机已有的 Codex CLI，并复用本机登录状态读取额度信息。应用不会要求输入 Token，不会保存 Token，也不会上传额度数据。
+
+## 设置项
+
+设置会保存到应用配置目录的 `settings.json`，由 Rust 后端读写。前端不启用 fs、shell、opener 等高风险插件。
+
+- `codex.exe` 路径：留空时自动探测；填写后优先使用该路径，保存时会校验文件存在且文件名为 `codex.exe`。
+- 自动更新：默认开启；关闭后不会检查、下载或安装 GitHub Releases 更新。
+- 自动更新代理：仅用于本组件的 GitHub 自动更新检查和下载，不影响 Codex CLI 额度读取。支持 `http://`、`https://`、`socks5://`。
+- 自动刷新时间：单位为分钟，允许 `1-1440`。
+- 语言：通过下拉框选择中文或 English。
 
 ## 运行要求
 
@@ -70,12 +81,13 @@ cargo check --manifest-path src-tauri/Cargo.toml
 
 应用会按以下顺序查找 Codex CLI：
 
-1. `CODEX_CLI_PATH` 环境变量。
-2. `%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`。
-3. `%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe`，用于兼容 Codex Windows 版的哈希子目录结构。
-4. 系统 `PATH` 中的 `codex.exe`。
+1. 设置面板中保存的 `codex.exe` 路径。
+2. `CODEX_CLI_PATH` 环境变量。
+3. `%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`。
+4. `%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe`，用于兼容 Codex Windows 版的哈希子目录结构。
+5. 系统 `PATH` 中的 `codex.exe`。
 
-如果系统默认的 `codex.exe` 无法从当前权限环境启动，可以设置 `CODEX_CLI_PATH` 指向可执行的 Codex CLI。
+如果自动探测到的 `codex.exe` 无法从当前权限环境启动，优先在设置面板中选择可执行的 Codex CLI。
 
 ## 本地打包
 
@@ -101,7 +113,7 @@ CodexWidget_0.1.0_x64-setup.exe
 
 ## 自动更新与发布
 
-自动更新使用 Tauri updater 的更新包签名密钥，不使用 Windows 代码签名证书。公钥写入 `src-tauri/tauri.conf.json`，私钥只保存在本机或 GitHub Actions Secrets，不提交到 Git。
+自动更新依赖 GitHub Releases。如果当前网络无法访问 GitHub，可以在设置面板中配置自动更新代理。Tauri updater 仍需要更新包签名密钥，不使用 Windows 代码签名证书。公钥写入 `src-tauri/tauri.conf.json`，私钥只保存在本机或 GitHub Actions Secrets，不提交到 Git。
 
 首次生成 updater 密钥：
 
@@ -187,4 +199,4 @@ codex-widget/
 
 ## 当前边界
 
-当前发布流程支持 Windows x64 NSIS 安装包和 GitHub Releases 自动更新；暂不包含 MSI、多平台构建、Windows 代码签名、增量更新、开机自启动、自定义刷新间隔和多主题。
+当前发布流程支持 Windows x64 NSIS 安装包和 GitHub Releases 自动更新；暂不包含 MSI、多平台构建、Windows 代码签名、增量更新、开机自启动和多主题。

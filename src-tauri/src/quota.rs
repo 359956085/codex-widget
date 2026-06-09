@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, time::SystemTime};
@@ -55,21 +55,25 @@ impl QuotaService {
         }
     }
 
-    pub async fn get_quota(&mut self) -> Result<QuotaSnapshot> {
-        match self.read_and_remember_quota().await {
+    pub async fn get_quota(&mut self, codex_cli_path: Option<&Path>) -> Result<QuotaSnapshot> {
+        match self.read_and_remember_quota(codex_cli_path).await {
             Ok(snapshot) => Ok(snapshot),
-            Err(first_error) => self.retry_with_fresh_session(first_error).await,
+            Err(first_error) => {
+                self.retry_with_fresh_session(first_error, codex_cli_path)
+                    .await
+            }
         }
     }
 
     async fn retry_with_fresh_session(
         &mut self,
         first_error: anyhow::Error,
+        codex_cli_path: Option<&Path>,
     ) -> Result<QuotaSnapshot> {
         // 长连接一旦读写失败就不能假设仍可复用，先清理再启动新会话重试一次。
         self.invalidate_session().await;
 
-        match self.read_and_remember_quota().await {
+        match self.read_and_remember_quota(codex_cli_path).await {
             Ok(snapshot) => Ok(snapshot),
             Err(second_error) => {
                 self.invalidate_session().await;
@@ -80,15 +84,30 @@ impl QuotaService {
         }
     }
 
-    async fn read_and_remember_quota(&mut self) -> Result<QuotaSnapshot> {
-        let snapshot = self.read_quota_with_session().await?;
+    async fn read_and_remember_quota(
+        &mut self,
+        codex_cli_path: Option<&Path>,
+    ) -> Result<QuotaSnapshot> {
+        let snapshot = self.read_quota_with_session(codex_cli_path).await?;
         self.remember_success(&snapshot);
         Ok(snapshot)
     }
 
-    async fn read_quota_with_session(&mut self) -> Result<QuotaSnapshot> {
+    async fn read_quota_with_session(
+        &mut self,
+        codex_cli_path: Option<&Path>,
+    ) -> Result<QuotaSnapshot> {
+        let codex_command = resolve_codex_command(codex_cli_path);
+        if self
+            .session
+            .as_ref()
+            .is_some_and(|session| session.codex_command() != codex_command.as_path())
+        {
+            self.invalidate_session().await;
+        }
+
         if self.session.is_none() {
-            self.session = Some(CodexSession::start().await?);
+            self.session = Some(CodexSession::start(codex_command).await?);
         }
 
         let session = self
@@ -103,6 +122,10 @@ impl QuotaService {
             }
         };
         normalize_rate_limits_response(&response).context("Codex 额度响应解析失败")
+    }
+
+    pub async fn reset_session(&mut self) {
+        self.invalidate_session().await;
     }
 
     async fn invalidate_session(&mut self) {
@@ -127,7 +150,11 @@ impl Default for QuotaService {
     }
 }
 
-pub fn resolve_codex_command() -> PathBuf {
+pub fn resolve_codex_command(codex_cli_path: Option<&Path>) -> PathBuf {
+    if let Some(path) = codex_cli_path {
+        return path.to_path_buf();
+    }
+
     let mut candidates = Vec::new();
 
     if let Ok(path) = std::env::var("CODEX_CLI_PATH") {
@@ -279,6 +306,7 @@ fn format_unix_seconds(seconds: i64) -> Option<String> {
 }
 
 struct CodexSession {
+    codex_command: PathBuf,
     child: Child,
     stdin: ChildStdin,
     lines: Lines<BufReader<ChildStdout>>,
@@ -288,8 +316,7 @@ struct CodexSession {
 }
 
 impl CodexSession {
-    async fn start() -> Result<Self> {
-        let codex_command = resolve_codex_command();
+    async fn start(codex_command: PathBuf) -> Result<Self> {
         let mut command = Command::new(&codex_command);
         command
             .args(["app-server", "--listen", "stdio://"])
@@ -318,6 +345,7 @@ impl CodexSession {
         let stderr_tail = Arc::new(Mutex::new(String::new()));
         let stderr_task = spawn_stderr_tail_task(stderr, Arc::clone(&stderr_tail));
         let mut session = Self {
+            codex_command,
             child,
             stdin,
             lines: BufReader::new(stdout).lines(),
@@ -334,6 +362,10 @@ impl CodexSession {
         }
 
         Ok(session)
+    }
+
+    fn codex_command(&self) -> &Path {
+        &self.codex_command
     }
 
     async fn initialize(&mut self) -> Result<()> {

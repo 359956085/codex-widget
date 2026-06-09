@@ -16,8 +16,8 @@
           </div>
         </div>
         <div class="window-actions">
-          <button id="langBtn" class="text-button" type="button" title="Language" aria-label="Language">
-            EN
+          <button id="settingsBtn" class="icon-button" type="button" title="设置" aria-label="设置">
+            <i data-lucide="settings"></i>
           </button>
           <button id="pinBtn" class="icon-button active" type="button" title="取消置顶" aria-label="取消置顶">
             <i data-lucide="pin"></i>
@@ -68,6 +68,64 @@
         <span id="statusDot" class="status-dot loading"></span>
         <span id="statusText">正在读取 Codex 额度...</span>
       </footer>
+
+      <section id="settingsPanel" class="settings-panel" data-no-drag hidden aria-label="设置">
+        <div class="settings-head">
+          <strong id="settingsTitle">设置</strong>
+          <button id="settingsCloseBtn" class="icon-button" type="button" title="关闭" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="settings-scroll">
+          <label class="settings-field">
+            <span id="codexPathLabel">Codex 路径</span>
+            <div class="path-control">
+              <input id="codexPathInput" class="settings-input" type="text" data-no-drag spellcheck="false" />
+              <button id="chooseCodexBtn" class="icon-button" type="button" title="选择 codex.exe" aria-label="选择 codex.exe">
+                <i data-lucide="folder-open"></i>
+              </button>
+            </div>
+          </label>
+
+          <div class="settings-field settings-row">
+            <div class="settings-copy">
+              <span id="autoUpdateLabel">自动更新</span>
+              <small id="autoUpdateHint">依赖 GitHub，网络不可达时可能需要配置代理。</small>
+            </div>
+            <label class="switch-control" data-no-drag>
+              <input id="autoUpdateSwitch" type="checkbox" data-no-drag checked />
+              <span class="switch-track" aria-hidden="true"></span>
+            </label>
+          </div>
+
+          <label class="settings-field">
+            <span id="updateProxyLabel">更新代理</span>
+            <input id="updateProxyInput" class="settings-input" type="text" data-no-drag spellcheck="false" />
+            <small id="updateProxyHint" class="field-hint">仅用于 GitHub 自动更新，不影响 Codex CLI。</small>
+          </label>
+
+          <label class="settings-field">
+            <span id="refreshIntervalLabel">刷新分钟</span>
+            <input id="refreshIntervalInput" class="settings-input" type="number" min="1" max="1440" step="1" data-no-drag />
+          </label>
+
+          <label class="settings-field">
+            <span id="languageLabel">语言</span>
+            <select id="localeSelect" class="settings-input settings-select" data-no-drag>
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="settings-actions">
+          <button id="cancelSettingsBtn" class="secondary-button" type="button" data-no-drag>取消</button>
+          <button id="saveSettingsBtn" class="primary-button" type="button" data-no-drag>
+            <span id="saveSettingsText">保存</span>
+          </button>
+        </div>
+      </section>
     </main>
     <script type="module" src="/src/main.js"></script>
   </body>

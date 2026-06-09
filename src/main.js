@@ -3,16 +3,25 @@ import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
-import { createElement as createLucideElement, Minus, Pin, PinOff, RefreshCw, X } from "lucide";
+import { createElement as createLucideElement, FolderOpen, Minus, Pin, PinOff, RefreshCw, Settings, X } from "lucide";
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const DEFAULT_SETTINGS = {
+  codexCliPath: "",
+  updateProxy: "",
+  refreshIntervalMinutes: 5,
+  locale: "zh",
+  autoUpdateEnabled: true
+};
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const ACTION_ICONS = {
+  "folder-open": FolderOpen,
   minus: Minus,
   pin: Pin,
   "pin-off": PinOff,
   "refresh-cw": RefreshCw,
+  settings: Settings,
   x: X
 };
 
@@ -45,7 +54,22 @@ const i18n = {
     updateDownloading: "正在下载更新",
     updateInstalling: "正在安装更新",
     updateReady: "更新已安装，重启后生效",
-    updateFailed: "更新检查失败"
+    updateFailed: "更新检查失败",
+    settings: "设置",
+    close: "关闭",
+    codexPath: "Codex 路径",
+    chooseCodex: "选择 codex.exe",
+    updateProxy: "更新代理",
+    refreshInterval: "刷新分钟",
+    language: "语言",
+    autoUpdate: "自动更新",
+    autoUpdateHint: "更新依赖 GitHub，网络不可达时可能需要配置代理。",
+    updateProxyHint: "仅用于 GitHub 自动更新，不影响 Codex CLI。",
+    save: "保存",
+    cancel: "取消",
+    settingsSaved: "设置已保存",
+    codexPathPlaceholder: "留空自动探测",
+    updateProxyPlaceholder: "http://127.0.0.1:7890"
   },
   en: {
     brandName: "Codex Quota",
@@ -75,7 +99,22 @@ const i18n = {
     updateDownloading: "Downloading update",
     updateInstalling: "Installing update",
     updateReady: "Update installed. Restart to apply.",
-    updateFailed: "Update check failed"
+    updateFailed: "Update check failed",
+    settings: "Settings",
+    close: "Close",
+    codexPath: "Codex path",
+    chooseCodex: "Choose codex.exe",
+    updateProxy: "Update proxy",
+    refreshInterval: "Refresh min",
+    language: "Language",
+    autoUpdate: "Auto update",
+    autoUpdateHint: "Updates depend on GitHub. Configure a proxy if the network cannot reach it.",
+    updateProxyHint: "Only used for GitHub updates. It does not affect Codex CLI.",
+    save: "Save",
+    cancel: "Cancel",
+    settingsSaved: "Settings saved",
+    codexPathPlaceholder: "Empty for auto detect",
+    updateProxyPlaceholder: "http://127.0.0.1:7890"
   }
 };
 
@@ -84,7 +123,7 @@ const els = {
   trafficLight: document.getElementById("trafficLight"),
   brandName: document.getElementById("brandName"),
   stateText: document.getElementById("stateText"),
-  langBtn: document.getElementById("langBtn"),
+  settingsBtn: document.getElementById("settingsBtn"),
   pinBtn: document.getElementById("pinBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
   minimizeBtn: document.getElementById("minimizeBtn"),
@@ -101,19 +140,43 @@ const els = {
   planText: document.getElementById("planText"),
   statusDot: document.getElementById("statusDot"),
   statusText: document.getElementById("statusText"),
-  widget: document.querySelector(".widget")
+  widget: document.querySelector(".widget"),
+  settingsPanel: document.getElementById("settingsPanel"),
+  settingsTitle: document.getElementById("settingsTitle"),
+  settingsCloseBtn: document.getElementById("settingsCloseBtn"),
+  codexPathLabel: document.getElementById("codexPathLabel"),
+  codexPathInput: document.getElementById("codexPathInput"),
+  chooseCodexBtn: document.getElementById("chooseCodexBtn"),
+  autoUpdateLabel: document.getElementById("autoUpdateLabel"),
+  autoUpdateHint: document.getElementById("autoUpdateHint"),
+  autoUpdateSwitch: document.getElementById("autoUpdateSwitch"),
+  updateProxyLabel: document.getElementById("updateProxyLabel"),
+  updateProxyInput: document.getElementById("updateProxyInput"),
+  updateProxyHint: document.getElementById("updateProxyHint"),
+  refreshIntervalLabel: document.getElementById("refreshIntervalLabel"),
+  refreshIntervalInput: document.getElementById("refreshIntervalInput"),
+  languageLabel: document.getElementById("languageLabel"),
+  localeSelect: document.getElementById("localeSelect"),
+  cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
+  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+  saveSettingsText: document.getElementById("saveSettingsText")
 };
 
 const state = {
-  locale: localStorage.getItem("codex-quota-locale") || "zh",
+  settings: { ...DEFAULT_SETTINGS },
+  settingsDraft: { ...DEFAULT_SETTINGS },
+  locale: DEFAULT_SETTINGS.locale,
   quota: null,
   loading: false,
   error: "",
   alwaysOnTop: true,
   resetTimer: null,
+  refreshTimer: null,
   updateStatus: null,
   updateChecking: false,
-  updateTimer: null
+  updateTimer: null,
+  settingsOpen: false,
+  savingSettings: false
 };
 
 initializeActionIcons();
@@ -123,11 +186,7 @@ initialize();
 function bindEvents() {
   els.widget.addEventListener("pointerdown", startWindowDrag);
 
-  els.langBtn.addEventListener("click", () => {
-    state.locale = state.locale === "zh" ? "en" : "zh";
-    localStorage.setItem("codex-quota-locale", state.locale);
-    render();
-  });
+  els.settingsBtn.addEventListener("click", openSettingsPanel);
 
   els.pinBtn.addEventListener("click", async () => {
     try {
@@ -142,6 +201,12 @@ function bindEvents() {
   els.refreshBtn.addEventListener("click", () => refreshQuota());
   els.minimizeBtn.addEventListener("click", () => invoke("hide_window"));
   els.closeBtn.addEventListener("click", () => invoke("close_app"));
+  els.settingsCloseBtn.addEventListener("click", closeSettingsPanel);
+  els.cancelSettingsBtn.addEventListener("click", closeSettingsPanel);
+  els.saveSettingsBtn.addEventListener("click", saveSettings);
+  els.chooseCodexBtn.addEventListener("click", chooseCodexPath);
+  els.autoUpdateSwitch.addEventListener("change", syncAutoUpdateDraft);
+  els.localeSelect.addEventListener("change", () => selectSettingsLocale(els.localeSelect.value));
 }
 
 async function startWindowDrag(event) {
@@ -164,6 +229,7 @@ async function startWindowDrag(event) {
 
 async function initialize() {
   render();
+  await loadSettings();
 
   try {
     state.alwaysOnTop = await invoke("get_always_on_top");
@@ -178,7 +244,7 @@ async function initialize() {
   });
 
   refreshQuota();
-  window.setInterval(refreshQuota, REFRESH_INTERVAL_MS);
+  scheduleAutoRefresh();
   scheduleUpdateChecks();
 }
 
@@ -211,7 +277,20 @@ function scheduleResetRefresh(resetsAt) {
   const delay = new Date(resetsAt).getTime() - Date.now() + 1500;
   if (!Number.isFinite(delay) || delay <= 0) return;
 
-  state.resetTimer = window.setTimeout(refreshQuota, Math.min(delay, REFRESH_INTERVAL_MS));
+  state.resetTimer = window.setTimeout(refreshQuota, Math.min(delay, refreshIntervalMs()));
+}
+
+function scheduleAutoRefresh() {
+  if (state.refreshTimer) {
+    window.clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
+  }
+  state.refreshTimer = window.setInterval(refreshQuota, refreshIntervalMs());
+}
+
+function refreshIntervalMs() {
+  const minutes = Number(state.settings.refreshIntervalMinutes) || DEFAULT_SETTINGS.refreshIntervalMinutes;
+  return Math.max(1, Math.min(1440, minutes)) * 60 * 1000;
 }
 
 function render() {
@@ -229,12 +308,14 @@ function render() {
   els.brandName.textContent = text.brandName;
   els.remainingLabel.textContent = text.remaining;
   els.planLabel.textContent = text.plan;
-  els.langBtn.textContent = state.locale === "zh" ? "EN" : "中";
 
+  updateActionButton(els.settingsBtn, "settings", text.settings);
   updateActionButton(els.pinBtn, state.alwaysOnTop ? "pin" : "pin-off", state.alwaysOnTop ? text.unpin : text.pin);
   updateActionButton(els.refreshBtn, "refresh-cw", text.refresh);
   updateActionButton(els.minimizeBtn, "minus", text.hide);
   updateActionButton(els.closeBtn, "x", text.exit);
+  updateActionButton(els.settingsCloseBtn, "x", text.close);
+  updateActionButton(els.chooseCodexBtn, "folder-open", text.chooseCodex);
 
   els.trafficLight.className = `traffic-light ${mainState}`;
   els.statusDot.className = `status-dot ${state.error ? "error" : mainState}`;
@@ -260,22 +341,175 @@ function render() {
   renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text);
   renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text);
   els.planText.textContent = quota?.planType || text.unknown;
+  renderSettingsPanel(text);
+}
+
+async function loadSettings() {
+  if (!window.__TAURI_INTERNALS__) {
+    applySettings(DEFAULT_SETTINGS);
+    return;
+  }
+
+  try {
+    const settings = await invoke("get_settings");
+    applySettings(settings);
+  } catch (error) {
+    console.error("读取设置失败", error);
+    applySettings(DEFAULT_SETTINGS);
+  }
+}
+
+function applySettings(settings) {
+  state.settings = normalizeSettings(settings);
+  state.locale = state.settings.locale;
+  state.settingsDraft = { ...state.settings };
+  render();
+}
+
+function normalizeSettings(settings) {
+  const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
+  return {
+    codexCliPath: typeof settings?.codexCliPath === "string" ? settings.codexCliPath : "",
+    updateProxy: typeof settings?.updateProxy === "string" ? settings.updateProxy : "",
+    refreshIntervalMinutes:
+      Number.isInteger(refreshIntervalMinutes) && refreshIntervalMinutes >= 1 && refreshIntervalMinutes <= 1440
+        ? refreshIntervalMinutes
+        : DEFAULT_SETTINGS.refreshIntervalMinutes,
+    locale: settings?.locale === "en" ? "en" : "zh",
+    autoUpdateEnabled:
+      typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled
+  };
+}
+
+function openSettingsPanel() {
+  state.settingsDraft = { ...state.settings };
+  state.settingsOpen = true;
+  fillSettingsForm();
+  render();
+}
+
+function closeSettingsPanel() {
+  state.settingsOpen = false;
+  state.settingsDraft = { ...state.settings };
+  render();
+}
+
+function fillSettingsForm() {
+  els.codexPathInput.value = state.settingsDraft.codexCliPath || "";
+  els.updateProxyInput.value = state.settingsDraft.updateProxy || "";
+  els.refreshIntervalInput.value = String(state.settingsDraft.refreshIntervalMinutes || DEFAULT_SETTINGS.refreshIntervalMinutes);
+  els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
+  els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
+}
+
+function renderSettingsPanel(text) {
+  els.settingsPanel.hidden = !state.settingsOpen;
+  els.settingsTitle.textContent = text.settings;
+  els.codexPathLabel.textContent = text.codexPath;
+  els.autoUpdateLabel.textContent = text.autoUpdate;
+  els.autoUpdateHint.textContent = text.autoUpdateHint;
+  els.updateProxyLabel.textContent = text.updateProxy;
+  els.updateProxyHint.textContent = text.updateProxyHint;
+  els.refreshIntervalLabel.textContent = text.refreshInterval;
+  els.languageLabel.textContent = text.language;
+  els.codexPathInput.placeholder = text.codexPathPlaceholder;
+  els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
+  els.cancelSettingsBtn.textContent = text.cancel;
+  els.saveSettingsText.textContent = state.savingSettings ? text.loading : text.save;
+  els.saveSettingsBtn.disabled = state.savingSettings;
+  els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
+  els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
+}
+
+function syncAutoUpdateDraft() {
+  state.settingsDraft.autoUpdateEnabled = els.autoUpdateSwitch.checked;
+  render();
+}
+
+function selectSettingsLocale(locale) {
+  state.settingsDraft.locale = locale === "en" ? "en" : "zh";
+  render();
+}
+
+async function chooseCodexPath() {
+  if (!window.__TAURI_INTERNALS__) return;
+
+  try {
+    const selected = await openDialog({
+      multiple: false,
+      directory: false,
+      filters: [{ name: "Codex CLI", extensions: ["exe"] }]
+    });
+    if (typeof selected === "string") {
+      els.codexPathInput.value = selected;
+    }
+  } catch (error) {
+    showError(error);
+  }
+}
+
+async function saveSettings() {
+  if (state.savingSettings) return;
+
+  const nextSettings = collectSettingsDraft();
+  state.savingSettings = true;
+  render();
+
+  try {
+    const saved = window.__TAURI_INTERNALS__
+      ? await invoke("save_settings", { settings: nextSettings })
+      : nextSettings;
+    applySettings(saved);
+    state.settingsOpen = false;
+    state.error = "";
+    setUpdateStatus({ type: "saved" });
+    scheduleAutoRefresh();
+    refreshQuota();
+    scheduleUpdateChecks();
+  } catch (error) {
+    state.error = normalizeError(error);
+  } finally {
+    state.savingSettings = false;
+    render();
+  }
+}
+
+function collectSettingsDraft() {
+  const refreshIntervalMinutes = Number.parseInt(els.refreshIntervalInput.value, 10);
+  return {
+    codexCliPath: normalizeInputValue(els.codexPathInput.value),
+    updateProxy: normalizeInputValue(els.updateProxyInput.value),
+    refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
+    locale: els.localeSelect.value === "en" ? "en" : "zh",
+    autoUpdateEnabled: els.autoUpdateSwitch.checked
+  };
+}
+
+function normalizeInputValue(value) {
+  const text = value.trim();
+  return text ? text : null;
 }
 
 function scheduleUpdateChecks() {
-  checkForUpdates();
   if (state.updateTimer) window.clearInterval(state.updateTimer);
+  state.updateTimer = null;
+  if (!state.settings.autoUpdateEnabled) {
+    clearUpdateStatus();
+    return;
+  }
+
+  checkForUpdates();
   state.updateTimer = window.setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
 }
 
 async function checkForUpdates() {
-  if (!window.__TAURI_INTERNALS__ || state.updateChecking) return;
+  if (!window.__TAURI_INTERNALS__ || state.updateChecking || !state.settings.autoUpdateEnabled) return;
 
   state.updateChecking = true;
   setUpdateStatus({ type: "checking" });
 
   try {
-    const update = await check();
+    const update = await check(updateCheckOptions());
     if (!update) {
       clearUpdateStatus();
       return;
@@ -341,15 +575,24 @@ function formatUpdateStatus(text) {
   if (status.type === "installing") return text.updateInstalling;
   if (status.type === "ready") return text.updateReady;
   if (status.type === "failed") return text.updateFailed;
+  if (status.type === "saved") return text.settingsSaved;
   return "";
+}
+
+function updateCheckOptions() {
+  const proxy = state.settings.updateProxy?.trim();
+  return proxy ? { proxy } : undefined;
 }
 
 function initializeActionIcons() {
   [
+    [els.settingsBtn, "settings"],
     [els.pinBtn, "pin"],
     [els.refreshBtn, "refresh-cw"],
     [els.minimizeBtn, "minus"],
-    [els.closeBtn, "x"]
+    [els.closeBtn, "x"],
+    [els.settingsCloseBtn, "x"],
+    [els.chooseCodexBtn, "folder-open"]
   ].forEach(([button, iconName]) => {
     setActionButtonIcon(button, iconName);
   });

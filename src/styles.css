@@ -35,6 +35,10 @@ button {
   font: inherit;
 }
 
+input {
+  font: inherit;
+}
+
 .widget {
   position: relative;
   width: 390px;
@@ -216,6 +220,12 @@ button {
   transform: translateY(1px);
 }
 
+.icon-button:disabled,
+.text-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .icon-button.danger:hover {
   color: #ffffff;
   background: rgba(255, 83, 99, 0.78);
@@ -380,6 +390,246 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 50%;
+}
+
+.settings-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr) 34px;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)),
+    rgba(15, 26, 38, 0.94);
+  backdrop-filter: blur(26px) saturate(1.18);
+  cursor: default;
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-panel,
+.settings-panel * {
+  cursor: default;
+}
+
+.settings-panel input,
+.settings-panel textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.settings-head,
+.settings-actions,
+.settings-row,
+.path-control {
+  display: flex;
+  align-items: center;
+}
+
+.settings-head {
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.settings-head strong {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-scroll {
+  display: grid;
+  min-height: 0;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.settings-field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.settings-row {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settings-field > span,
+.settings-copy > span {
+  overflow: hidden;
+  color: rgba(225, 237, 248, 0.78);
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-field small,
+.settings-copy small {
+  overflow: hidden;
+  color: rgba(225, 237, 248, 0.52);
+  font-size: 10px;
+  line-height: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-control {
+  min-width: 0;
+  gap: 6px;
+}
+
+.settings-input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+.settings-input:focus {
+  box-shadow:
+    inset 0 0 0 1px rgba(103, 183, 255, 0.86),
+    0 0 0 2px rgba(103, 183, 255, 0.14);
+}
+
+.settings-input::placeholder {
+  color: rgba(225, 237, 248, 0.42);
+}
+
+.settings-select {
+  appearance: none;
+  color: rgba(255, 255, 255, 0.94);
+  background:
+    linear-gradient(45deg, transparent 50%, rgba(244, 249, 255, 0.78) 50%) right 12px center / 5px 5px no-repeat,
+    linear-gradient(135deg, rgba(244, 249, 255, 0.78) 50%, transparent 50%) right 7px center / 5px 5px no-repeat,
+    rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.settings-select option {
+  color: #132433;
+  background: #ffffff;
+}
+
+.switch-control {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.switch-control input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.switch-track::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  content: "";
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transition: transform 140ms ease;
+}
+
+.switch-control input:checked + .switch-track {
+  background: rgba(46, 232, 133, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(46, 232, 133, 0.42);
+}
+
+.switch-control input:checked + .switch-track::after {
+  transform: translateX(18px);
+}
+
+.switch-control input:focus-visible + .switch-track {
+  box-shadow:
+    inset 0 0 0 1px rgba(103, 183, 255, 0.86),
+    0 0 0 2px rgba(103, 183, 255, 0.14);
+}
+
+.settings-panel button,
+.settings-select,
+.switch-control,
+.switch-control * {
+  cursor: pointer;
+}
+
+.settings-panel button:disabled {
+  cursor: default;
+}
+
+.settings-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 70px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+}
+
+.primary-button {
+  background: rgba(46, 232, 133, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(46, 232, 133, 0.4);
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.primary-button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 body[data-state="loading"] .refresh-icon {
