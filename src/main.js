@@ -2,20 +2,40 @@ import "./styles.css";
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
-import { createElement as createLucideElement, FolderOpen, Minus, Pin, PinOff, RefreshCw, Settings, X } from "lucide";
+import {
+  CircleDot,
+  createElement as createLucideElement,
+  FolderOpen,
+  Minus,
+  Pin,
+  PinOff,
+  RefreshCw,
+  Settings,
+  X
+} from "lucide";
 
 const DEFAULT_SETTINGS = {
   codexCliPath: "",
   updateProxy: "",
   refreshIntervalMinutes: 5,
   locale: "zh",
-  autoUpdateEnabled: true
+  autoUpdateEnabled: true,
+  widgetMode: "panel"
 };
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const WIDGET_MODES = {
+  PANEL: "panel",
+  BALL: "ball"
+};
+const PANEL_SIZE = { width: 390, height: 236 };
+const BALL_SIZE = 88;
+const SNAP_DISTANCE = 24;
+const CLICK_DELAY_MS = 220;
 const ACTION_ICONS = {
+  "circle-dot": CircleDot,
   "folder-open": FolderOpen,
   minus: Minus,
   pin: Pin,
@@ -47,6 +67,8 @@ const i18n = {
     refresh: "刷新",
     hide: "隐藏",
     exit: "退出",
+    ballMode: "悬浮球",
+    panelMode: "完整面板",
     unavailable: "未读取到额度数据",
     openCodex: "打开 Codex",
     checkingUpdate: "正在检查更新...",
@@ -92,6 +114,8 @@ const i18n = {
     refresh: "Refresh",
     hide: "Hide",
     exit: "Exit",
+    ballMode: "Floating ball",
+    panelMode: "Full panel",
     unavailable: "No quota data",
     openCodex: "Open Codex",
     checkingUpdate: "Checking for updates...",
@@ -123,6 +147,7 @@ const els = {
   trafficLight: document.getElementById("trafficLight"),
   brandName: document.getElementById("brandName"),
   stateText: document.getElementById("stateText"),
+  modeBtn: document.getElementById("modeBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   pinBtn: document.getElementById("pinBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
@@ -176,7 +201,12 @@ const state = {
   updateChecking: false,
   updateTimer: null,
   settingsOpen: false,
-  savingSettings: false
+  savingSettings: false,
+  widgetMode: DEFAULT_SETTINGS.widgetMode,
+  ballDock: null,
+  ballPress: null,
+  ballDrag: null,
+  ballClickTimer: null
 };
 
 initializeActionIcons();
@@ -185,7 +215,11 @@ initialize();
 
 function bindEvents() {
   els.widget.addEventListener("pointerdown", startWindowDrag);
+  els.widget.addEventListener("pointermove", moveBallDrag);
+  els.widget.addEventListener("pointerup", finishBallDrag);
+  els.widget.addEventListener("pointercancel", finishBallDrag);
 
+  els.modeBtn.addEventListener("click", () => setWidgetMode(WIDGET_MODES.BALL));
   els.settingsBtn.addEventListener("click", openSettingsPanel);
 
   els.pinBtn.addEventListener("click", async () => {
@@ -216,6 +250,12 @@ async function startWindowDrag(event) {
       : null;
 
   if (event.button !== 0 || noDragTarget) return;
+
+  if (state.widgetMode === WIDGET_MODES.BALL) {
+    await startBallDrag(event);
+    return;
+  }
+
   event.preventDefault();
 
   if (!window.__TAURI_INTERNALS__) return;
@@ -227,9 +267,146 @@ async function startWindowDrag(event) {
   }
 }
 
+async function startBallDrag(event) {
+  event.preventDefault();
+  state.ballPress = {
+    pointerId: event.pointerId,
+    startScreenX: event.screenX,
+    startScreenY: event.screenY,
+    currentScreenX: event.screenX,
+    currentScreenY: event.screenY,
+    moved: false
+  };
+
+  if (!window.__TAURI_INTERNALS__) return;
+
+  try {
+    els.widget.setPointerCapture?.(event.pointerId);
+    const appWindow = getCurrentWindow();
+    const [position, scaleFactor] = await Promise.all([appWindow.outerPosition(), appWindow.scaleFactor()]);
+    const press = state.ballPress;
+    if (!press || press.pointerId !== event.pointerId) return;
+
+    const startPointerX = press.startScreenX * scaleFactor;
+    const startPointerY = press.startScreenY * scaleFactor;
+    state.ballDrag = {
+      pointerId: event.pointerId,
+      startPointerX,
+      startPointerY,
+      startX: position.x,
+      startY: position.y,
+      scaleFactor,
+      moved: press.moved,
+      frame: null,
+      nextX: Math.round(position.x + press.currentScreenX * scaleFactor - startPointerX),
+      nextY: Math.round(position.y + press.currentScreenY * scaleFactor - startPointerY)
+    };
+    render();
+  } catch (error) {
+    console.error("启动悬浮球拖动失败", error);
+    state.ballDrag = null;
+  }
+}
+
+function moveBallDrag(event) {
+  const press = state.ballPress;
+  if (!press || event.pointerId !== press.pointerId) return;
+
+  press.currentScreenX = event.screenX;
+  press.currentScreenY = event.screenY;
+  if (!press.moved && Math.hypot(event.screenX - press.startScreenX, event.screenY - press.startScreenY) > 4) {
+    markBallPressMoved(press);
+  }
+
+  const drag = state.ballDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+
+  const nextX = drag.startX + event.screenX * drag.scaleFactor - drag.startPointerX;
+  const nextY = drag.startY + event.screenY * drag.scaleFactor - drag.startPointerY;
+  drag.nextX = Math.round(nextX);
+  drag.nextY = Math.round(nextY);
+
+  if (press.moved) {
+    drag.moved = true;
+  } else if (!drag.moved && Math.hypot(drag.nextX - drag.startX, drag.nextY - drag.startY) > 4) {
+    drag.moved = true;
+    markBallPressMoved(press);
+  }
+
+  if (drag.frame !== null) return;
+  drag.frame = window.requestAnimationFrame(() => {
+    drag.frame = null;
+    if (!state.ballDrag) return;
+    getCurrentWindow()
+      .setPosition(new PhysicalPosition(drag.nextX, drag.nextY))
+      .catch((error) => console.error("移动悬浮球失败", error));
+  });
+}
+
+async function finishBallDrag(event) {
+  const press = state.ballPress;
+  const drag = state.ballDrag;
+  if (!press || event.pointerId !== press.pointerId) return;
+
+  state.ballPress = null;
+  state.ballDrag = null;
+  try {
+    els.widget.releasePointerCapture?.(event.pointerId);
+  } catch {
+    // 指针捕获可能已由系统释放，这里只需要保证拖动状态被清理。
+  }
+
+  if (event.type === "pointercancel") return;
+
+  const moved = press.moved || Boolean(drag?.moved);
+  if (!moved) {
+    await handleBallPressClick();
+    return;
+  }
+
+  await snapBallAfterDrag(drag ? { x: drag.nextX, y: drag.nextY } : null);
+}
+
+function markBallPressMoved(press) {
+  press.moved = true;
+  clearBallClickTimer();
+  state.ballDock = null;
+  render();
+}
+
+async function handleBallPressClick() {
+  if (state.widgetMode !== WIDGET_MODES.BALL) return;
+
+  if (state.ballClickTimer) {
+    clearBallClickTimer();
+    await restorePanelFromBall();
+    return;
+  }
+
+  state.ballClickTimer = window.setTimeout(() => {
+    state.ballClickTimer = null;
+    if (state.widgetMode === WIDGET_MODES.BALL && state.ballDock) {
+      expandBallFromDock();
+    }
+  }, CLICK_DELAY_MS);
+}
+
+async function restorePanelFromBall() {
+  if (state.widgetMode !== WIDGET_MODES.BALL) return;
+  clearBallClickTimer();
+  await setWidgetMode(WIDGET_MODES.PANEL);
+}
+
+function clearBallClickTimer() {
+  if (!state.ballClickTimer) return;
+  window.clearTimeout(state.ballClickTimer);
+  state.ballClickTimer = null;
+}
+
 async function initialize() {
   render();
   await loadSettings();
+  await applyWidgetModeWindow();
 
   try {
     state.alwaysOnTop = await invoke("get_always_on_top");
@@ -246,6 +423,178 @@ async function initialize() {
   refreshQuota();
   scheduleAutoRefresh();
   scheduleUpdateChecks();
+}
+
+async function setWidgetMode(nextMode) {
+  if (state.widgetMode === nextMode) return;
+
+  clearBallClickTimer();
+  state.ballPress = null;
+  state.ballDrag = null;
+  state.widgetMode = nextMode;
+  state.settingsOpen = false;
+  state.ballDock = null;
+  state.settings = { ...state.settings, widgetMode: nextMode };
+  state.settingsDraft = { ...state.settings };
+  render();
+
+  await applyWidgetModeWindow();
+  await saveCurrentSettings();
+}
+
+async function saveCurrentSettings() {
+  if (!window.__TAURI_INTERNALS__) return;
+
+  try {
+    const saved = await invoke("save_settings", { settings: state.settings });
+    const normalized = normalizeSettings(saved);
+    state.settings = normalized;
+    state.locale = normalized.locale;
+    state.widgetMode = normalized.widgetMode;
+    state.settingsDraft = { ...normalized };
+    render();
+  } catch (error) {
+    showError(error);
+  }
+}
+
+async function applyWidgetModeWindow() {
+  if (!window.__TAURI_INTERNALS__) return;
+
+  try {
+    if (state.widgetMode === WIDGET_MODES.BALL) {
+      await applyBallWindow();
+    } else {
+      await applyPanelWindow();
+    }
+  } catch (error) {
+    console.error("切换窗口模式失败", error);
+  }
+}
+
+async function applyBallWindow() {
+  const appWindow = getCurrentWindow();
+  await appWindow.setSize(new LogicalSize(BALL_SIZE, BALL_SIZE));
+
+  const [monitor, size] = await Promise.all([currentMonitor(), appWindow.outerSize()]);
+  const area = monitor?.workArea;
+  if (!area) return;
+
+  const bounds = workAreaBounds(area);
+  await appWindow.setPosition(
+    new PhysicalPosition(Math.round(bounds.right - size.width - SNAP_DISTANCE), Math.round(bounds.top + SNAP_DISTANCE))
+  );
+}
+
+async function applyPanelWindow() {
+  const appWindow = getCurrentWindow();
+  await appWindow.setSize(new LogicalSize(PANEL_SIZE.width, PANEL_SIZE.height));
+
+  const [monitor, position, size] = await Promise.all([
+    currentMonitor(),
+    appWindow.outerPosition(),
+    appWindow.outerSize()
+  ]);
+  const area = monitor?.workArea;
+  if (!area) return;
+
+  const nextPosition = clampPositionToWorkArea(position, size, area);
+  await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+}
+
+function resolveBallDock(position, size, bounds) {
+  const leftEdge = position.x;
+  const rightEdge = position.x + size.width;
+  const centerX = position.x + size.width / 2;
+  const hitsLeftDock = leftEdge <= bounds.left + SNAP_DISTANCE;
+  const hitsRightDock = rightEdge >= bounds.right - SNAP_DISTANCE;
+
+  // 球体任一侧越过或进入吸附带，都代表用户想把悬浮球停靠到对应边缘。
+  if (hitsLeftDock && hitsRightDock) {
+    const boundsCenterX = bounds.left + (bounds.right - bounds.left) / 2;
+    return centerX <= boundsCenterX ? "left" : "right";
+  }
+  if (hitsLeftDock) return "left";
+  if (hitsRightDock) return "right";
+  return null;
+}
+
+async function snapBallAfterDrag(targetPosition = null) {
+  if (!window.__TAURI_INTERNALS__) return;
+
+  try {
+    const appWindow = getCurrentWindow();
+    const [monitor, position, size] = await Promise.all([
+      currentMonitor(),
+      appWindow.outerPosition(),
+      appWindow.outerSize()
+    ]);
+    const area = monitor?.workArea;
+    if (!area) return;
+
+    const bounds = workAreaBounds(area);
+    const dragPosition = targetPosition || position;
+    const dock = resolveBallDock(dragPosition, size, bounds);
+    const y = clamp(dragPosition.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
+    let x = clamp(dragPosition.x, bounds.left, Math.max(bounds.left, bounds.right - size.width));
+
+    if (dock === "left") {
+      x = bounds.left - Math.round(size.width / 2);
+    } else if (dock === "right") {
+      x = bounds.right - Math.round(size.width / 2);
+    }
+
+    state.ballDock = dock;
+    await appWindow.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+    render();
+  } catch (error) {
+    console.error("悬浮球吸附失败", error);
+  }
+}
+
+async function expandBallFromDock() {
+  if (!window.__TAURI_INTERNALS__ || !state.ballDock) return;
+
+  try {
+    const appWindow = getCurrentWindow();
+    const [monitor, position, size] = await Promise.all([
+      currentMonitor(),
+      appWindow.outerPosition(),
+      appWindow.outerSize()
+    ]);
+    const area = monitor?.workArea;
+    if (!area) return;
+
+    const bounds = workAreaBounds(area);
+    const x = state.ballDock === "left" ? bounds.left : bounds.right - size.width;
+    const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
+    state.ballDock = null;
+    await appWindow.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+    render();
+  } catch (error) {
+    console.error("展开悬浮球失败", error);
+  }
+}
+
+function workAreaBounds(area) {
+  return {
+    left: area.position.x,
+    top: area.position.y,
+    right: area.position.x + area.size.width,
+    bottom: area.position.y + area.size.height
+  };
+}
+
+function clampPositionToWorkArea(position, size, area) {
+  const bounds = workAreaBounds(area);
+  return {
+    x: Math.round(clamp(position.x, bounds.left, Math.max(bounds.left, bounds.right - size.width))),
+    y: Math.round(clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height)))
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 async function refreshQuota() {
@@ -297,18 +646,24 @@ function render() {
   const text = i18n[state.locale];
   const quota = state.quota;
   const hasQuota = Boolean(quota);
-  const remaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
+  const panelRemaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
+  const ballRemaining = primaryRemainingPercent(quota);
+  const remaining = state.widgetMode === WIDGET_MODES.BALL ? ballRemaining : panelRemaining;
   const visualState = getVisualState(remaining);
   const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
   const updateStatusText = formatUpdateStatus(text);
 
   document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
   els.body.dataset.state = mainState;
+  els.body.dataset.widgetMode = state.widgetMode;
+  els.body.dataset.ballDock = state.ballDock || "none";
 
   els.brandName.textContent = text.brandName;
   els.remainingLabel.textContent = text.remaining;
+  els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
   els.planLabel.textContent = text.plan;
 
+  updateActionButton(els.modeBtn, "circle-dot", text.ballMode);
   updateActionButton(els.settingsBtn, "settings", text.settings);
   updateActionButton(els.pinBtn, state.alwaysOnTop ? "pin" : "pin-off", state.alwaysOnTop ? text.unpin : text.pin);
   updateActionButton(els.refreshBtn, "refresh-cw", text.refresh);
@@ -362,6 +717,7 @@ async function loadSettings() {
 function applySettings(settings) {
   state.settings = normalizeSettings(settings);
   state.locale = state.settings.locale;
+  state.widgetMode = state.settings.widgetMode;
   state.settingsDraft = { ...state.settings };
   render();
 }
@@ -377,7 +733,8 @@ function normalizeSettings(settings) {
         : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: settings?.locale === "en" ? "en" : "zh",
     autoUpdateEnabled:
-      typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled
+      typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
+    widgetMode: settings?.widgetMode === WIDGET_MODES.BALL ? WIDGET_MODES.BALL : WIDGET_MODES.PANEL
   };
 }
 
@@ -481,7 +838,8 @@ function collectSettingsDraft() {
     updateProxy: normalizeInputValue(els.updateProxyInput.value),
     refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: els.localeSelect.value === "en" ? "en" : "zh",
-    autoUpdateEnabled: els.autoUpdateSwitch.checked
+    autoUpdateEnabled: els.autoUpdateSwitch.checked,
+    widgetMode: state.widgetMode
   };
 }
 
@@ -586,6 +944,7 @@ function updateCheckOptions() {
 
 function initializeActionIcons() {
   [
+    [els.modeBtn, "circle-dot"],
     [els.settingsBtn, "settings"],
     [els.pinBtn, "pin"],
     [els.refreshBtn, "refresh-cw"],
@@ -601,7 +960,10 @@ function initializeActionIcons() {
 function updateActionButton(button, iconName, label) {
   button.title = label;
   button.setAttribute("aria-label", label);
-  button.classList.toggle("active", button === els.pinBtn && state.alwaysOnTop);
+  button.classList.toggle(
+    "active",
+    (button === els.pinBtn && state.alwaysOnTop) || (button === els.modeBtn && state.widgetMode === WIDGET_MODES.BALL)
+  );
 
   // 图标 DOM 初始化后保持稳定，只在置顶状态切换时替换对应图标，避免每次刷新重建按钮。
   if (button.dataset.iconName === iconName) return;
@@ -631,6 +993,10 @@ function createActionIcon(iconName) {
     },
     children
   ]);
+}
+
+function primaryRemainingPercent(quota) {
+  return typeof quota?.primary?.remainingPercent === "number" ? quota.primary.remainingPercent : null;
 }
 
 function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text) {

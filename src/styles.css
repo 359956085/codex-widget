@@ -1,6 +1,15 @@
 :root {
   color: #f7fbff;
   background: transparent;
+  --widget-surface-background:
+    linear-gradient(130deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)),
+    rgba(17, 28, 40, 0.72);
+  --widget-surface-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    inset 0 0 34px rgba(0, 0, 0, 0.16);
+  --widget-surface-backdrop: blur(24px) saturate(1.24);
+  --meter-primary-color: rgba(255, 255, 255, 0.94);
   font-family:
     Inter,
     "Segoe UI",
@@ -47,14 +56,9 @@ input {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 16px;
-  background:
-    linear-gradient(130deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)),
-    rgba(17, 28, 40, 0.72);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    inset 0 0 34px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(24px) saturate(1.24);
+  background: var(--widget-surface-background);
+  box-shadow: var(--widget-surface-shadow);
+  backdrop-filter: var(--widget-surface-backdrop);
   cursor: grab;
 }
 
@@ -314,6 +318,7 @@ input {
 }
 
 .meter-copy strong {
+  color: var(--meter-primary-color);
   font-size: 31px;
   font-weight: 800;
   line-height: 34px;
@@ -323,6 +328,53 @@ input {
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   line-height: 14px;
+}
+
+body[data-widget-mode="ball"] .widget {
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--widget-surface-background);
+  box-shadow: var(--widget-surface-shadow);
+  backdrop-filter: var(--widget-surface-backdrop);
+}
+
+body[data-widget-mode="ball"] .widget::before,
+body[data-widget-mode="ball"] .titlebar,
+body[data-widget-mode="ball"] .quota-panel,
+body[data-widget-mode="ball"] .status,
+body[data-widget-mode="ball"] .settings-panel {
+  display: none;
+}
+
+body[data-widget-mode="ball"] .content {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 88px;
+  height: 88px;
+  cursor: grab;
+}
+
+body[data-widget-mode="ball"] .liquid-meter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 130px;
+  height: 130px;
+  cursor: grab;
+  transform: scale(0.676923);
+  transform-origin: top left;
+}
+
+body[data-widget-mode="ball"] .meter-copy {
+  gap: 0;
+}
+
+body[data-widget-mode="ball"] .meter-copy span {
+  display: none;
 }
 
 .quota-panel {
