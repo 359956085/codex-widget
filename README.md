@@ -1,30 +1,36 @@
-# Codex 额度小组件 Rust 版
+# Codex CLI 额度小组件 Rust 版
 
-这是一个基于 Tauri 2、Rust 和 Vite 的 Windows 桌面悬浮小组件，用于读取本机 Codex 额度状态，并以红、黄、绿三种状态展示剩余额度。
+这是一个基于 Tauri 2、Rust 和 Vite 的 Windows 桌面悬浮小组件，通过本机 Codex CLI 读取 Codex 额度状态，并以红、黄、绿三种状态展示剩余额度。
+
+## 术语说明
+
+- 本组件：当前仓库中的 Windows 桌面悬浮小组件。
+- Codex CLI：本组件调用的 `codex.exe` 命令行工具。
+- Codex app：OpenAI 的桌面 Codex 应用，本组件不会直接启动它。
 
 ## 功能
 
 - 额度状态：剩余额度大于等于 10% 显示绿色，大于 0 且小于 10% 显示黄色，等于 0 显示红色。
-- 额度读取：通过本机 Codex CLI 启动 `codex app-server --listen stdio://`，调用 `account/rateLimits/read` 获取数据。
-- 会话复用：后端优先复用长连接 Codex 会话，避免每次刷新都重新启动 Codex CLI。
-- 错误处理：读取失败时不伪装为额度耗尽，前端保留最近一次成功额度并显示错误提示。
+- 额度读取：通过本机 Codex CLI 启动 `codex app-server --listen stdio://`，调用 `account/rateLimits/read` 获取数据；这里的 `app-server` 是 Codex CLI 子命令，不是 Codex app。
+- 会话复用：后端优先复用长连接 Codex CLI app-server 会话，避免每次刷新都重新启动 Codex CLI。
+- 错误处理：读取失败时不伪装为额度耗尽，前端清空当前额度并显示错误提示。
 - 悬浮窗口：液态玻璃风格、无边框、透明背景、默认位于主屏幕右上角。
 - 窗口交互：支持整面板拖动、置顶切换、隐藏和退出。
-- 系统托盘：支持显示或隐藏窗口、刷新额度、切换置顶和退出应用。
-- 设置面板：支持设置 `codex.exe` 路径、自动更新开关、自动更新代理、自动刷新时间和界面语言。
-- 自动刷新：默认每 5 分钟刷新一次，可在设置中调整；如果 Codex 返回重置时间，会在重置后补充刷新。
+- 系统托盘：支持显示或隐藏窗口、刷新额度、切换置顶和退出本组件。
+- 设置面板：支持设置 Codex CLI 路径、自动更新开关、自动更新代理、自动刷新时间和界面语言。
+- 自动刷新：默认每 5 分钟刷新一次，可在设置中调整；如果 Codex CLI 返回重置时间，会在重置后补充刷新。
 - 自动更新：默认开启；启动后检查一次更新，之后每 6 小时检查一次；发现新版本后自动下载并安装，重启后生效。
 - 界面语言：支持中文和英文界面切换，语言入口位于设置面板。
 
 ## 隐私说明
 
-应用只调用本机已有的 Codex CLI，并复用本机登录状态读取额度信息。应用不会要求输入 Token，不会保存 Token，也不会上传额度数据。
+本组件只调用本机已有的 Codex CLI，并复用本机登录状态读取额度信息。本组件不会要求输入 Token，不会保存 Token，也不会上传额度数据。
 
 ## 设置项
 
-设置会保存到应用配置目录的 `settings.json`，由 Rust 后端读写。前端不启用 fs、shell、opener 等高风险插件。
+设置会保存到本组件配置目录的 `settings.json`，由 Rust 后端读写。前端不启用 fs、shell、opener 等高风险插件。
 
-- `codex.exe` 路径：留空时自动探测；填写后优先使用该路径，保存时会校验文件存在且文件名为 `codex.exe`。
+- Codex CLI 路径：留空时自动探测；填写后优先使用该路径，保存时会校验文件存在且文件名为 `codex.exe`。
 - 自动更新：默认开启；关闭后不会检查、下载或安装 GitHub Releases 更新。
 - 自动更新代理：仅用于本组件的 GitHub 自动更新检查和下载，不影响 Codex CLI 额度读取。支持 `http://`、`https://`、`socks5://`。
 - 自动刷新时间：单位为分钟，允许 `1-1440`。
@@ -35,7 +41,7 @@
 - Windows 10 或 Windows 11。
 - Rust 稳定工具链。
 - Node.js 20.19.0 或更高版本。
-- 已安装并登录 Codex。
+- 已安装并登录 Codex CLI。
 
 如果本机通过 nvm 管理 Node.js，建议先切换到兼容版本：
 
@@ -79,12 +85,12 @@ cargo check --manifest-path src-tauri/Cargo.toml
 
 ## Codex CLI 路径
 
-应用会按以下顺序查找 Codex CLI：
+本组件会按以下顺序查找 Codex CLI：
 
 1. 设置面板中保存的 `codex.exe` 路径。
 2. `CODEX_CLI_PATH` 环境变量。
 3. `%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`。
-4. `%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe`，用于兼容 Codex Windows 版的哈希子目录结构。
+4. `%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe`，用于兼容 Codex CLI Windows 版的哈希子目录结构。
 5. 系统 `PATH` 中的 `codex.exe`。
 
 如果自动探测到的 `codex.exe` 无法从当前权限环境启动，优先在设置面板中选择可执行的 Codex CLI。

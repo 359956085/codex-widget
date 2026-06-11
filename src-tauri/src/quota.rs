@@ -45,20 +45,15 @@ pub struct QuotaSnapshot {
 
 pub struct QuotaService {
     session: Option<CodexSession>,
-    // 最近成功快照是后端侧的稳定状态，刷新失败和会话失效都不能清掉它。
-    last_success: Option<QuotaSnapshot>,
 }
 
 impl QuotaService {
     pub fn new() -> Self {
-        Self {
-            session: None,
-            last_success: None,
-        }
+        Self { session: None }
     }
 
     pub async fn get_quota(&mut self, codex_cli_path: Option<&Path>) -> Result<QuotaSnapshot> {
-        match self.read_and_remember_quota(codex_cli_path).await {
+        match self.read_quota_with_session(codex_cli_path).await {
             Ok(snapshot) => Ok(snapshot),
             Err(first_error) => {
                 self.retry_with_fresh_session(first_error, codex_cli_path)
@@ -75,24 +70,15 @@ impl QuotaService {
         // 长连接一旦读写失败就不能假设仍可复用，先清理再启动新会话重试一次。
         self.invalidate_session().await;
 
-        match self.read_and_remember_quota(codex_cli_path).await {
+        match self.read_quota_with_session(codex_cli_path).await {
             Ok(snapshot) => Ok(snapshot),
             Err(second_error) => {
                 self.invalidate_session().await;
                 Err(anyhow!(
-                    "Codex 会话重启后仍读取失败：{second_error}；首次错误：{first_error}"
+                    "Codex CLI app-server 会话重启后仍读取失败：{second_error}；首次错误：{first_error}"
                 ))
             }
         }
-    }
-
-    async fn read_and_remember_quota(
-        &mut self,
-        codex_cli_path: Option<&Path>,
-    ) -> Result<QuotaSnapshot> {
-        let snapshot = self.read_quota_with_session(codex_cli_path).await?;
-        self.remember_success(&snapshot);
-        Ok(snapshot)
     }
 
     async fn read_quota_with_session(
@@ -115,7 +101,7 @@ impl QuotaService {
         let session = self
             .session
             .as_mut()
-            .ok_or_else(|| anyhow!("Codex 会话未初始化。"))?;
+            .ok_or_else(|| anyhow!("Codex CLI app-server 会话未初始化。"))?;
         let response = match session.read_rate_limits().await {
             Ok(response) => response,
             Err(error) => {
@@ -123,7 +109,7 @@ impl QuotaService {
                 return Err(enrich_error_with_stderr(error, stderr));
             }
         };
-        normalize_rate_limits_response(&response).context("Codex 额度响应解析失败")
+        normalize_rate_limits_response(&response).context("Codex CLI 额度响应解析失败")
     }
 
     pub async fn reset_session(&mut self) {
@@ -134,15 +120,6 @@ impl QuotaService {
         if let Some(session) = self.session.take() {
             session.shutdown().await;
         }
-    }
-
-    fn remember_success(&mut self, snapshot: &QuotaSnapshot) {
-        self.last_success = Some(snapshot.clone());
-    }
-
-    #[cfg(test)]
-    fn last_success(&self) -> Option<&QuotaSnapshot> {
-        self.last_success.as_ref()
     }
 }
 
@@ -187,7 +164,7 @@ pub fn resolve_codex_command(codex_cli_path: Option<&Path>) -> PathBuf {
 }
 
 fn find_codex_command_in_version_dirs(codex_bin: &PathBuf) -> Option<PathBuf> {
-    // Codex Windows 版会把 CLI 放在 bin 下的哈希子目录中，不能只检查固定文件名。
+    // Codex CLI Windows 版会把可执行文件放在 bin 下的哈希子目录中，不能只检查固定文件名。
     let entries = fs::read_dir(codex_bin).ok()?;
     let mut newest: Option<(SystemTime, PathBuf)> = None;
 
@@ -212,7 +189,7 @@ fn find_codex_command_in_version_dirs(codex_bin: &PathBuf) -> Option<PathBuf> {
 }
 
 pub fn normalize_rate_limits_response(response: &Value) -> Result<QuotaSnapshot> {
-    let snapshot = select_snapshot(response).ok_or_else(|| anyhow!("Codex 未返回额度快照。"))?;
+    let snapshot = select_snapshot(response).ok_or_else(|| anyhow!("Codex CLI 未返回额度快照。"))?;
     Ok(normalize_snapshot(snapshot))
 }
 
@@ -380,17 +357,17 @@ impl CodexSession {
             Some(json!({
                 "clientInfo": {
                     "name": "codex-quota-widget-rs",
-                    "title": "Codex 额度小组件",
+                    "title": "Codex CLI 额度小组件",
                     "version": env!("CARGO_PKG_VERSION")
                 },
                 "capabilities": null
             })),
         )
         .await
-        .context("Codex 初始化请求发送失败")?;
+        .context("Codex CLI app-server 初始化请求发送失败")?;
         let _ = read_response(&mut self.lines, request_id, "initialize")
             .await
-            .context("Codex 初始化失败")?;
+            .context("Codex CLI app-server 初始化失败")?;
         Ok(())
     }
 
@@ -398,10 +375,10 @@ impl CodexSession {
         let request_id = self.next_request_id();
         send_request(&mut self.stdin, request_id, "account/rateLimits/read", None)
             .await
-            .context("Codex 额度请求发送失败")?;
+            .context("Codex CLI 额度请求发送失败")?;
         read_response(&mut self.lines, request_id, "account/rateLimits/read")
             .await
-            .context("Codex 额度读取失败")
+            .context("Codex CLI 额度读取失败")
     }
 
     fn next_request_id(&mut self) -> u64 {
@@ -472,7 +449,7 @@ fn enrich_error_with_stderr(error: anyhow::Error, stderr: String) -> anyhow::Err
     if stderr.is_empty() {
         error
     } else {
-        anyhow!("{error}；Codex 错误输出：{stderr}")
+        anyhow!("{error}；Codex CLI 错误输出：{stderr}")
     }
 }
 
@@ -506,7 +483,7 @@ async fn read_response(
 ) -> Result<Value> {
     timeout(DEFAULT_TIMEOUT, read_matching_response(lines, expected_id))
         .await
-        .map_err(|_| anyhow!("Codex 请求超时：{method}"))?
+        .map_err(|_| anyhow!("Codex CLI 请求超时：{method}"))?
 }
 
 async fn read_matching_response(
@@ -540,10 +517,10 @@ async fn read_matching_response(
         return message
             .get("result")
             .cloned()
-            .ok_or_else(|| anyhow!("Codex 响应缺少 result 字段。"));
+            .ok_or_else(|| anyhow!("Codex CLI 响应缺少 result 字段。"));
     }
 
-    Err(anyhow!("Codex 子进程提前退出。"))
+    Err(anyhow!("Codex CLI 子进程提前退出。"))
 }
 
 async fn cleanup_child(child: &mut tokio::process::Child) {
@@ -654,19 +631,4 @@ mod tests {
         assert_eq!(text, "三四五");
     }
 
-    #[tokio::test]
-    async fn 会话失效不会清空最近成功快照() {
-        let snapshot = normalize_rate_limits_response(&json!({
-            "rateLimits": {
-                "primary": { "usedPercent": 12, "windowDurationMins": 300 }
-            }
-        }))
-        .unwrap();
-        let mut service = QuotaService::new();
-        service.remember_success(&snapshot);
-
-        service.invalidate_session().await;
-
-        assert_eq!(service.last_success(), Some(&snapshot));
-    }
 }

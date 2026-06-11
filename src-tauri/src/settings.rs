@@ -24,6 +24,19 @@ impl Default for Locale {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WidgetMode {
+    Panel,
+    Ball,
+}
+
+impl Default for WidgetMode {
+    fn default() -> Self {
+        Self::Panel
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -37,6 +50,8 @@ pub struct AppSettings {
     pub locale: Locale,
     #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
+    #[serde(default)]
+    pub widget_mode: WidgetMode,
 }
 
 impl Default for AppSettings {
@@ -47,6 +62,7 @@ impl Default for AppSettings {
             refresh_interval_minutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
             locale: Locale::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
+            widget_mode: WidgetMode::default(),
         }
     }
 }
@@ -218,6 +234,7 @@ mod tests {
             refresh_interval_minutes: 15,
             locale: Locale::En,
             auto_update_enabled: false,
+            widget_mode: WidgetMode::Ball,
         };
 
         let saved = save_to_path(&path, settings).unwrap();
@@ -230,10 +247,11 @@ mod tests {
             Some("http://127.0.0.1:7890".to_string())
         );
         assert!(!loaded.auto_update_enabled);
+        assert_eq!(loaded.widget_mode, WidgetMode::Ball);
     }
 
     #[test]
-    fn 旧配置缺失自动更新字段时默认开启() {
+    fn 旧配置缺失新增字段时使用默认值() {
         let dir = temp_test_dir("old-config-auto-update");
         let path = dir.join("settings.json");
         fs::create_dir_all(&dir).unwrap();
@@ -251,6 +269,7 @@ mod tests {
         let settings = load_from_path(&path).unwrap();
 
         assert!(settings.auto_update_enabled);
+        assert_eq!(settings.widget_mode, WidgetMode::Panel);
     }
 
     #[test]

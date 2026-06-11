@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Codex 额度小组件</title>
+    <title>Codex CLI 额度小组件</title>
   </head>
   <body data-state="loading">
     <main class="widget" aria-live="polite">
@@ -11,11 +11,14 @@
         <div class="brand">
           <span id="trafficLight" class="traffic-light loading" aria-hidden="true"></span>
           <div class="brand-copy">
-            <span id="brandName" class="brand-name">Codex 额度</span>
+            <span id="brandName" class="brand-name">Codex CLI 额度</span>
             <span id="stateText" class="brand-state">读取中</span>
           </div>
         </div>
         <div class="window-actions">
+          <button id="modeBtn" class="icon-button" type="button" title="悬浮球" aria-label="悬浮球">
+            <i data-lucide="circle-dot"></i>
+          </button>
           <button id="settingsBtn" class="icon-button" type="button" title="设置" aria-label="设置">
             <i data-lucide="settings"></i>
           </button>
@@ -66,7 +69,7 @@
 
       <footer class="status">
         <span id="statusDot" class="status-dot loading"></span>
-        <span id="statusText">正在读取 Codex 额度...</span>
+        <span id="statusText">正在通过 Codex CLI 读取额度...</span>
       </footer>
 
       <section id="settingsPanel" class="settings-panel" data-no-drag hidden aria-label="设置">
@@ -79,10 +82,10 @@
 
         <div class="settings-scroll">
           <label class="settings-field">
-            <span id="codexPathLabel">Codex 路径</span>
+            <span id="codexPathLabel">Codex CLI 路径</span>
             <div class="path-control">
               <input id="codexPathInput" class="settings-input" type="text" data-no-drag spellcheck="false" />
-              <button id="chooseCodexBtn" class="icon-button" type="button" title="选择 codex.exe" aria-label="选择 codex.exe">
+              <button id="chooseCodexBtn" class="icon-button" type="button" title="选择 Codex CLI (codex.exe)" aria-label="选择 Codex CLI (codex.exe)">
                 <i data-lucide="folder-open"></i>
               </button>
             </div>

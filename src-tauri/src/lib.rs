@@ -81,7 +81,7 @@ fn open_codex(app: AppHandle) -> Result<(), String> {
     let command = quota::resolve_codex_command(codex_cli_path);
     Command::new(&command)
         .spawn()
-        .map_err(|error| format!("无法打开 Codex：{}，{}", command.display(), error))?;
+        .map_err(|error| format!("无法打开 Codex CLI：{}，{}", command.display(), error))?;
     Ok(())
 }
 
@@ -151,7 +151,7 @@ fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     let menu = build_tray_menu(app, true)?;
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(load_app_icon()?)
-        .tooltip("Codex 额度小组件")
+        .tooltip("Codex CLI 额度小组件")
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle-window" => {
