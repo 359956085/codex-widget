@@ -6,8 +6,11 @@ import { currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import {
+  CalendarDays,
+  Clock3,
   CircleDot,
   createElement as createLucideElement,
+  Crown,
   FolderOpen,
   Minus,
   Pin,
@@ -35,7 +38,10 @@ const BALL_SIZE = 88;
 const SNAP_DISTANCE = 24;
 const CLICK_DELAY_MS = 220;
 const ACTION_ICONS = {
+  "calendar-days": CalendarDays,
+  "clock-3": Clock3,
   "circle-dot": CircleDot,
+  crown: Crown,
   "folder-open": FolderOpen,
   minus: Minus,
   pin: Pin,
@@ -47,7 +53,7 @@ const ACTION_ICONS = {
 
 const i18n = {
   zh: {
-    brandName: "Codex CLI 额度",
+    brandName: "Codex 额度",
     loading: "读取中",
     ready: "额度正常",
     low: "额度偏低",
@@ -212,6 +218,7 @@ const state = {
 };
 
 initializeActionIcons();
+initializeStaticIcons();
 bindEvents();
 initialize();
 
@@ -703,7 +710,10 @@ function render() {
   }
 
   els.remaining.textContent = remaining === null ? "--%" : `${remaining}%`;
-  els.liquidFill.style.height = `${remaining === null ? 0 : remaining}%`;
+  const remainingValue = remaining === null ? 0 : clamp(remaining, 0, 100);
+  els.liquidMeter.style.setProperty("--remaining-ratio", `${remainingValue}%`);
+  els.liquidMeter.style.setProperty("--remaining-angle", `${remainingValue * 3.6}deg`);
+  els.liquidFill.style.height = `${remainingValue}%`;
   els.liquidMeter.dataset.level = visualState;
 
   renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text);
@@ -967,6 +977,13 @@ function initializeActionIcons() {
     [els.chooseCodexBtn, "folder-open"]
   ].forEach(([button, iconName]) => {
     setActionButtonIcon(button, iconName);
+  });
+}
+
+function initializeStaticIcons() {
+  document.querySelectorAll("[data-static-icon]").forEach((element) => {
+    const iconName = element.getAttribute("data-static-icon");
+    element.replaceChildren(createActionIcon(iconName));
   });
 }
 
