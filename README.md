@@ -59,6 +59,12 @@ nvm use 20.19.0
 npm install
 ```
 
+CI 环境使用锁文件安装依赖，并优先复用 npm 缓存：
+
+```powershell
+npm run ci:install
+```
+
 启动 Tauri 开发模式：
 
 ```powershell
@@ -159,6 +165,8 @@ src-tauri/tauri.conf.json
 git tag v0.2.0
 git push origin v0.2.0
 ```
+
+发布工作流会复用 npm 与 Cargo 缓存；前端只由 Tauri 发布构建触发一次，避免在 CI 中先 `npm run build` 后又被 `tauri build` 重复构建。
 
 Release 产物固定为：
 

@@ -10,6 +10,7 @@
     "dev": "vite --host 127.0.0.1 --port 1420",
     "build": "npm run build:frontend",
     "build:frontend": "vite build",
+    "ci:install": "npm ci --prefer-offline --no-audit --no-fund",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:build:nsis": "tauri build --bundles nsis",

@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     name: 构建并发布 NSIS
@@ -26,9 +30,15 @@ jobs:
         with:
           node-version: "20.19.0"
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Rust 构建
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
 
       - name: 校验标签和密钥
         shell: pwsh
@@ -40,20 +50,14 @@ jobs:
             throw "发布标签必须和 package.json 版本一致：当前标签=$env:GITHUB_REF_NAME，期望标签=$expectedTag。"
           }
           if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
-            throw "缺少 Repository Secret：TAURI_SIGNING_PRIVATE_KEY。请把 certs/updater.key 的完整内容写入该 Secret。"
+              throw "缺少 Repository Secret：TAURI_SIGNING_PRIVATE_KEY。请把 certs/updater.key 的完整内容写入该 Secret。"
           }
 
       - name: 安装前端依赖
-        run: npm ci
-
-      - name: 构建前端
-        run: npm run build
+        run: npm run ci:install
 
       - name: 运行 Rust 测试
         run: cargo test --manifest-path src-tauri/Cargo.toml
-
-      - name: 运行 Rust 编译检查
-        run: cargo check --manifest-path src-tauri/Cargo.toml
 
       - name: 生成 Release 产物
         run: npm run release:github
