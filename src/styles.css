@@ -433,9 +433,9 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   grid-template-columns: 8px minmax(0, 1fr);
   align-items: center;
   height: 28px;
-  gap: 8px;
+  gap: 6px;
   color: rgba(225, 237, 248, 0.72);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 14px;
   cursor: grab;
 }

@@ -63,6 +63,8 @@ const i18n = {
     reading: "正在通过 Codex CLI 读取额度...",
     refreshedAt: "已刷新",
     nextReset: "重置",
+    primaryResetLabel: "5小时",
+    secondaryResetLabel: "周重置",
     pin: "置顶",
     unpin: "取消置顶",
     refresh: "刷新",
@@ -111,6 +113,8 @@ const i18n = {
     reading: "Reading quota via Codex CLI...",
     refreshedAt: "Refreshed",
     nextReset: "Reset",
+    primaryResetLabel: "5h reset",
+    secondaryResetLabel: "Weekly reset",
     pin: "Pin",
     unpin: "Unpin",
     refresh: "Refresh",
@@ -1040,10 +1044,10 @@ function formatWindowLabel(minutes, fallbackLabel, text) {
 
 function statusLabel(quota, text) {
   if (!quota) return text.noData;
-  const fetchedAt = quota.fetchedAt ? formatDate(quota.fetchedAt) : "";
-  const resetsAt = quota.resetsAt ? formatDate(quota.resetsAt) : "";
-  if (resetsAt) return `${text.refreshedAt} ${fetchedAt} · ${text.nextReset} ${resetsAt}`;
-  return fetchedAt ? `${text.refreshedAt} ${fetchedAt}` : text.noData;
+  const fetchedAt = formatTimeOrPlaceholder(quota.fetchedAt);
+  const primaryResetAt = formatTimeOrPlaceholder(quota.primary?.resetsAt);
+  const secondaryResetAt = formatTimeOrPlaceholder(quota.secondary?.resetsAt);
+  return `${text.refreshedAt} ${fetchedAt} · ${text.primaryResetLabel} ${primaryResetAt} · ${text.secondaryResetLabel} ${secondaryResetAt}`;
 }
 
 function getVisualState(remaining) {
@@ -1069,6 +1073,10 @@ function formatDate(value) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
+}
+
+function formatTimeOrPlaceholder(value) {
+  return value ? formatDate(value) || "--" : "--";
 }
 
 function showError(error) {
