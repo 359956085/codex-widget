@@ -377,6 +377,11 @@ body[data-widget-mode="ball"] .meter-copy span {
   display: none;
 }
 
+/* 半圆吸附时只保留液位视觉，避免文字挤在半圆可视区域内。 */
+body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
+  display: none;
+}
+
 .quota-panel {
   display: grid;
   min-width: 0;

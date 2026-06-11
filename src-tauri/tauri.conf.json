@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Codex 额度小组件",
+        "title": "Codex CLI 额度小组件",
         "width": 390,
         "height": 236,
         "minWidth": 88,
@@ -38,8 +38,8 @@
     "publisher": "fengshi",
     "copyright": "Copyright (c) 2026 fengshi",
     "category": "Utility",
-    "shortDescription": "Codex 额度悬浮小组件。",
-    "longDescription": "用于读取本机 Codex 额度状态的 Windows 桌面悬浮小组件。",
+    "shortDescription": "通过 Codex CLI 读取 Codex 额度的悬浮小组件。",
+    "longDescription": "通过本机 Codex CLI 读取 Codex 额度状态的 Windows 桌面悬浮小组件。",
     "icon": ["icons/icon.ico"],
     "windows": {
       "webviewInstallMode": {

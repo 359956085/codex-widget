@@ -47,7 +47,7 @@ const ACTION_ICONS = {
 
 const i18n = {
   zh: {
-    brandName: "Codex 额度",
+    brandName: "Codex CLI 额度",
     loading: "读取中",
     ready: "额度正常",
     low: "额度偏低",
@@ -59,7 +59,7 @@ const i18n = {
     plan: "套餐",
     unknown: "未知",
     noData: "暂无数据",
-    reading: "正在读取 Codex 额度...",
+    reading: "正在通过 Codex CLI 读取额度...",
     refreshedAt: "已刷新",
     nextReset: "重置",
     pin: "置顶",
@@ -70,7 +70,7 @@ const i18n = {
     ballMode: "悬浮球",
     panelMode: "完整面板",
     unavailable: "未读取到额度数据",
-    openCodex: "打开 Codex",
+    openCodex: "打开 Codex CLI",
     checkingUpdate: "正在检查更新...",
     updateAvailable: "发现新版本",
     updateDownloading: "正在下载更新",
@@ -79,8 +79,8 @@ const i18n = {
     updateFailed: "更新检查失败",
     settings: "设置",
     close: "关闭",
-    codexPath: "Codex 路径",
-    chooseCodex: "选择 codex.exe",
+    codexPath: "Codex CLI 路径",
+    chooseCodex: "选择 Codex CLI (codex.exe)",
     updateProxy: "更新代理",
     refreshInterval: "刷新分钟",
     language: "语言",
@@ -94,7 +94,7 @@ const i18n = {
     updateProxyPlaceholder: "http://127.0.0.1:7890"
   },
   en: {
-    brandName: "Codex Quota",
+    brandName: "Codex CLI Quota",
     loading: "Loading",
     ready: "Quota healthy",
     low: "Quota low",
@@ -106,7 +106,7 @@ const i18n = {
     plan: "Plan",
     unknown: "Unknown",
     noData: "No data",
-    reading: "Reading Codex quota...",
+    reading: "Reading quota via Codex CLI...",
     refreshedAt: "Refreshed",
     nextReset: "Reset",
     pin: "Pin",
@@ -117,7 +117,7 @@ const i18n = {
     ballMode: "Floating ball",
     panelMode: "Full panel",
     unavailable: "No quota data",
-    openCodex: "Open Codex",
+    openCodex: "Open Codex CLI",
     checkingUpdate: "Checking for updates...",
     updateAvailable: "Update available",
     updateDownloading: "Downloading update",
@@ -126,8 +126,8 @@ const i18n = {
     updateFailed: "Update check failed",
     settings: "Settings",
     close: "Close",
-    codexPath: "Codex path",
-    chooseCodex: "Choose codex.exe",
+    codexPath: "Codex CLI path",
+    chooseCodex: "Choose Codex CLI (codex.exe)",
     updateProxy: "Update proxy",
     refreshInterval: "Refresh min",
     language: "Language",
@@ -438,7 +438,7 @@ async function setWidgetMode(nextMode) {
   state.settingsDraft = { ...state.settings };
   render();
 
-  await applyWidgetModeWindow();
+  await applyWidgetModeWindow({ keepPosition: true });
   await saveCurrentSettings();
 }
 
@@ -458,21 +458,24 @@ async function saveCurrentSettings() {
   }
 }
 
-async function applyWidgetModeWindow() {
+async function applyWidgetModeWindow({ keepPosition = false } = {}) {
   if (!window.__TAURI_INTERNALS__) return;
 
   try {
+    const appWindow = getCurrentWindow();
+    const preservedPosition = keepPosition ? await appWindow.outerPosition() : null;
+
     if (state.widgetMode === WIDGET_MODES.BALL) {
-      await applyBallWindow();
+      await applyBallWindow(preservedPosition);
     } else {
-      await applyPanelWindow();
+      await applyPanelWindow(preservedPosition);
     }
   } catch (error) {
     console.error("切换窗口模式失败", error);
   }
 }
 
-async function applyBallWindow() {
+async function applyBallWindow(preservedPosition = null) {
   const appWindow = getCurrentWindow();
   await appWindow.setSize(new LogicalSize(BALL_SIZE, BALL_SIZE));
 
@@ -480,19 +483,25 @@ async function applyBallWindow() {
   const area = monitor?.workArea;
   if (!area) return;
 
+  if (preservedPosition) {
+    const nextPosition = clampPositionToWorkArea(preservedPosition, size, area);
+    await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+    return;
+  }
+
   const bounds = workAreaBounds(area);
   await appWindow.setPosition(
     new PhysicalPosition(Math.round(bounds.right - size.width - SNAP_DISTANCE), Math.round(bounds.top + SNAP_DISTANCE))
   );
 }
 
-async function applyPanelWindow() {
+async function applyPanelWindow(preservedPosition = null) {
   const appWindow = getCurrentWindow();
   await appWindow.setSize(new LogicalSize(PANEL_SIZE.width, PANEL_SIZE.height));
 
   const [monitor, position, size] = await Promise.all([
     currentMonitor(),
-    appWindow.outerPosition(),
+    preservedPosition || appWindow.outerPosition(),
     appWindow.outerSize()
   ]);
   const area = monitor?.workArea;
@@ -609,6 +618,8 @@ async function refreshQuota() {
     state.error = "";
     scheduleResetRefresh(state.quota?.resetsAt);
   } catch (error) {
+    state.quota = null;
+    scheduleResetRefresh(null);
     state.error = normalizeError(error);
   } finally {
     state.loading = false;
