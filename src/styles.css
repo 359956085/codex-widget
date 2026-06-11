@@ -71,9 +71,7 @@ select {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset 0 -1px 0 rgba(53, 242, 160, 0.24),
-    0 0 0 1px rgba(0, 0, 0, 0.28),
-    0 26px 70px rgba(0, 0, 0, 0.48),
-    0 0 44px rgba(53, 242, 160, 0.12);
+    inset 0 0 24px rgba(53, 242, 160, 0.08);
   backdrop-filter: blur(28px) saturate(1.18);
   cursor: grab;
 }
@@ -172,20 +170,20 @@ select {
   border-radius: 50%;
   background: #7b8794;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.24),
-    0 0 22px rgba(123, 135, 148, 0.72);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    inset 0 0 10px rgba(123, 135, 148, 0.32);
 }
 
 .traffic-light.ready,
 .status-dot.ready {
   background: var(--accent);
-  box-shadow: 0 0 20px var(--accent-soft);
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.16);
 }
 
 .traffic-light.low,
 .status-dot.low {
   background: var(--warning);
-  box-shadow: 0 0 20px rgba(255, 209, 102, 0.28);
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.16);
 }
 
 .traffic-light.empty,
@@ -195,7 +193,7 @@ select {
 .status-dot.critical,
 .status-dot.error {
   background: var(--danger);
-  box-shadow: 0 0 20px rgba(255, 90, 103, 0.28);
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.16);
 }
 
 .traffic-light.loading,
@@ -229,8 +227,7 @@ select {
     rgba(16, 30, 41, 0.7);
   box-shadow:
     inset 0 0 0 1px rgba(205, 231, 245, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 10px 22px rgba(0, 0, 0, 0.24);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
   cursor: pointer;
 }
 
@@ -244,7 +241,6 @@ select {
   width: 15px;
   height: 15px;
   stroke-width: 2.25;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
 }
 
 .icon-button:hover,
@@ -256,8 +252,7 @@ select {
     rgba(22, 42, 55, 0.86);
   box-shadow:
     inset 0 0 0 1px rgba(228, 246, 255, 0.24),
-    0 0 24px rgba(53, 242, 160, 0.12),
-    0 12px 24px rgba(0, 0, 0, 0.28);
+    inset 0 0 16px rgba(53, 242, 160, 0.08);
 }
 
 .icon-button:disabled,
@@ -273,7 +268,7 @@ select {
     rgba(141, 38, 52, 0.84);
   box-shadow:
     inset 0 0 0 1px rgba(255, 148, 160, 0.32),
-    0 0 24px rgba(255, 90, 103, 0.22);
+    inset 0 0 16px rgba(255, 90, 103, 0.1);
 }
 
 .content {
@@ -303,9 +298,7 @@ select {
     radial-gradient(circle at 50% 52%, rgba(3, 13, 17, 0.98) 0 58%, transparent 59%),
     conic-gradient(from -90deg, var(--meter-color) 0 var(--remaining-angle), rgba(63, 91, 101, 0.34) var(--remaining-angle) 360deg);
   box-shadow:
-    0 0 0 1px rgba(149, 220, 209, 0.16),
-    0 0 0 6px rgba(53, 242, 160, 0.045),
-    0 0 52px var(--meter-soft),
+    inset 0 0 0 6px rgba(53, 242, 160, 0.045),
     inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 
@@ -460,16 +453,14 @@ select {
     var(--card-bg);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    inset 0 0 24px rgba(53, 242, 160, 0.035),
-    0 12px 26px rgba(0, 0, 0, 0.18);
+    inset 0 0 24px rgba(53, 242, 160, 0.035);
 }
 
 .quota-card.primary {
   border-color: rgba(53, 242, 160, 0.34);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    -5px 0 26px rgba(53, 242, 160, 0.22),
-    0 12px 26px rgba(0, 0, 0, 0.2);
+    inset 5px 0 18px rgba(53, 242, 160, 0.12);
 }
 
 .quota-icon {
@@ -484,14 +475,13 @@ select {
     rgba(53, 242, 160, 0.08);
   box-shadow:
     inset 0 0 0 1px rgba(151, 235, 218, 0.22),
-    0 0 20px rgba(53, 242, 160, 0.09);
+    inset 0 0 16px rgba(53, 242, 160, 0.05);
 }
 
 .quota-icon svg {
   width: 16px;
   height: 16px;
   stroke-width: 2.4;
-  filter: drop-shadow(0 0 10px rgba(53, 242, 160, 0.28));
 }
 
 .quota-card > span:not(.quota-icon) {
@@ -545,7 +535,6 @@ select {
   width: 18px;
   height: 18px;
   color: var(--accent);
-  filter: drop-shadow(0 0 12px var(--accent-soft));
 }
 
 .status-refresh svg {
@@ -567,7 +556,7 @@ select {
   height: 6px;
   border-radius: 50%;
   background: #7b8794;
-  box-shadow: 0 0 14px rgba(123, 135, 148, 0.34);
+  box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.12);
 }
 
 body[data-widget-mode="ball"] .widget {
@@ -582,8 +571,7 @@ body[data-widget-mode="ball"] .widget {
     rgba(8, 20, 27, 0.9);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 0 30px rgba(53, 242, 160, 0.18),
-    0 16px 34px rgba(0, 0, 0, 0.36);
+    inset 0 0 18px rgba(53, 242, 160, 0.08);
   backdrop-filter: blur(24px) saturate(1.18);
 }
 
@@ -613,8 +601,7 @@ body[data-widget-mode="ball"] .liquid-meter {
   margin: 0;
   cursor: grab;
   box-shadow:
-    0 0 0 1px rgba(149, 220, 209, 0.16),
-    0 0 24px var(--meter-soft),
+    inset 0 0 0 1px rgba(149, 220, 209, 0.16),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
@@ -675,7 +662,7 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
     rgba(10, 22, 31, 0.96);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 18px 42px rgba(0, 0, 0, 0.34);
+    inset 0 0 24px rgba(53, 242, 160, 0.04);
   backdrop-filter: blur(30px) saturate(1.18);
   cursor: default;
 }
