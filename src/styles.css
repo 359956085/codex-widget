@@ -156,10 +156,13 @@ input {
 }
 
 .traffic-light.empty,
+.traffic-light.critical,
 .traffic-light.error,
 .status-dot.empty,
+.status-dot.critical,
 .status-dot.error,
 .liquid-meter[data-level="empty"] .liquid-fill,
+.liquid-meter[data-level="critical"] .liquid-fill,
 .liquid-meter[data-level="error"] .liquid-fill {
   background: #ff5a67;
 }

@@ -51,6 +51,7 @@ const i18n = {
     loading: "读取中",
     ready: "额度正常",
     low: "额度偏低",
+    critical: "额度不足",
     empty: "额度耗尽",
     error: "读取失败",
     remaining: "剩余",
@@ -98,6 +99,7 @@ const i18n = {
     loading: "Loading",
     ready: "Quota healthy",
     low: "Quota low",
+    critical: "Quota insufficient",
     empty: "Quota empty",
     error: "Read failed",
     remaining: "Remaining",
@@ -1047,12 +1049,14 @@ function statusLabel(quota, text) {
 function getVisualState(remaining) {
   if (remaining === null) return "unknown";
   if (remaining === 0) return "empty";
-  if (remaining < 10) return "low";
+  if (remaining <= 10) return "critical";
+  if (remaining < 50) return "low";
   return "ready";
 }
 
 function stateLabel(visualState, text) {
   if (visualState === "empty") return text.empty;
+  if (visualState === "critical") return text.critical;
   if (visualState === "low") return text.low;
   if (visualState === "ready") return text.ready;
   return text.unavailable;
