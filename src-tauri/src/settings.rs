@@ -37,6 +37,20 @@ impl Default for WidgetMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum BallDock {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -52,6 +66,12 @@ pub struct AppSettings {
     pub auto_update_enabled: bool,
     #[serde(default)]
     pub widget_mode: WidgetMode,
+    #[serde(default)]
+    pub panel_position: Option<WindowPosition>,
+    #[serde(default)]
+    pub ball_position: Option<WindowPosition>,
+    #[serde(default)]
+    pub ball_dock: Option<BallDock>,
 }
 
 impl Default for AppSettings {
@@ -63,6 +83,9 @@ impl Default for AppSettings {
             locale: Locale::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             widget_mode: WidgetMode::default(),
+            panel_position: None,
+            ball_position: None,
+            ball_dock: None,
         }
     }
 }
@@ -235,6 +258,9 @@ mod tests {
             locale: Locale::En,
             auto_update_enabled: false,
             widget_mode: WidgetMode::Ball,
+            panel_position: Some(WindowPosition { x: 120, y: 80 }),
+            ball_position: Some(WindowPosition { x: 1800, y: 240 }),
+            ball_dock: Some(BallDock::Right),
         };
 
         let saved = save_to_path(&path, settings).unwrap();
@@ -248,6 +274,15 @@ mod tests {
         );
         assert!(!loaded.auto_update_enabled);
         assert_eq!(loaded.widget_mode, WidgetMode::Ball);
+        assert_eq!(
+            loaded.panel_position,
+            Some(WindowPosition { x: 120, y: 80 })
+        );
+        assert_eq!(
+            loaded.ball_position,
+            Some(WindowPosition { x: 1800, y: 240 })
+        );
+        assert_eq!(loaded.ball_dock, Some(BallDock::Right));
     }
 
     #[test]
@@ -270,6 +305,9 @@ mod tests {
 
         assert!(settings.auto_update_enabled);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
+        assert_eq!(settings.panel_position, None);
+        assert_eq!(settings.ball_position, None);
+        assert_eq!(settings.ball_dock, None);
     }
 
     #[test]

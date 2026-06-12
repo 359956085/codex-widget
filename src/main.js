@@ -2,7 +2,7 @@ import "./styles.css";
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+import { availableMonitors, currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import {
@@ -23,7 +23,10 @@ const DEFAULT_SETTINGS = {
   refreshIntervalMinutes: 5,
   locale: "zh",
   autoUpdateEnabled: true,
-  widgetMode: "panel"
+  widgetMode: "panel",
+  panelPosition: null,
+  ballPosition: null,
+  ballDock: null
 };
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const WIDGET_MODES = {
@@ -34,6 +37,7 @@ const PANEL_SIZE = { width: 390, height: 236 };
 const BALL_SIZE = 88;
 const SNAP_DISTANCE = 24;
 const CLICK_DELAY_MS = 220;
+const POSITION_SAVE_DEBOUNCE_MS = 300;
 const ACTION_ICONS = {
   "circle-dot": CircleDot,
   "folder-open": FolderOpen,
@@ -212,7 +216,10 @@ const state = {
   ballDock: null,
   ballPress: null,
   ballDrag: null,
-  ballClickTimer: null
+  ballClickTimer: null,
+  positionSaveTimer: null,
+  windowMoveUnlisten: null,
+  isApplyingWindowMode: false
 };
 
 initializeActionIcons();
@@ -239,8 +246,8 @@ function bindEvents() {
   });
 
   els.refreshBtn.addEventListener("click", () => refreshQuota());
-  els.minimizeBtn.addEventListener("click", () => invoke("hide_window"));
-  els.closeBtn.addEventListener("click", () => invoke("close_app"));
+  els.minimizeBtn.addEventListener("click", hideWindow);
+  els.closeBtn.addEventListener("click", closeApp);
   els.settingsCloseBtn.addEventListener("click", closeSettingsPanel);
   els.cancelSettingsBtn.addEventListener("click", closeSettingsPanel);
   els.saveSettingsBtn.addEventListener("click", saveSettings);
@@ -409,10 +416,81 @@ function clearBallClickTimer() {
   state.ballClickTimer = null;
 }
 
+async function registerWindowMoveSave() {
+  if (!window.__TAURI_INTERNALS__ || state.windowMoveUnlisten) return;
+
+  try {
+    state.windowMoveUnlisten = await getCurrentWindow().onMoved(() => {
+      if (state.isApplyingWindowMode || state.ballDrag) return;
+      scheduleSaveCurrentWindowPosition();
+    });
+  } catch (error) {
+    console.error("监听窗口移动失败", error);
+  }
+}
+
+function scheduleSaveCurrentWindowPosition() {
+  if (!window.__TAURI_INTERNALS__ || state.isApplyingWindowMode) return;
+  if (state.positionSaveTimer) {
+    window.clearTimeout(state.positionSaveTimer);
+  }
+  state.positionSaveTimer = window.setTimeout(() => {
+    state.positionSaveTimer = null;
+    saveCurrentWindowPosition();
+  }, POSITION_SAVE_DEBOUNCE_MS);
+}
+
+function clearPositionSaveTimer() {
+  if (!state.positionSaveTimer) return;
+  window.clearTimeout(state.positionSaveTimer);
+  state.positionSaveTimer = null;
+}
+
+async function saveCurrentWindowPosition({ silent = true } = {}) {
+  clearPositionSaveTimer();
+  if (!window.__TAURI_INTERNALS__ || state.isApplyingWindowMode) return;
+
+  try {
+    const position = normalizeWindowPosition(await getCurrentWindow().outerPosition());
+    if (!position) return;
+    await persistWindowPosition(position, state.widgetMode, state.ballDock, { silent });
+  } catch (error) {
+    if (silent) {
+      console.error("保存窗口位置失败", error);
+    } else {
+      showError(error);
+    }
+  }
+}
+
+async function persistWindowPosition(position, mode, dock = null, { silent = true } = {}) {
+  const nextSettings = { ...state.settings, widgetMode: state.widgetMode };
+  if (mode === WIDGET_MODES.BALL) {
+    nextSettings.ballPosition = position;
+    nextSettings.ballDock = normalizeBallDock(dock);
+  } else {
+    nextSettings.panelPosition = position;
+  }
+  state.settings = normalizeSettings(nextSettings);
+  state.settingsDraft = { ...state.settings };
+  await saveCurrentSettings({ silent });
+}
+
+async function hideWindow() {
+  await saveCurrentWindowPosition();
+  await invoke("hide_window");
+}
+
+async function closeApp() {
+  await saveCurrentWindowPosition();
+  await invoke("close_app");
+}
+
 async function initialize() {
   render();
   await loadSettings();
   await applyWidgetModeWindow();
+  await registerWindowMoveSave();
 
   try {
     state.alwaysOnTop = await invoke("get_always_on_top");
@@ -434,21 +512,22 @@ async function initialize() {
 async function setWidgetMode(nextMode) {
   if (state.widgetMode === nextMode) return;
 
+  await saveCurrentWindowPosition();
   clearBallClickTimer();
   state.ballPress = null;
   state.ballDrag = null;
   state.widgetMode = nextMode;
   state.settingsOpen = false;
-  state.ballDock = null;
+  state.ballDock = nextMode === WIDGET_MODES.BALL ? state.settings.ballDock : null;
   state.settings = { ...state.settings, widgetMode: nextMode };
   state.settingsDraft = { ...state.settings };
   render();
 
-  await applyWidgetModeWindow({ keepPosition: true });
+  await applyWidgetModeWindow();
   await saveCurrentSettings();
 }
 
-async function saveCurrentSettings() {
+async function saveCurrentSettings({ silent = false } = {}) {
   if (!window.__TAURI_INTERNALS__) return;
 
   try {
@@ -457,64 +536,124 @@ async function saveCurrentSettings() {
     state.settings = normalized;
     state.locale = normalized.locale;
     state.widgetMode = normalized.widgetMode;
+    state.ballDock = normalized.widgetMode === WIDGET_MODES.BALL ? normalized.ballDock : null;
     state.settingsDraft = { ...normalized };
     render();
   } catch (error) {
-    showError(error);
+    if (silent) {
+      console.error("保存设置失败", error);
+    } else {
+      showError(error);
+    }
   }
 }
 
 async function applyWidgetModeWindow({ keepPosition = false } = {}) {
   if (!window.__TAURI_INTERNALS__) return;
 
+  state.isApplyingWindowMode = true;
   try {
     const appWindow = getCurrentWindow();
-    const preservedPosition = keepPosition ? await appWindow.outerPosition() : null;
+    const targetPosition = keepPosition ? await appWindow.outerPosition() : savedPositionForCurrentMode();
 
     if (state.widgetMode === WIDGET_MODES.BALL) {
-      await applyBallWindow(preservedPosition);
+      await applyBallWindow(targetPosition);
     } else {
-      await applyPanelWindow(preservedPosition);
+      await applyPanelWindow(targetPosition);
     }
   } catch (error) {
     console.error("切换窗口模式失败", error);
+  } finally {
+    window.setTimeout(() => {
+      state.isApplyingWindowMode = false;
+    }, 100);
   }
 }
 
-async function applyBallWindow(preservedPosition = null) {
+async function applyBallWindow(targetPosition = null) {
   const appWindow = getCurrentWindow();
   await appWindow.setSize(new LogicalSize(BALL_SIZE, BALL_SIZE));
 
-  const [monitor, size] = await Promise.all([currentMonitor(), appWindow.outerSize()]);
-  const area = monitor?.workArea;
+  const size = await appWindow.outerSize();
+  const area = await workAreaForTargetPosition(targetPosition, size);
   if (!area) return;
 
-  if (preservedPosition) {
-    const nextPosition = clampPositionToWorkArea(preservedPosition, size, area);
+  if (targetPosition) {
+    const nextPosition = clampBallPositionToWorkArea(targetPosition, size, area, state.settings.ballDock);
+    state.ballDock = state.settings.ballDock;
     await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+    render();
     return;
   }
 
-  const bounds = workAreaBounds(area);
-  await appWindow.setPosition(
-    new PhysicalPosition(Math.round(bounds.right - size.width - SNAP_DISTANCE), Math.round(bounds.top + SNAP_DISTANCE))
-  );
+  state.ballDock = null;
+  state.settings = normalizeSettings({ ...state.settings, ballDock: null });
+  state.settingsDraft = { ...state.settings };
+  const nextPosition = defaultTopRightPosition(size, area);
+  await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+  render();
 }
 
-async function applyPanelWindow(preservedPosition = null) {
+async function applyPanelWindow(targetPosition = null) {
   const appWindow = getCurrentWindow();
   await appWindow.setSize(new LogicalSize(PANEL_SIZE.width, PANEL_SIZE.height));
 
-  const [monitor, position, size] = await Promise.all([
-    currentMonitor(),
-    preservedPosition || appWindow.outerPosition(),
-    appWindow.outerSize()
-  ]);
-  const area = monitor?.workArea;
+  const size = await appWindow.outerSize();
+  const area = await workAreaForTargetPosition(targetPosition, size);
   if (!area) return;
 
-  const nextPosition = clampPositionToWorkArea(position, size, area);
+  const nextPosition = targetPosition
+    ? clampPositionToWorkArea(targetPosition, size, area)
+    : defaultTopRightPosition(size, area);
   await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+}
+
+function savedPositionForCurrentMode() {
+  return state.widgetMode === WIDGET_MODES.BALL ? state.settings.ballPosition : state.settings.panelPosition;
+}
+
+async function workAreaForTargetPosition(position, size) {
+  if (position) {
+    const monitors = await availableMonitors();
+    const matched = monitors.find((monitor) => positionBelongsToWorkArea(position, size, monitor.workArea));
+    if (matched) return matched.workArea;
+  }
+
+  const monitor = await currentMonitor();
+  return monitor?.workArea || null;
+}
+
+function positionBelongsToWorkArea(position, size, area) {
+  if (!area) return false;
+  const bounds = workAreaBounds(area);
+  const centerX = position.x + size.width / 2;
+  const centerY = position.y + size.height / 2;
+  return centerX >= bounds.left && centerX <= bounds.right && centerY >= bounds.top && centerY <= bounds.bottom;
+}
+
+function defaultTopRightPosition(size, area) {
+  const bounds = workAreaBounds(area);
+  return {
+    x: Math.round(bounds.right - size.width - SNAP_DISTANCE),
+    y: Math.round(bounds.top + SNAP_DISTANCE)
+  };
+}
+
+function clampBallPositionToWorkArea(position, size, area, dock = null) {
+  const bounds = workAreaBounds(area);
+  const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
+  let x = clamp(position.x, bounds.left, Math.max(bounds.left, bounds.right - size.width));
+
+  if (dock === "left") {
+    x = bounds.left - Math.round(size.width / 2);
+  } else if (dock === "right") {
+    x = bounds.right - Math.round(size.width / 2);
+  }
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y)
+  };
 }
 
 function resolveBallDock(position, size, bounds) {
@@ -559,8 +698,10 @@ async function snapBallAfterDrag(targetPosition = null) {
       x = bounds.right - Math.round(size.width / 2);
     }
 
+    const nextPosition = { x: Math.round(x), y: Math.round(y) };
     state.ballDock = dock;
-    await appWindow.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+    await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+    await persistWindowPosition(nextPosition, WIDGET_MODES.BALL, dock);
     render();
   } catch (error) {
     console.error("悬浮球吸附失败", error);
@@ -583,8 +724,10 @@ async function expandBallFromDock() {
     const bounds = workAreaBounds(area);
     const x = state.ballDock === "left" ? bounds.left : bounds.right - size.width;
     const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
+    const nextPosition = { x: Math.round(x), y: Math.round(y) };
     state.ballDock = null;
-    await appWindow.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+    await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
+    await persistWindowPosition(nextPosition, WIDGET_MODES.BALL, null);
     render();
   } catch (error) {
     console.error("展开悬浮球失败", error);
@@ -735,12 +878,14 @@ function applySettings(settings) {
   state.settings = normalizeSettings(settings);
   state.locale = state.settings.locale;
   state.widgetMode = state.settings.widgetMode;
+  state.ballDock = state.widgetMode === WIDGET_MODES.BALL ? state.settings.ballDock : null;
   state.settingsDraft = { ...state.settings };
   render();
 }
 
 function normalizeSettings(settings) {
   const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
+  const widgetMode = settings?.widgetMode === WIDGET_MODES.BALL ? WIDGET_MODES.BALL : WIDGET_MODES.PANEL;
   return {
     codexCliPath: typeof settings?.codexCliPath === "string" ? settings.codexCliPath : "",
     updateProxy: typeof settings?.updateProxy === "string" ? settings.updateProxy : "",
@@ -751,8 +896,26 @@ function normalizeSettings(settings) {
     locale: settings?.locale === "en" ? "en" : "zh",
     autoUpdateEnabled:
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
-    widgetMode: settings?.widgetMode === WIDGET_MODES.BALL ? WIDGET_MODES.BALL : WIDGET_MODES.PANEL
+    widgetMode,
+    panelPosition: normalizeWindowPosition(settings?.panelPosition),
+    ballPosition: normalizeWindowPosition(settings?.ballPosition),
+    ballDock: normalizeBallDock(settings?.ballDock)
   };
+}
+
+function normalizeWindowPosition(position) {
+  if (!position || typeof position !== "object") return null;
+  const x = Number(position.x);
+  const y = Number(position.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return {
+    x: Math.round(x),
+    y: Math.round(y)
+  };
+}
+
+function normalizeBallDock(dock) {
+  return dock === "left" || dock === "right" ? dock : null;
 }
 
 function openSettingsPanel() {
@@ -825,6 +988,7 @@ async function chooseCodexPath() {
 async function saveSettings() {
   if (state.savingSettings) return;
 
+  await saveCurrentWindowPosition();
   const nextSettings = collectSettingsDraft();
   state.savingSettings = true;
   render();
@@ -856,7 +1020,10 @@ function collectSettingsDraft() {
     refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: els.localeSelect.value === "en" ? "en" : "zh",
     autoUpdateEnabled: els.autoUpdateSwitch.checked,
-    widgetMode: state.widgetMode
+    widgetMode: state.widgetMode,
+    panelPosition: state.settings.panelPosition,
+    ballPosition: state.settings.ballPosition,
+    ballDock: state.settings.ballDock
   };
 }
 
