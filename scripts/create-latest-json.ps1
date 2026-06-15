@@ -23,6 +23,22 @@ function Write-Utf8NoBom {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Get-JsonVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object] $Json,
+        [Parameter(Mandatory = $true)]
+        [string] $Name
+    )
+
+    $versionProperty = $Json.PSObject.Properties["version"]
+    if (-not $versionProperty -or [string]::IsNullOrWhiteSpace([string] $versionProperty.Value)) {
+        throw "$Name 缺少 version 字段。"
+    }
+
+    return [string] $versionProperty.Value
+}
+
 function Get-CargoVersion {
     param(
         [Parameter(Mandatory = $true)]
@@ -36,6 +52,38 @@ function Get-CargoVersion {
     return $Matches[1]
 }
 
+function Resolve-TauriVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ConfigPath,
+        [Parameter(Mandatory = $true)]
+        [object] $RawVersion
+    )
+
+    $rawVersionText = ([string] $RawVersion).Trim()
+    if ([string]::IsNullOrWhiteSpace($rawVersionText)) {
+        throw "tauri.conf.json 缺少 version 字段。"
+    }
+
+    if ($rawVersionText -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$') {
+        return $rawVersionText
+    }
+
+    # Tauri 允许 version 指向 package.json，这里按配置文件所在目录解析相对路径。
+    $configDir = Split-Path -Parent $ConfigPath
+    $versionJsonPath = $rawVersionText
+    if (-not [System.IO.Path]::IsPathRooted($versionJsonPath)) {
+        $versionJsonPath = Join-Path $configDir $versionJsonPath
+    }
+
+    if (-not (Test-Path -LiteralPath $versionJsonPath)) {
+        throw "tauri.conf.json version 指向的文件不存在：$rawVersionText，解析路径：$versionJsonPath。"
+    }
+
+    $versionJson = Read-JsonFile -Path $versionJsonPath
+    return Get-JsonVersion -Json $versionJson -Name "tauri.conf.json version 指向的 JSON"
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $packageJsonPath = Join-Path $repoRoot "package.json"
 $cargoTomlPath = Join-Path $repoRoot "src-tauri\Cargo.toml"
@@ -45,13 +93,14 @@ $releaseDir = Join-Path $repoRoot "src-tauri\target\release\github-release"
 
 $packageJson = Read-JsonFile -Path $packageJsonPath
 $tauriConfig = Read-JsonFile -Path $tauriConfigPath
-$version = [string] $packageJson.version
+$version = Get-JsonVersion -Json $packageJson -Name "package.json"
 $cargoVersion = Get-CargoVersion -Path $cargoTomlPath
-$tauriVersion = [string] $tauriConfig.version
+$tauriVersionRaw = Get-JsonVersion -Json $tauriConfig -Name "tauri.conf.json"
+$tauriVersion = Resolve-TauriVersion -ConfigPath $tauriConfigPath -RawVersion $tauriVersionRaw
 
 # 三处版本必须一致，否则 latest.json 会指向错误的 GitHub Release 标签。
 if ($version -ne $cargoVersion -or $version -ne $tauriVersion) {
-    throw "版本号不一致：package.json=$version，Cargo.toml=$cargoVersion，tauri.conf.json=$tauriVersion。"
+    throw "版本号不一致：package.json=$version，Cargo.toml=$cargoVersion，tauri.conf.json=$tauriVersionRaw，tauri.conf.json 解析值=$tauriVersion。"
 }
 
 if (-not (Test-Path -LiteralPath $nsisBundleDir)) {
