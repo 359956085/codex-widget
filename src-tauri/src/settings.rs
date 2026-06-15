@@ -10,6 +10,7 @@ const DEFAULT_REFRESH_INTERVAL_MINUTES: u16 = 5;
 const MIN_REFRESH_INTERVAL_MINUTES: u16 = 1;
 const MAX_REFRESH_INTERVAL_MINUTES: u16 = 1440;
 const DEFAULT_AUTO_UPDATE_ENABLED: bool = true;
+const DEFAULT_AUTO_START_ENABLED: bool = false;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -64,6 +65,8 @@ pub struct AppSettings {
     pub locale: Locale,
     #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
+    #[serde(default = "default_auto_start_enabled")]
+    pub auto_start_enabled: bool,
     #[serde(default)]
     pub widget_mode: WidgetMode,
     #[serde(default)]
@@ -82,6 +85,7 @@ impl Default for AppSettings {
             refresh_interval_minutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
             locale: Locale::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
+            auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
             widget_mode: WidgetMode::default(),
             panel_position: None,
             ball_position: None,
@@ -101,6 +105,10 @@ impl SettingsService {
     pub fn save(app: &AppHandle, settings: AppSettings) -> Result<AppSettings> {
         let path = settings_path(app)?;
         save_to_path(&path, settings)
+    }
+
+    pub fn normalize(settings: AppSettings) -> Result<AppSettings> {
+        validate_and_normalize(settings)
     }
 }
 
@@ -172,6 +180,10 @@ fn default_refresh_interval_minutes() -> u16 {
 
 fn default_auto_update_enabled() -> bool {
     DEFAULT_AUTO_UPDATE_ENABLED
+}
+
+fn default_auto_start_enabled() -> bool {
+    DEFAULT_AUTO_START_ENABLED
 }
 
 fn is_valid_refresh_interval(value: u16) -> bool {
@@ -257,6 +269,7 @@ mod tests {
             refresh_interval_minutes: 15,
             locale: Locale::En,
             auto_update_enabled: false,
+            auto_start_enabled: true,
             widget_mode: WidgetMode::Ball,
             panel_position: Some(WindowPosition { x: 120, y: 80 }),
             ball_position: Some(WindowPosition { x: 1800, y: 240 }),
@@ -273,6 +286,7 @@ mod tests {
             Some("http://127.0.0.1:7890".to_string())
         );
         assert!(!loaded.auto_update_enabled);
+        assert!(loaded.auto_start_enabled);
         assert_eq!(loaded.widget_mode, WidgetMode::Ball);
         assert_eq!(
             loaded.panel_position,
@@ -304,6 +318,7 @@ mod tests {
         let settings = load_from_path(&path).unwrap();
 
         assert!(settings.auto_update_enabled);
+        assert!(!settings.auto_start_enabled);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);
         assert_eq!(settings.ball_position, None);

@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
   refreshIntervalMinutes: 5,
   locale: "zh",
   autoUpdateEnabled: true,
+  autoStartEnabled: false,
   widgetMode: "panel",
   panelPosition: null,
   ballPosition: null,
@@ -93,6 +94,8 @@ const i18n = {
     language: "语言",
     autoUpdate: "自动更新",
     autoUpdateHint: "更新依赖 GitHub，网络不可达时可能需要配置代理。",
+    autoStart: "开机自启",
+    autoStartHint: "登录系统后自动启动本应用，仅对当前用户生效。",
     updateProxyHint: "仅用于 GitHub 自动更新，不影响 Codex CLI。",
     save: "保存",
     cancel: "取消",
@@ -143,6 +146,8 @@ const i18n = {
     language: "Language",
     autoUpdate: "Auto update",
     autoUpdateHint: "Updates depend on GitHub. Configure a proxy if the network cannot reach it.",
+    autoStart: "Start at login",
+    autoStartHint: "Launch this app automatically after signing in. Current user only.",
     updateProxyHint: "Only used for GitHub updates. It does not affect Codex CLI.",
     save: "Save",
     cancel: "Cancel",
@@ -185,6 +190,9 @@ const els = {
   autoUpdateLabel: document.getElementById("autoUpdateLabel"),
   autoUpdateHint: document.getElementById("autoUpdateHint"),
   autoUpdateSwitch: document.getElementById("autoUpdateSwitch"),
+  autoStartLabel: document.getElementById("autoStartLabel"),
+  autoStartHint: document.getElementById("autoStartHint"),
+  autoStartSwitch: document.getElementById("autoStartSwitch"),
   updateProxyLabel: document.getElementById("updateProxyLabel"),
   updateProxyInput: document.getElementById("updateProxyInput"),
   updateProxyHint: document.getElementById("updateProxyHint"),
@@ -253,6 +261,7 @@ function bindEvents() {
   els.saveSettingsBtn.addEventListener("click", saveSettings);
   els.chooseCodexBtn.addEventListener("click", chooseCodexPath);
   els.autoUpdateSwitch.addEventListener("change", syncAutoUpdateDraft);
+  els.autoStartSwitch.addEventListener("change", syncAutoStartDraft);
   els.localeSelect.addEventListener("change", () => selectSettingsLocale(els.localeSelect.value));
 }
 
@@ -896,6 +905,8 @@ function normalizeSettings(settings) {
     locale: settings?.locale === "en" ? "en" : "zh",
     autoUpdateEnabled:
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
+    autoStartEnabled:
+      typeof settings?.autoStartEnabled === "boolean" ? settings.autoStartEnabled : DEFAULT_SETTINGS.autoStartEnabled,
     widgetMode,
     panelPosition: normalizeWindowPosition(settings?.panelPosition),
     ballPosition: normalizeWindowPosition(settings?.ballPosition),
@@ -936,6 +947,7 @@ function fillSettingsForm() {
   els.updateProxyInput.value = state.settingsDraft.updateProxy || "";
   els.refreshIntervalInput.value = String(state.settingsDraft.refreshIntervalMinutes || DEFAULT_SETTINGS.refreshIntervalMinutes);
   els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
+  els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
   els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
 }
 
@@ -945,6 +957,8 @@ function renderSettingsPanel(text) {
   els.codexPathLabel.textContent = text.codexPath;
   els.autoUpdateLabel.textContent = text.autoUpdate;
   els.autoUpdateHint.textContent = text.autoUpdateHint;
+  els.autoStartLabel.textContent = text.autoStart;
+  els.autoStartHint.textContent = text.autoStartHint;
   els.updateProxyLabel.textContent = text.updateProxy;
   els.updateProxyHint.textContent = text.updateProxyHint;
   els.refreshIntervalLabel.textContent = text.refreshInterval;
@@ -955,11 +969,17 @@ function renderSettingsPanel(text) {
   els.saveSettingsText.textContent = state.savingSettings ? text.loading : text.save;
   els.saveSettingsBtn.disabled = state.savingSettings;
   els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
+  els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
   els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
 }
 
 function syncAutoUpdateDraft() {
   state.settingsDraft.autoUpdateEnabled = els.autoUpdateSwitch.checked;
+  render();
+}
+
+function syncAutoStartDraft() {
+  state.settingsDraft.autoStartEnabled = els.autoStartSwitch.checked;
   render();
 }
 
@@ -1020,6 +1040,7 @@ function collectSettingsDraft() {
     refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: els.localeSelect.value === "en" ? "en" : "zh",
     autoUpdateEnabled: els.autoUpdateSwitch.checked,
+    autoStartEnabled: els.autoStartSwitch.checked,
     widgetMode: state.widgetMode,
     panelPosition: state.settings.panelPosition,
     ballPosition: state.settings.ballPosition,

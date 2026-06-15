@@ -11,6 +11,7 @@ use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State,
     WebviewWindow,
 };
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tokio::sync::Mutex;
 
 use quota::{QuotaService, QuotaSnapshot};
@@ -104,6 +105,10 @@ async fn save_settings(
     settings: AppSettings,
 ) -> Result<AppSettings, String> {
     let previous = SettingsService::load(&app).unwrap_or_default();
+    let settings = SettingsService::normalize(settings).map_err(|error| error.to_string())?;
+    if previous.auto_start_enabled != settings.auto_start_enabled {
+        sync_auto_start(&app, settings.auto_start_enabled)?;
+    }
     let saved = SettingsService::save(&app, settings).map_err(|error| error.to_string())?;
     if previous.codex_cli_path != saved.codex_cli_path {
         let mut service = state.quota_service.lock().await;
@@ -112,9 +117,23 @@ async fn save_settings(
     Ok(saved)
 }
 
+fn sync_auto_start(app: &AppHandle, enabled: bool) -> Result<(), String> {
+    let auto_start = app.autolaunch();
+    if enabled {
+        auto_start.enable()
+    } else {
+        auto_start.disable()
+    }
+    .map_err(|error| format!("无法同步开机自启设置：{error}"))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::new())
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
