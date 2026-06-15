@@ -126,6 +126,14 @@ input {
   white-space: nowrap;
 }
 
+.brand-name[data-version]::after {
+  content: attr(data-version);
+  margin-left: 10px;
+  color: rgba(221, 235, 246, 0.68);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .brand-state {
   overflow: hidden;
   color: rgba(221, 235, 246, 0.7);

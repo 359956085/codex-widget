@@ -1,5 +1,6 @@
 import "./styles.css";
 
+import { version as packageVersion } from "../package.json";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { availableMonitors, currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
@@ -29,6 +30,8 @@ const DEFAULT_SETTINGS = {
   ballPosition: null,
   ballDock: null
 };
+
+const APP_VERSION_LABEL = packageVersion ? `v${String(packageVersion).trim()}` : "";
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const WIDGET_MODES = {
   PANEL: "panel",
@@ -828,6 +831,12 @@ function render() {
   els.body.dataset.ballDock = state.ballDock || "none";
 
   els.brandName.textContent = text.brandName;
+  els.brandName.setAttribute("aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
+  if (APP_VERSION_LABEL) {
+    els.brandName.dataset.version = APP_VERSION_LABEL;
+  } else {
+    els.brandName.removeAttribute("data-version");
+  }
   els.remainingLabel.textContent = text.remaining;
   els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
   els.planLabel.textContent = text.plan;
