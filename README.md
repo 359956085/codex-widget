@@ -1,80 +1,91 @@
-# Codex CLI 额度小组件 Rust 版
+# Codex CLI 额度小组件
 
-这是一个基于 Tauri 2、Rust 和 Vite 的 Windows 桌面悬浮小组件，通过本机 Codex CLI 读取 Codex 额度状态，并以红、黄、绿三种状态展示剩余额度。
+[English](README.en.md)
 
-## 术语说明
+Codex CLI 额度小组件是一个 Windows 桌面悬浮工具。它通过本机已登录的 Codex CLI 读取额度信息，并用面板或悬浮球展示当前可用额度、窗口额度、套餐、刷新时间和重置时间。
 
-- 本组件：当前仓库中的 Windows 桌面悬浮小组件。
-- Codex CLI：本组件调用的 `codex.exe` 命令行工具。
-- Codex app：OpenAI 的桌面 Codex 应用，本组件不会直接启动它。
+### 功能介绍
 
-## 功能
 
-- 额度状态：剩余额度大于等于 50% 显示绿色，大于 10% 且小于 50% 显示黄色，1% 到 10% 显示红色并提示额度不足，0% 显示红色并提示额度耗尽。
-- 额度读取：通过本机 Codex CLI 启动 `codex app-server --listen stdio://`，调用 `account/rateLimits/read` 获取数据；这里的 `app-server` 是 Codex CLI 子命令，不是 Codex app。
-- 会话复用：后端优先复用长连接 Codex CLI app-server 会话，避免每次刷新都重新启动 Codex CLI。
-- 错误处理：读取失败时不伪装为额度耗尽，前端清空当前额度并显示错误提示。
-- 悬浮窗口：液态玻璃风格、无边框、透明背景、默认位于主屏幕右上角。
-- 窗口交互：支持整面板拖动、置顶切换、隐藏和退出。
-- 系统托盘：支持显示或隐藏窗口、刷新额度、切换置顶和退出本组件。
-- 设置面板：支持设置 Codex CLI 路径、自动更新开关、自动更新代理、自动刷新时间和界面语言。
-- 自动刷新：默认每 5 分钟刷新一次，可在设置中调整；如果 Codex CLI 返回重置时间，会在重置后补充刷新。
-- 自动更新：默认开启；启动后检查一次更新，之后每 6 小时检查一次；发现新版本后自动下载并安装，重启后生效。
-- 界面语言：支持中文和英文界面切换，语言入口位于设置面板。
+- 面板模式：展示总剩余额度、5 小时窗口、1 周窗口、套餐、刷新时间和重置时间。
+  ![Codex CLI 额度小组件界面](docs/assets/ui-panel.png)
+- 悬浮球模式：用更小窗口展示剩余额度，适合长期放在桌面边缘。
+  ![Codex CLI 额度小组件界面](docs/assets/ui-ball.png)
+- 边缘吸附：悬浮球可贴靠屏幕左右边缘，减少遮挡。
+- 状态颜色：正常为绿色，偏低为黄色，不足、耗尽或错误为红色，读取中为蓝色。
+- 自动刷新：默认每 5 分钟刷新一次，也会根据额度重置时间补充刷新。
+- 自动更新：默认开启，通过 GitHub Releases 下载并安装更新。
+- 开机自启：默认关闭，可在设置中开启，仅对当前用户生效。
+- 中英文界面：设置中可切换中文和 English，默认中文。
 
-## 隐私说明
+### 使用教程
 
-本组件只调用本机已有的 Codex CLI，并复用本机登录状态读取额度信息。本组件不会要求输入 Token，不会保存 Token，也不会上传额度数据。
+1. 安装并登录 Codex CLI。
+2. 启动本应用。
+3. 首次启动后，应用会自动探测本机 `codex.exe`。
+4. 如果读取失败，打开设置，手动选择 `codex.exe` 路径。
+5. 查看主面板中的剩余额度、5 小时窗口、1 周窗口和套餐。
+6. 点击圆形按钮切换悬浮球模式；双击悬浮球可回到面板。
 
-## 设置项
+### 设置说明
 
-设置会保存到本组件配置目录的 `settings.json`，由 Rust 后端读写。前端不启用 fs、shell、opener 等高风险插件。
+- Codex CLI 路径：留空时自动探测；填写后优先使用该路径。
+- 自动更新：关闭后不会检查、下载或安装 GitHub Releases 更新 (可能需要配置本地代理)。
+- 自动更新代理：仅用于 GitHub 更新，不影响 Codex CLI 读取额度。支持 `http://`、`https://`、`socks5://`。
+- 开机自启：登录系统后自动启动本应用，仅当前用户生效。
+- 刷新分钟：自动刷新间隔，范围为 `1-1440`。
+- 语言：可选择中文或 English。
 
-- Codex CLI 路径：留空时自动探测；填写后优先使用该路径，保存时会校验文件存在且文件名为 `codex.exe`。
-- 自动更新：默认开启；关闭后不会检查、下载或安装 GitHub Releases 更新。
-- 自动更新代理：仅用于本组件的 GitHub 自动更新检查和下载，不影响 Codex CLI 额度读取。支持 `http://`、`https://`、`socks5://`。
-- 自动刷新时间：单位为分钟，允许 `1-1440`。
-- 语言：通过下拉框选择中文或 English。
+### 隐私说明
 
-## 运行要求
+本应用只调用本机已有的 Codex CLI，并复用本机登录状态读取额度。本应用不会要求输入 Token，不会保存 Token，也不会上传额度数据。
 
-- Windows 10 或 Windows 11。
-- Rust 稳定工具链。
-- Node.js 20.19.0 或更高版本。
-- 已安装并登录 Codex CLI。
+### 社区
 
-如果本机通过 nvm 管理 Node.js，建议先切换到兼容版本：
+- [LINUX DO](https://linux.do)
 
-```powershell
-nvm use 20.19.0
-```
+### 常见问题
 
-如果 `nvm use` 受权限影响失败，请在管理员 PowerShell 中执行，或将对应 Node 版本目录临时放到当前终端 `PATH` 最前面。
+**找不到 Codex CLI**
 
-## 本地开发
+在设置中手动选择 `codex.exe`。应用会优先使用设置中的路径，其次读取 `CODEX_CLI_PATH`，再尝试系统常见安装目录和 `PATH`。
 
-安装前端依赖：
+**额度读取失败**
+
+确认 Codex CLI 已安装、可运行并已登录。可以在终端运行 `codex` 检查登录状态。
+
+**自动更新慢或失败**
+
+自动更新依赖 GitHub Releases。如果网络不可达，在设置中配置自动更新代理。
+
+**开机自启未生效**
+
+关闭后重新开启一次开机自启，并确认系统没有禁用当前用户启动项。本功能不需要管理员权限。
+
+### 本地开发
+
+安装依赖：
 
 ```powershell
 npm install
 ```
 
-CI 环境使用锁文件安装依赖，并优先复用 npm 缓存：
-
-```powershell
-npm run ci:install
-```
-
-启动 Tauri 开发模式：
+启动开发模式：
 
 ```powershell
 npm run tauri:dev
 ```
 
-只构建前端：
+构建前端：
 
 ```powershell
 npm run build
+```
+
+检查 Rust：
+
+```powershell
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
 运行 Rust 测试：
@@ -83,92 +94,19 @@ npm run build
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-运行 Rust 编译检查：
-
-```powershell
-cargo check --manifest-path src-tauri/Cargo.toml
-```
-
-## Codex CLI 路径
-
-本组件会按以下顺序查找 Codex CLI：
-
-1. 设置面板中保存的 `codex.exe` 路径。
-2. `CODEX_CLI_PATH` 环境变量。
-3. `%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`。
-4. `%LOCALAPPDATA%\OpenAI\Codex\bin\*\codex.exe`，用于兼容 Codex CLI Windows 版的哈希子目录结构。
-5. 系统 `PATH` 中的 `codex.exe`。
-
-如果自动探测到的 `codex.exe` 无法从当前权限环境启动，优先在设置面板中选择可执行的 Codex CLI。
-
-## 本地打包
-
-生成普通 NSIS 安装包：
+生成 Windows NSIS 安装包：
 
 ```powershell
 npm run tauri:build:nsis
 ```
 
-安装包输出目录：
-
-```txt
-src-tauri/target/release/bundle/nsis/
-```
-
-原始安装包文件名类似：
-
-```txt
-CodexWidget_0.2.0_x64-setup.exe
-```
-
-当前安装包不做 Windows Authenticode 代码签名，不依赖代码签名证书，也不需要 `signtool.exe`。首次安装时 Windows SmartScreen 可能提示风险，这是未签名安装包的预期现象。
-
-## 自动更新与发布
-
-自动更新依赖 GitHub Releases。如果当前网络无法访问 GitHub，可以在设置面板中配置自动更新代理。Tauri updater 仍需要更新包签名密钥，不使用 Windows 代码签名证书。公钥写入 `src-tauri/tauri.conf.json`，私钥只保存在本机或 GitHub Actions Secrets，不提交到 Git。
-
-首次生成 updater 密钥：
+生成 GitHub Release 产物：
 
 ```powershell
-npm run updater:keygen
+npm run release:github
 ```
 
-生成后会得到：
-
-```txt
-certs/updater.key
-certs/updater.key.pub
-```
-
-`certs/` 已被 `.gitignore` 忽略，不要提交私钥。
-
-在 GitHub 仓库中设置 Repository Secrets。`TAURI_SIGNING_PRIVATE_KEY` 保存 `certs/updater.key` 的完整文件内容，不是文件路径：
-
-```powershell
-gh secret set TAURI_SIGNING_PRIVATE_KEY --repo 359956085/codex-widget < certs/updater.key
-gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --repo 359956085/codex-widget --body ""
-```
-
-如果生成密钥时设置了密码，请把 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 改为真实密码；如果没有密码，可以不创建该 Secret。
-
-正式发布前，必须同步提升以下 3 处版本号并提交：
-
-```txt
-package.json
-src-tauri/Cargo.toml
-src-tauri/tauri.conf.json
-```
-
-然后推送与版本一致的标签，GitHub Actions 会自动构建、生成 updater 签名、整理 `latest.json` 并上传 GitHub Release：
-
-```powershell
-git tag v0.2.0
-git push origin v0.2.0
-```
-
-发布工作流会复用 npm 与 Cargo 缓存；前端只由 Tauri 发布构建触发一次，避免在 CI 中先 `npm run build` 后又被 `tauri build` 重复构建。
-
-Release 产物固定为：
+Release 产物命名：
 
 ```txt
 codex-widget_{version}_windows_x64-setup.exe
@@ -176,33 +114,12 @@ codex-widget_{version}_windows_x64-setup.exe.sig
 latest.json
 ```
 
-生产更新清单地址固定为：
-
-```txt
-https://github.com/359956085/codex-widget/releases/latest/download/latest.json
-```
-
-本地调试 GitHub Release 产物时，可以设置 updater 私钥环境变量后执行：
-
-```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY=(Resolve-Path "certs\updater.key").Path
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
-npm run release:github
-```
-
-调试产物输出目录：
-
-```txt
-src-tauri/target/release/github-release/
-```
-
-正式发布以 GitHub Actions 为准，本机不需要上传 Release。
-
-## 项目结构
+### 项目结构
 
 ```txt
 codex-widget/
 ├─ .github/workflows/   # GitHub Actions 发布流程
+├─ docs/assets/         # README 图片资源
 ├─ src/                 # 前端界面与交互
 ├─ src-tauri/           # Rust 后端、Tauri 配置和图标资源
 ├─ scripts/             # 图标生成和发布产物整理脚本
@@ -210,7 +127,3 @@ codex-widget/
 ├─ package.json         # 前端依赖和 npm 脚本
 └─ README.md
 ```
-
-## 当前边界
-
-当前发布流程支持 Windows x64 NSIS 安装包和 GitHub Releases 自动更新；暂不包含 MSI、多平台构建、Windows 代码签名、增量更新、开机自启动和多主题。
