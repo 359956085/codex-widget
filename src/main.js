@@ -463,7 +463,7 @@ async function saveCurrentWindowPosition({ silent = true } = {}) {
   if (!window.__TAURI_INTERNALS__ || state.isApplyingWindowMode) return;
 
   try {
-    const position = normalizeWindowPosition(await getCurrentWindow().outerPosition());
+    const position = await readCurrentWindowPosition();
     if (!position) return;
     await persistWindowPosition(position, state.widgetMode, state.ballDock, { silent });
   } catch (error) {
@@ -484,8 +484,35 @@ async function persistWindowPosition(position, mode, dock = null, { silent = tru
     nextSettings.panelPosition = position;
   }
   state.settings = normalizeSettings(nextSettings);
-  state.settingsDraft = { ...state.settings };
+  if (!state.settingsOpen) {
+    state.settingsDraft = { ...state.settings };
+  }
   await saveCurrentSettings({ silent });
+}
+
+async function readCurrentWindowPosition() {
+  clearPositionSaveTimer();
+  if (!window.__TAURI_INTERNALS__ || state.isApplyingWindowMode) return null;
+
+  try {
+    return normalizeWindowPosition(await getCurrentWindow().outerPosition());
+  } catch (error) {
+    console.error("读取窗口位置失败", error);
+    return null;
+  }
+}
+
+function mergeWindowPosition(settings, position) {
+  if (!position) return settings;
+
+  const nextSettings = { ...settings, widgetMode: state.widgetMode };
+  if (state.widgetMode === WIDGET_MODES.BALL) {
+    nextSettings.ballPosition = position;
+    nextSettings.ballDock = normalizeBallDock(state.ballDock);
+  } else {
+    nextSettings.panelPosition = position;
+  }
+  return nextSettings;
 }
 
 async function hideWindow() {
@@ -549,7 +576,9 @@ async function saveCurrentSettings({ silent = false } = {}) {
     state.locale = normalized.locale;
     state.widgetMode = normalized.widgetMode;
     state.ballDock = normalized.widgetMode === WIDGET_MODES.BALL ? normalized.ballDock : null;
-    state.settingsDraft = { ...normalized };
+    if (!state.settingsOpen) {
+      state.settingsDraft = { ...normalized };
+    }
     render();
   } catch (error) {
     if (silent) {
@@ -815,7 +844,8 @@ function refreshIntervalMs() {
 }
 
 function render() {
-  const text = i18n[state.locale];
+  const activeLocale = renderLocale();
+  const text = i18n[activeLocale];
   const quota = state.quota;
   const hasQuota = Boolean(quota);
   const panelRemaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
@@ -825,7 +855,7 @@ function render() {
   const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
   const updateStatusText = formatUpdateStatus(text);
 
-  document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
+  document.documentElement.lang = activeLocale === "zh" ? "zh-CN" : "en";
   els.body.dataset.state = mainState;
   els.body.dataset.widgetMode = state.widgetMode;
   els.body.dataset.ballDock = state.ballDock || "none";
@@ -864,17 +894,22 @@ function render() {
     els.statusText.textContent = updateStatusText;
   } else {
     els.stateText.textContent = stateLabel(visualState, text);
-    els.statusText.textContent = statusLabel(quota, text);
+    els.statusText.textContent = statusLabel(quota, text, activeLocale);
   }
 
   els.remaining.textContent = remaining === null ? "--%" : `${remaining}%`;
   els.liquidFill.style.height = `${remaining === null ? 0 : remaining}%`;
   els.liquidMeter.dataset.level = visualState;
 
-  renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text);
-  renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text);
+  renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
+  renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
   els.planText.textContent = quota?.planType || text.unknown;
   renderSettingsPanel(text);
+}
+
+function renderLocale() {
+  const locale = state.settingsOpen ? state.settingsDraft.locale : state.locale;
+  return locale === "en" ? "en" : "zh";
 }
 
 async function loadSettings() {
@@ -1017,8 +1052,9 @@ async function chooseCodexPath() {
 async function saveSettings() {
   if (state.savingSettings) return;
 
-  await saveCurrentWindowPosition();
-  const nextSettings = collectSettingsDraft();
+  const draftSettings = collectSettingsDraft();
+  const currentPosition = await readCurrentWindowPosition();
+  const nextSettings = mergeWindowPosition(draftSettings, currentPosition);
   state.savingSettings = true;
   render();
 
@@ -1213,8 +1249,8 @@ function primaryRemainingPercent(quota) {
   return typeof quota?.primary?.remainingPercent === "number" ? quota.primary.remainingPercent : null;
 }
 
-function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text) {
-  labelEl.textContent = formatWindowLabel(windowData?.windowDurationMins, fallbackLabel, text);
+function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale) {
+  labelEl.textContent = formatWindowLabel(windowData?.windowDurationMins, fallbackLabel, text, locale);
   if (!windowData || typeof windowData.remainingPercent !== "number") {
     valueEl.textContent = "--";
     return;
@@ -1222,28 +1258,28 @@ function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text) {
   valueEl.textContent = `${windowData.remainingPercent}%`;
 }
 
-function formatWindowLabel(minutes, fallbackLabel, text) {
+function formatWindowLabel(minutes, fallbackLabel, text, locale) {
   if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) return fallbackLabel;
   if (minutes % 10080 === 0) {
     const value = minutes / 10080;
-    return state.locale === "zh" ? `${value}周窗口` : `${value}w window`;
+    return locale === "zh" ? `${value}周窗口` : `${value}w window`;
   }
   if (minutes % 1440 === 0) {
     const value = minutes / 1440;
-    return state.locale === "zh" ? `${value}天窗口` : `${value}d window`;
+    return locale === "zh" ? `${value}天窗口` : `${value}d window`;
   }
   if (minutes % 60 === 0) {
     const value = minutes / 60;
-    return state.locale === "zh" ? `${value}小时窗口` : `${value}h window`;
+    return locale === "zh" ? `${value}小时窗口` : `${value}h window`;
   }
-  return state.locale === "zh" ? `${minutes}分钟窗口` : `${minutes}m window`;
+  return locale === "zh" ? `${minutes}分钟窗口` : `${minutes}m window`;
 }
 
-function statusLabel(quota, text) {
+function statusLabel(quota, text, locale) {
   if (!quota) return text.noData;
-  const fetchedAt = formatTimeOrPlaceholder(quota.fetchedAt);
-  const primaryResetAt = formatTimeOrPlaceholder(quota.primary?.resetsAt);
-  const secondaryResetAt = formatTimeOrPlaceholder(quota.secondary?.resetsAt);
+  const fetchedAt = formatTimeOrPlaceholder(quota.fetchedAt, locale);
+  const primaryResetAt = formatTimeOrPlaceholder(quota.primary?.resetsAt, locale);
+  const secondaryResetAt = formatTimeOrPlaceholder(quota.secondary?.resetsAt, locale);
   return `${text.refreshedAt} ${fetchedAt} · ${text.primaryResetLabel} ${primaryResetAt} · ${text.secondaryResetLabel} ${secondaryResetAt}`;
 }
 
@@ -1263,17 +1299,17 @@ function stateLabel(visualState, text) {
   return text.unavailable;
 }
 
-function formatDate(value) {
+function formatDate(value, locale) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(state.locale === "zh" ? "zh-CN" : "en-US", {
+  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
 }
 
-function formatTimeOrPlaceholder(value) {
-  return value ? formatDate(value) || "--" : "--";
+function formatTimeOrPlaceholder(value, locale) {
+  return value ? formatDate(value, locale) || "--" : "--";
 }
 
 function showError(error) {

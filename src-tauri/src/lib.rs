@@ -124,7 +124,20 @@ fn sync_auto_start(app: &AppHandle, enabled: bool) -> Result<(), String> {
     } else {
         auto_start.disable()
     }
-    .map_err(|error| format!("无法同步开机自启设置：{error}"))
+    .map_err(|error| format!("无法同步开机自启设置：{error}"))?;
+
+    let actual = auto_start
+        .is_enabled()
+        .map_err(|error| format!("无法确认开机自启设置：{error}"))?;
+    if actual != enabled {
+        let expected = if enabled { "开启" } else { "关闭" };
+        let actual = if actual { "开启" } else { "关闭" };
+        return Err(format!(
+            "开机自启设置未生效：期望{expected}，系统当前{actual}。"
+        ));
+    }
+
+    Ok(())
 }
 
 pub fn run() {
