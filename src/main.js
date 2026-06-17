@@ -483,10 +483,7 @@ async function persistWindowPosition(position, mode, dock = null, { silent = tru
   } else {
     nextSettings.panelPosition = position;
   }
-  state.settings = normalizeSettings(nextSettings);
-  if (!state.settingsOpen) {
-    state.settingsDraft = { ...state.settings };
-  }
+  applyNormalizedSettings(nextSettings, { syncDraft: !state.settingsOpen });
   await saveCurrentSettings({ silent });
 }
 
@@ -555,11 +552,8 @@ async function setWidgetMode(nextMode) {
   clearBallClickTimer();
   state.ballPress = null;
   state.ballDrag = null;
-  state.widgetMode = nextMode;
   state.settingsOpen = false;
-  state.ballDock = nextMode === WIDGET_MODES.BALL ? state.settings.ballDock : null;
-  state.settings = { ...state.settings, widgetMode: nextMode };
-  state.settingsDraft = { ...state.settings };
+  applyNormalizedSettings({ ...state.settings, widgetMode: nextMode });
   render();
 
   await applyWidgetModeWindow();
@@ -571,14 +565,7 @@ async function saveCurrentSettings({ silent = false } = {}) {
 
   try {
     const saved = await invoke("save_settings", { settings: state.settings });
-    const normalized = normalizeSettings(saved);
-    state.settings = normalized;
-    state.locale = normalized.locale;
-    state.widgetMode = normalized.widgetMode;
-    state.ballDock = normalized.widgetMode === WIDGET_MODES.BALL ? normalized.ballDock : null;
-    if (!state.settingsOpen) {
-      state.settingsDraft = { ...normalized };
-    }
+    applyNormalizedSettings(saved, { syncDraft: !state.settingsOpen });
     render();
   } catch (error) {
     if (silent) {
@@ -628,8 +615,7 @@ async function applyBallWindow(targetPosition = null) {
   }
 
   state.ballDock = null;
-  state.settings = normalizeSettings({ ...state.settings, ballDock: null });
-  state.settingsDraft = { ...state.settings };
+  applyNormalizedSettings({ ...state.settings, ballDock: null });
   const nextPosition = defaultTopRightPosition(size, area);
   await appWindow.setPosition(new PhysicalPosition(nextPosition.x, nextPosition.y));
   render();
@@ -928,12 +914,24 @@ async function loadSettings() {
 }
 
 function applySettings(settings) {
-  state.settings = normalizeSettings(settings);
-  state.locale = state.settings.locale;
-  state.widgetMode = state.settings.widgetMode;
-  state.ballDock = state.widgetMode === WIDGET_MODES.BALL ? state.settings.ballDock : null;
-  state.settingsDraft = { ...state.settings };
+  applyNormalizedSettings(settings);
   render();
+}
+
+function applyNormalizedSettings(settings, { syncDraft = true } = {}) {
+  const normalized = normalizeSettings(settings);
+  state.settings = normalized;
+  state.locale = normalized.locale;
+  state.widgetMode = normalized.widgetMode;
+  state.ballDock = normalized.widgetMode === WIDGET_MODES.BALL ? normalized.ballDock : null;
+  if (syncDraft) {
+    syncSettingsDraftFromSettings();
+  }
+  return normalized;
+}
+
+function syncSettingsDraftFromSettings() {
+  state.settingsDraft = { ...state.settings };
 }
 
 function normalizeSettings(settings) {
@@ -974,7 +972,7 @@ function normalizeBallDock(dock) {
 }
 
 function openSettingsPanel() {
-  state.settingsDraft = { ...state.settings };
+  syncSettingsDraftFromSettings();
   state.settingsOpen = true;
   fillSettingsForm();
   render();
@@ -982,7 +980,7 @@ function openSettingsPanel() {
 
 function closeSettingsPanel() {
   state.settingsOpen = false;
-  state.settingsDraft = { ...state.settings };
+  syncSettingsDraftFromSettings();
   render();
 }
 
@@ -1043,6 +1041,7 @@ async function chooseCodexPath() {
     });
     if (typeof selected === "string") {
       els.codexPathInput.value = selected;
+      state.settingsDraft.codexCliPath = selected;
     }
   } catch (error) {
     showError(error);

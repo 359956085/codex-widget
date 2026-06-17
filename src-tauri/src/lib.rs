@@ -104,7 +104,7 @@ async fn save_settings(
     state: State<'_, AppState>,
     settings: AppSettings,
 ) -> Result<AppSettings, String> {
-    let previous = SettingsService::load(&app).unwrap_or_default();
+    let previous = SettingsService::load(&app).map_err(|error| error.to_string())?;
     let settings = SettingsService::normalize(settings).map_err(|error| error.to_string())?;
     if previous.auto_start_enabled != settings.auto_start_enabled {
         sync_auto_start(&app, settings.auto_start_enabled)?;
@@ -119,25 +119,33 @@ async fn save_settings(
 
 fn sync_auto_start(app: &AppHandle, enabled: bool) -> Result<(), String> {
     let auto_start = app.autolaunch();
-    if enabled {
+    let result = if enabled {
         auto_start.enable()
     } else {
         auto_start.disable()
-    }
-    .map_err(|error| format!("无法同步开机自启设置：{error}"))?;
+    };
+    result.map_err(|error| format!("无法同步开机自启设置：{error}"))?;
 
     let actual = auto_start
         .is_enabled()
         .map_err(|error| format!("无法确认开机自启设置：{error}"))?;
     if actual != enabled {
-        let expected = if enabled { "开启" } else { "关闭" };
-        let actual = if actual { "开启" } else { "关闭" };
+        let expected = auto_start_state_label(enabled);
+        let actual = auto_start_state_label(actual);
         return Err(format!(
             "开机自启设置未生效：期望{expected}，系统当前{actual}。"
         ));
     }
 
     Ok(())
+}
+
+fn auto_start_state_label(enabled: bool) -> &'static str {
+    if enabled {
+        "开启"
+    } else {
+        "关闭"
+    }
 }
 
 pub fn run() {

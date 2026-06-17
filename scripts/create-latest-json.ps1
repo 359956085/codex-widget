@@ -52,6 +52,30 @@ function Get-CargoVersion {
     return $Matches[1]
 }
 
+function Test-SemVer {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Value
+    )
+
+    return $Value -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+}
+
+function Resolve-ConfigRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ConfigPath,
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    return Join-Path (Split-Path -Parent $ConfigPath) $Path
+}
+
 function Resolve-TauriVersion {
     param(
         [Parameter(Mandatory = $true)]
@@ -65,16 +89,12 @@ function Resolve-TauriVersion {
         throw "tauri.conf.json 缺少 version 字段。"
     }
 
-    if ($rawVersionText -match '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$') {
+    if (Test-SemVer -Value $rawVersionText) {
         return $rawVersionText
     }
 
     # Tauri 允许 version 指向 package.json，这里按配置文件所在目录解析相对路径。
-    $configDir = Split-Path -Parent $ConfigPath
-    $versionJsonPath = $rawVersionText
-    if (-not [System.IO.Path]::IsPathRooted($versionJsonPath)) {
-        $versionJsonPath = Join-Path $configDir $versionJsonPath
-    }
+    $versionJsonPath = Resolve-ConfigRelativePath -ConfigPath $ConfigPath -Path $rawVersionText
 
     if (-not (Test-Path -LiteralPath $versionJsonPath)) {
         throw "tauri.conf.json version 指向的文件不存在：$rawVersionText，解析路径：$versionJsonPath。"
