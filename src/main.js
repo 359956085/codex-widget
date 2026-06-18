@@ -61,6 +61,8 @@ const PANEL_SIZE = { width: 390, height: 236 };
 const BALL_SIZE = 88;
 const SNAP_DISTANCE = 24;
 const CLICK_DELAY_MS = 220;
+const PANEL_DOUBLE_CLICK_MS = 320;
+const PANEL_DOUBLE_CLICK_DISTANCE = 8;
 const POSITION_SAVE_DEBOUNCE_MS = 300;
 const ACTION_ICONS = {
   "calendar-days": CalendarDays,
@@ -255,6 +257,7 @@ const state = {
   savingSettings: false,
   widgetMode: DEFAULT_SETTINGS.widgetMode,
   ballDock: null,
+  panelClick: null,
   ballPress: null,
   ballDrag: null,
   ballClickTimer: null,
@@ -327,13 +330,25 @@ async function startWindowDrag(event) {
       ? event.target.closest("button, a, input, textarea, select, [data-no-drag]")
       : null;
 
-  if (event.button !== 0 || noDragTarget) return;
+  if (event.button !== 0 || noDragTarget) {
+    clearPanelClick();
+    return;
+  }
 
   if (state.widgetMode === WIDGET_MODES.BALL) {
+    clearPanelClick();
     await startBallDrag(event);
     return;
   }
 
+  if (isPanelDoubleClick(event)) {
+    clearPanelClick();
+    event.preventDefault();
+    await setWidgetMode(WIDGET_MODES.BALL);
+    return;
+  }
+
+  rememberPanelClick(event);
   event.preventDefault();
 
   if (!window.__TAURI_INTERNALS__) return;
@@ -343,6 +358,27 @@ async function startWindowDrag(event) {
   } catch (error) {
     console.error("启动窗口拖动失败", error);
   }
+}
+
+function rememberPanelClick(event) {
+  state.panelClick = {
+    at: Date.now(),
+    screenX: event.screenX,
+    screenY: event.screenY
+  };
+}
+
+function isPanelDoubleClick(event) {
+  const previous = state.panelClick;
+  if (!previous) return false;
+
+  const elapsed = Date.now() - previous.at;
+  const distance = Math.hypot(event.screenX - previous.screenX, event.screenY - previous.screenY);
+  return elapsed <= PANEL_DOUBLE_CLICK_MS && distance <= PANEL_DOUBLE_CLICK_DISTANCE;
+}
+
+function clearPanelClick() {
+  state.panelClick = null;
 }
 
 async function startBallDrag(event) {
@@ -601,6 +637,7 @@ async function initialize() {
 async function setWidgetMode(nextMode) {
   if (state.widgetMode === nextMode) return;
 
+  clearPanelClick();
   await saveCurrentWindowPosition();
   clearBallClickTimer();
   state.ballPress = null;
@@ -1054,6 +1091,7 @@ function waterFillPercent(remaining, theme) {
 }
 
 function openSettingsPanel() {
+  clearPanelClick();
   syncSettingsDraftFromSettings();
   state.settingsOpen = true;
   fillSettingsForm();
