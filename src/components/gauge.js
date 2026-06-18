@@ -1,5 +1,5 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
-const MARK_TRANSFORM = "translate(65 60) scale(0.65) translate(-65 -65)";
+const MARK_TRANSFORM = "translate(63 60) scale(0.65) translate(-65 -65)";
 
 export function updateGauge({ root, percent, level, label, mode = "panel", dock = "none" }) {
   if (!root) return;
@@ -92,13 +92,13 @@ function applyGaugeLayout(gauge, mode, dock) {
 function innerTransform(mode, dock) {
   if (mode !== "ball" || dock === "none") return "";
   const offset = dock === "right" ? -10 : 10;
-  return `translate(65 65) translate(${offset} 0) scale(0.84) translate(-65 -65)`;
+  return `translate(65 65) translate(${offset} 0) scale(0.82) translate(-70 -65)`;
 }
 
 function createDefs() {
   const defs = svgElement("defs");
 
-  const sphere = svgElement("radialGradient", { id: "basicGaugeSphere", cx: "38%", cy: "26%", r: "72%" });
+  const sphere = svgElement("radialGradient", { id: "basicGaugeSphere", cx: "25%", cy: "0%", r: "92%" });
   sphere.append(
     svgElement("stop", { offset: "0%", class: "gauge-sphere-stop-a" }),
     svgElement("stop", { offset: "44%", class: "gauge-sphere-stop-b" }),

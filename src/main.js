@@ -138,7 +138,7 @@ const i18n = {
     critical: "Quota insufficient",
     empty: "Quota empty",
     error: "Read failed",
-    remaining: "Remaining",
+    remaining: "Remain",
     primaryFallback: "5h window",
     secondaryFallback: "7d window",
     plan: "Plan",

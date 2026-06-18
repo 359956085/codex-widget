@@ -326,7 +326,7 @@ body[data-theme="basic1"] .gauge-layer[data-gauge-mode="ball"] .gauge-label {
 }
 
 body[data-theme="basic1"] .gauge-layer[data-gauge-mode="ball"]:not([data-gauge-dock="none"]) .gauge-percent {
-  font-size: 18px;
+  font-size: 19px;
 }
 
 body[data-theme="basic1"] .quota-panel {
@@ -402,10 +402,10 @@ body[data-theme="basic1"] .status {
   grid-template-columns: 17px minmax(0, 1fr);
   height: 32px;
   gap: 8px;
-  padding: 7px 9px 0;
+  padding: 7px 0 0;
   border-top: 1px solid rgba(201, 235, 255, 0.1);
   color: var(--basic1-faint);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 560;
   line-height: 12px;
 }
