@@ -15,6 +15,7 @@ Codex CLI Quota Widget is a Windows desktop floating widget. It reads quota data
 - Auto refresh: refreshes every 5 minutes by default and can refresh again after quota reset.
 - Auto update: enabled by default and uses GitHub Releases.
 - Start at login: disabled by default and can be enabled in settings for the current user.
+- Theme switch: choose Default or Basic theme 1 in settings. Default keeps the classic style, while Basic theme 1 uses a glassmorphism style.
 - Language switch: supports Chinese and English, with Chinese as the default.
 
 ### How To Use
@@ -33,6 +34,7 @@ Codex CLI Quota Widget is a Windows desktop floating widget. It reads quota data
 - Update proxy: used only for GitHub updates, not for Codex CLI quota reads. Supports `http://`, `https://`, and `socks5://`.
 - Start at login: launches the app after signing in. Current user only.
 - Refresh minutes: auto refresh interval, from `1` to `1440`.
+- Theme: choose Default or Basic theme 1. The selection persists after restart.
 - Language: choose Chinese or English.
 
 ### Privacy

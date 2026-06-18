@@ -27,6 +27,19 @@ impl Default for Locale {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    Default,
+    Basic1,
+}
+
+impl Default for ThemeMode {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum WidgetMode {
     Panel,
     Ball,
@@ -63,6 +76,8 @@ pub struct AppSettings {
     pub refresh_interval_minutes: u16,
     #[serde(default)]
     pub locale: Locale,
+    #[serde(default)]
+    pub theme: ThemeMode,
     #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
     #[serde(default = "default_auto_start_enabled")]
@@ -84,6 +99,7 @@ impl Default for AppSettings {
             update_proxy: None,
             refresh_interval_minutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
             locale: Locale::default(),
+            theme: ThemeMode::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
             widget_mode: WidgetMode::default(),
@@ -268,6 +284,7 @@ mod tests {
             update_proxy: Some("  http://127.0.0.1:7890  ".to_string()),
             refresh_interval_minutes: 15,
             locale: Locale::En,
+            theme: ThemeMode::Basic1,
             auto_update_enabled: false,
             auto_start_enabled: true,
             widget_mode: WidgetMode::Ball,
@@ -285,6 +302,7 @@ mod tests {
             loaded.update_proxy,
             Some("http://127.0.0.1:7890".to_string())
         );
+        assert_eq!(loaded.theme, ThemeMode::Basic1);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
         assert_eq!(loaded.widget_mode, WidgetMode::Ball);
@@ -319,6 +337,7 @@ mod tests {
 
         assert!(settings.auto_update_enabled);
         assert!(!settings.auto_start_enabled);
+        assert_eq!(settings.theme, ThemeMode::Default);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);
         assert_eq!(settings.ball_position, None);

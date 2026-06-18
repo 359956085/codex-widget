@@ -1,5 +1,7 @@
 import "./styles.css";
+import "./themes.css";
 
+import { updateGauge } from "./components/gauge.js";
 import { version as packageVersion } from "../package.json";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -7,8 +9,11 @@ import { availableMonitors, currentMonitor, getCurrentWindow, LogicalSize, Physi
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import {
+  CalendarDays,
   CircleDot,
+  Clock3,
   createElement as createLucideElement,
+  Crown,
   FolderOpen,
   Minus,
   Pin,
@@ -23,6 +28,7 @@ const DEFAULT_SETTINGS = {
   updateProxy: "",
   refreshIntervalMinutes: 5,
   locale: "zh",
+  theme: "default",
   autoUpdateEnabled: true,
   autoStartEnabled: false,
   widgetMode: "panel",
@@ -37,13 +43,30 @@ const WIDGET_MODES = {
   PANEL: "panel",
   BALL: "ball"
 };
+const THEMES = {
+  default: {
+    label: {
+      zh: "默认主题",
+      en: "Default"
+    }
+  },
+  basic1: {
+    label: {
+      zh: "基础主题 1",
+      en: "Basic theme 1"
+    }
+  }
+};
 const PANEL_SIZE = { width: 390, height: 236 };
 const BALL_SIZE = 88;
 const SNAP_DISTANCE = 24;
 const CLICK_DELAY_MS = 220;
 const POSITION_SAVE_DEBOUNCE_MS = 300;
 const ACTION_ICONS = {
+  "calendar-days": CalendarDays,
   "circle-dot": CircleDot,
+  "clock-3": Clock3,
+  crown: Crown,
   "folder-open": FolderOpen,
   minus: Minus,
   pin: Pin,
@@ -94,6 +117,7 @@ const i18n = {
     chooseCodex: "选择 Codex CLI (codex.exe)",
     updateProxy: "更新代理",
     refreshInterval: "刷新分钟",
+    theme: "主题",
     language: "语言",
     autoUpdate: "自动更新",
     autoUpdateHint: "更新依赖 GitHub，网络不可达时可能需要配置代理。",
@@ -146,6 +170,7 @@ const i18n = {
     chooseCodex: "Choose Codex CLI (codex.exe)",
     updateProxy: "Update proxy",
     refreshInterval: "Refresh min",
+    theme: "Theme",
     language: "Language",
     autoUpdate: "Auto update",
     autoUpdateHint: "Updates depend on GitHub. Configure a proxy if the network cannot reach it.",
@@ -172,6 +197,7 @@ const els = {
   minimizeBtn: document.getElementById("minimizeBtn"),
   closeBtn: document.getElementById("closeBtn"),
   liquidMeter: document.getElementById("liquidMeter"),
+  gaugeLayer: document.getElementById("gaugeLayer"),
   liquidFill: document.getElementById("liquidFill"),
   remaining: document.getElementById("remaining"),
   remainingLabel: document.getElementById("remainingLabel"),
@@ -182,6 +208,7 @@ const els = {
   planLabel: document.getElementById("planLabel"),
   planText: document.getElementById("planText"),
   statusDot: document.getElementById("statusDot"),
+  statusIcon: document.getElementById("statusIcon"),
   statusText: document.getElementById("statusText"),
   widget: document.querySelector(".widget"),
   settingsPanel: document.getElementById("settingsPanel"),
@@ -201,6 +228,8 @@ const els = {
   updateProxyHint: document.getElementById("updateProxyHint"),
   refreshIntervalLabel: document.getElementById("refreshIntervalLabel"),
   refreshIntervalInput: document.getElementById("refreshIntervalInput"),
+  themeLabel: document.getElementById("themeLabel"),
+  themeSelect: document.getElementById("themeSelect"),
   languageLabel: document.getElementById("languageLabel"),
   localeSelect: document.getElementById("localeSelect"),
   cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
@@ -265,6 +294,7 @@ function bindEvents() {
   els.chooseCodexBtn.addEventListener("click", chooseCodexPath);
   els.autoUpdateSwitch.addEventListener("change", syncAutoUpdateDraft);
   els.autoStartSwitch.addEventListener("change", syncAutoStartDraft);
+  els.themeSelect.addEventListener("change", () => selectSettingsTheme(els.themeSelect.value));
   els.localeSelect.addEventListener("change", () => selectSettingsLocale(els.localeSelect.value));
 }
 
@@ -831,12 +861,14 @@ function refreshIntervalMs() {
 
 function render() {
   const activeLocale = renderLocale();
+  const activeTheme = renderTheme();
   const text = i18n[activeLocale];
   const quota = state.quota;
   const hasQuota = Boolean(quota);
   const panelRemaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
   const ballRemaining = primaryRemainingPercent(quota);
   const remaining = state.widgetMode === WIDGET_MODES.BALL ? ballRemaining : panelRemaining;
+  const remainingValue = remaining === null ? 0 : clamp(remaining, 0, 100);
   const visualState = getVisualState(remaining);
   const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
   const updateStatusText = formatUpdateStatus(text);
@@ -845,6 +877,7 @@ function render() {
   els.body.dataset.state = mainState;
   els.body.dataset.widgetMode = state.widgetMode;
   els.body.dataset.ballDock = state.ballDock || "none";
+  els.body.dataset.theme = activeTheme;
 
   els.brandName.textContent = text.brandName;
   els.brandName.setAttribute("aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
@@ -884,8 +917,17 @@ function render() {
   }
 
   els.remaining.textContent = remaining === null ? "--%" : `${remaining}%`;
-  els.liquidFill.style.height = `${remaining === null ? 0 : remaining}%`;
+  els.liquidFill.style.height = `${waterFillPercent(remaining, activeTheme)}%`;
+  els.liquidMeter.style.setProperty("--remaining-angle", `${remainingValue * 3.6}deg`);
   els.liquidMeter.dataset.level = visualState;
+  updateGauge({
+    root: els.gaugeLayer,
+    percent: remaining,
+    level: visualState,
+    label: text.remaining,
+    mode: state.widgetMode,
+    dock: state.ballDock || "none"
+  });
 
   renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
   renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
@@ -896,6 +938,11 @@ function render() {
 function renderLocale() {
   const locale = state.settingsOpen ? state.settingsDraft.locale : state.locale;
   return locale === "en" ? "en" : "zh";
+}
+
+function renderTheme() {
+  const theme = state.settingsOpen ? state.settingsDraft.theme : state.settings.theme;
+  return normalizeTheme(theme);
 }
 
 async function loadSettings() {
@@ -945,6 +992,7 @@ function normalizeSettings(settings) {
         ? refreshIntervalMinutes
         : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: settings?.locale === "en" ? "en" : "zh",
+    theme: normalizeTheme(settings?.theme),
     autoUpdateEnabled:
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
     autoStartEnabled:
@@ -971,6 +1019,17 @@ function normalizeBallDock(dock) {
   return dock === "left" || dock === "right" ? dock : null;
 }
 
+function normalizeTheme(theme) {
+  return Object.hasOwn(THEMES, theme) ? theme : DEFAULT_SETTINGS.theme;
+}
+
+function waterFillPercent(remaining, theme) {
+  if (remaining === null) return 0;
+  const value = clamp(remaining, 0, 100);
+  if (theme === "basic1" && value > 0 && value < 20) return 18;
+  return value;
+}
+
 function openSettingsPanel() {
   syncSettingsDraftFromSettings();
   state.settingsOpen = true;
@@ -990,6 +1049,8 @@ function fillSettingsForm() {
   els.refreshIntervalInput.value = String(state.settingsDraft.refreshIntervalMinutes || DEFAULT_SETTINGS.refreshIntervalMinutes);
   els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
   els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
+  renderThemeOptions(renderLocale());
+  els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
   els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
 }
 
@@ -1004,6 +1065,7 @@ function renderSettingsPanel(text) {
   els.updateProxyLabel.textContent = text.updateProxy;
   els.updateProxyHint.textContent = text.updateProxyHint;
   els.refreshIntervalLabel.textContent = text.refreshInterval;
+  els.themeLabel.textContent = text.theme;
   els.languageLabel.textContent = text.language;
   els.codexPathInput.placeholder = text.codexPathPlaceholder;
   els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
@@ -1012,6 +1074,8 @@ function renderSettingsPanel(text) {
   els.saveSettingsBtn.disabled = state.savingSettings;
   els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
   els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
+  renderThemeOptions(renderLocale());
+  els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
   els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
 }
 
@@ -1027,6 +1091,11 @@ function syncAutoStartDraft() {
 
 function selectSettingsLocale(locale) {
   state.settingsDraft.locale = locale === "en" ? "en" : "zh";
+  render();
+}
+
+function selectSettingsTheme(theme) {
+  state.settingsDraft.theme = normalizeTheme(theme);
   render();
 }
 
@@ -1083,6 +1152,7 @@ function collectSettingsDraft() {
     updateProxy: normalizeInputValue(els.updateProxyInput.value),
     refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: els.localeSelect.value === "en" ? "en" : "zh",
+    theme: normalizeTheme(els.themeSelect.value),
     autoUpdateEnabled: els.autoUpdateSwitch.checked,
     autoStartEnabled: els.autoStartSwitch.checked,
     widgetMode: state.widgetMode,
@@ -1200,7 +1270,11 @@ function initializeActionIcons() {
     [els.minimizeBtn, "minus"],
     [els.closeBtn, "x"],
     [els.settingsCloseBtn, "x"],
-    [els.chooseCodexBtn, "folder-open"]
+    [els.chooseCodexBtn, "folder-open"],
+    [els.statusIcon, "refresh-cw"],
+    [document.querySelector('[data-quota-icon="primary"]'), "clock-3"],
+    [document.querySelector('[data-quota-icon="secondary"]'), "calendar-days"],
+    [document.querySelector('[data-quota-icon="plan"]'), "crown"]
   ].forEach(([button, iconName]) => {
     setActionButtonIcon(button, iconName);
   });
@@ -1220,8 +1294,21 @@ function updateActionButton(button, iconName, label) {
 }
 
 function setActionButtonIcon(button, iconName) {
+  if (!button) return;
   button.dataset.iconName = iconName;
   button.replaceChildren(createActionIcon(iconName));
+}
+
+function renderThemeOptions(locale) {
+  const currentTheme = normalizeTheme(state.settingsDraft.theme);
+  const options = Object.entries(THEMES).map(([value, theme]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = theme.label[locale] || theme.label.zh;
+    return option;
+  });
+  els.themeSelect.replaceChildren(...options);
+  els.themeSelect.value = currentTheme;
 }
 
 function createActionIcon(iconName) {

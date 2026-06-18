@@ -267,6 +267,10 @@ input {
     inset 0 -20px 38px rgba(255, 255, 255, 0.08);
 }
 
+.gauge-layer {
+  display: none;
+}
+
 .glass-rim,
 .shine {
   position: absolute;
@@ -409,6 +413,11 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.quota-icon,
+.status-icon {
+  display: none;
 }
 
 .quota-card span {

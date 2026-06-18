@@ -39,6 +39,7 @@
 
       <section class="content">
         <div id="liquidMeter" class="liquid-meter" aria-label="Codex 剩余额度">
+          <div id="gaugeLayer" class="gauge-layer" aria-hidden="true"></div>
           <div class="glass-rim"></div>
           <div id="liquidFill" class="liquid-fill">
             <div class="wave wave-one"></div>
@@ -53,14 +54,23 @@
 
         <div class="quota-panel">
           <div class="quota-card primary">
+            <span class="quota-icon" data-quota-icon="primary" aria-hidden="true">
+              <i data-lucide="clock-3"></i>
+            </span>
             <span id="primaryLabel">5小时窗口</span>
             <strong id="primaryText">--</strong>
           </div>
           <div class="quota-card">
+            <span class="quota-icon" data-quota-icon="secondary" aria-hidden="true">
+              <i data-lucide="calendar-days"></i>
+            </span>
             <span id="secondaryLabel">7天窗口</span>
             <strong id="secondaryText">--</strong>
           </div>
           <div class="quota-card slim">
+            <span class="quota-icon" data-quota-icon="plan" aria-hidden="true">
+              <i data-lucide="crown"></i>
+            </span>
             <span id="planLabel">套餐</span>
             <strong id="planText">--</strong>
           </div>
@@ -68,6 +78,9 @@
       </section>
 
       <footer class="status">
+        <span id="statusIcon" class="status-icon" aria-hidden="true">
+          <i data-lucide="refresh-cw"></i>
+        </span>
         <span id="statusDot" class="status-dot loading"></span>
         <span id="statusText">正在通过 Codex CLI 读取额度...</span>
       </footer>
@@ -122,6 +135,11 @@
           <label class="settings-field">
             <span id="refreshIntervalLabel">刷新分钟</span>
             <input id="refreshIntervalInput" class="settings-input" type="number" min="1" max="1440" step="1" data-no-drag />
+          </label>
+
+          <label class="settings-field">
+            <span id="themeLabel">主题</span>
+            <select id="themeSelect" class="settings-input settings-select" data-no-drag></select>
           </label>
 
           <label class="settings-field">
