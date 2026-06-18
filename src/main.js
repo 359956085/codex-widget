@@ -100,7 +100,7 @@ const i18n = {
     secondaryResetLabel: "周重置",
     pin: "置顶",
     unpin: "取消置顶",
-    refresh: "刷新",
+    refresh: "刷新数据",
     hide: "隐藏",
     exit: "退出",
     ballMode: "悬浮球",
@@ -113,6 +113,8 @@ const i18n = {
     updateInstalling: "正在安装更新",
     updateReady: "更新已安装，重启后生效",
     updateFailed: "更新检查失败",
+    updateLatest: "已是最新版本",
+    checkUpdate: "检查更新",
     settings: "设置",
     close: "关闭",
     codexPath: "Codex CLI 路径",
@@ -153,7 +155,7 @@ const i18n = {
     secondaryResetLabel: "Weekly reset",
     pin: "Pin",
     unpin: "Unpin",
-    refresh: "Refresh",
+    refresh: "Refresh Data",
     hide: "Hide",
     exit: "Exit",
     ballMode: "Floating ball",
@@ -166,6 +168,8 @@ const i18n = {
     updateInstalling: "Installing update",
     updateReady: "Update installed. Restart to apply.",
     updateFailed: "Update check failed",
+    updateLatest: "Already up to date",
+    checkUpdate: "Check for updates",
     settings: "Settings",
     close: "Close",
     codexPath: "Codex CLI path",
@@ -253,6 +257,7 @@ const state = {
   updateStatus: null,
   updateChecking: false,
   updateTimer: null,
+  latestStatusTimer: null,
   settingsOpen: false,
   savingSettings: false,
   widgetMode: DEFAULT_SETTINGS.widgetMode,
@@ -939,13 +944,7 @@ function render() {
   els.body.dataset.ballDock = state.ballDock || "none";
   els.body.dataset.theme = activeTheme;
 
-  els.brandName.textContent = text.brandName;
-  els.brandName.setAttribute("aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
-  if (APP_VERSION_LABEL) {
-    els.brandName.dataset.version = APP_VERSION_LABEL;
-  } else {
-    els.brandName.removeAttribute("data-version");
-  }
+  renderBrandName(text);
   els.remainingLabel.textContent = text.remaining;
   els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
   els.planLabel.textContent = text.plan;
@@ -993,6 +992,34 @@ function render() {
   renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
   els.planText.textContent = quota?.planType || text.unknown;
   renderSettingsPanel(text);
+}
+
+function renderBrandName(text) {
+  const title = document.createElement("span");
+  title.className = "brand-title";
+  title.textContent = text.brandName;
+  els.brandName.setAttribute("aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
+
+  if (!APP_VERSION_LABEL) {
+    els.brandName.replaceChildren(title);
+    return;
+  }
+
+  const versionButton = document.createElement("button");
+  versionButton.type = "button";
+  versionButton.className = "version-badge";
+  versionButton.textContent = APP_VERSION_LABEL;
+  versionButton.title = text.checkUpdate;
+  versionButton.setAttribute("aria-label", `${text.checkUpdate} ${APP_VERSION_LABEL}`);
+  versionButton.setAttribute("data-no-drag", "");
+  versionButton.addEventListener("click", triggerManualUpdateCheck);
+  els.brandName.replaceChildren(title, versionButton);
+}
+
+function triggerManualUpdateCheck(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  checkForUpdates({ manual: true });
 }
 
 function renderLocale() {
@@ -1296,8 +1323,8 @@ function scheduleUpdateChecks() {
   state.updateTimer = window.setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
 }
 
-async function checkForUpdates() {
-  if (!window.__TAURI_INTERNALS__ || state.updateChecking || !state.settings.autoUpdateEnabled) return;
+async function checkForUpdates({ manual = false } = {}) {
+  if (!window.__TAURI_INTERNALS__ || state.updateChecking || (!manual && !state.settings.autoUpdateEnabled)) return;
 
   state.updateChecking = true;
   setUpdateStatus({ type: "checking" });
@@ -1305,7 +1332,11 @@ async function checkForUpdates() {
   try {
     const update = await check(updateCheckOptions());
     if (!update) {
-      clearUpdateStatus();
+      if (manual) {
+        setUpdateStatus({ type: "latest" });
+      } else {
+        clearUpdateStatus();
+      }
       return;
     }
 
@@ -1347,13 +1378,36 @@ async function downloadAndInstallUpdate(update) {
 }
 
 function setUpdateStatus(nextStatus) {
+  if (nextStatus?.type !== "latest") {
+    clearLatestStatusTimer();
+  }
   state.updateStatus = nextStatus;
   render();
+  if (nextStatus?.type === "latest") {
+    scheduleLatestStatusClear();
+  }
 }
 
 function clearUpdateStatus() {
+  clearLatestStatusTimer();
   state.updateStatus = null;
   render();
+}
+
+function scheduleLatestStatusClear() {
+  clearLatestStatusTimer();
+  state.latestStatusTimer = window.setTimeout(() => {
+    state.latestStatusTimer = null;
+    if (state.updateStatus?.type === "latest") {
+      clearUpdateStatus();
+    }
+  }, 1800);
+}
+
+function clearLatestStatusTimer() {
+  if (!state.latestStatusTimer) return;
+  window.clearTimeout(state.latestStatusTimer);
+  state.latestStatusTimer = null;
 }
 
 function formatUpdateStatus(text) {
@@ -1369,6 +1423,7 @@ function formatUpdateStatus(text) {
   if (status.type === "installing") return text.updateInstalling;
   if (status.type === "ready") return text.updateReady;
   if (status.type === "failed") return text.updateFailed;
+  if (status.type === "latest") return text.updateLatest;
   if (status.type === "saved") return text.settingsSaved;
   return "";
 }

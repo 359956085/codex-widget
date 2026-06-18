@@ -127,6 +127,9 @@ select {
 }
 
 .brand-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   overflow: hidden;
   color: rgba(255, 255, 255, 0.94);
   font-size: 13px;
@@ -136,12 +139,27 @@ select {
   white-space: nowrap;
 }
 
-.brand-name[data-version]::after {
-  content: attr(data-version);
+.brand-title {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-badge {
+  flex: 0 0 auto;
   margin-left: 10px;
+  padding: 0;
   color: rgba(221, 235, 246, 0.68);
   font-size: 11px;
   font-weight: 600;
+  line-height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.version-badge:hover {
+  color: rgba(244, 250, 255, 0.9);
 }
 
 .brand-state {
@@ -204,6 +222,11 @@ select {
   cursor: default;
 }
 
+.window-actions .icon-button,
+.window-actions .icon-button * {
+  cursor: pointer;
+}
+
 .icon-button,
 .text-button {
   display: inline-grid;
@@ -249,6 +272,11 @@ select {
 .text-button:disabled {
   cursor: default;
   opacity: 0.55;
+}
+
+.window-actions .icon-button:disabled,
+.window-actions .icon-button:disabled * {
+  cursor: default;
 }
 
 .icon-button.danger:hover {
