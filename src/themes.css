@@ -12,6 +12,18 @@ body[data-theme="basic1"] {
   --basic1-meter-a: var(--basic1-cyan);
   --basic1-meter-b: var(--basic1-mint);
   --basic1-meter-rgb: 103, 232, 249;
+  --settings-panel-background:
+    radial-gradient(circle at 14% 0%, rgba(103, 232, 249, 0.14), transparent 34%),
+    radial-gradient(circle at 88% 100%, rgba(52, 242, 176, 0.12), transparent 36%),
+    linear-gradient(145deg, rgba(24, 34, 43, 0.92), rgba(8, 13, 18, 0.98));
+  --settings-control-background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(8, 17, 24, 0.34)),
+    rgba(21, 32, 42, 0.66);
+  --settings-control-border: rgba(201, 235, 255, 0.14);
+  --settings-accent-color: var(--basic1-cyan);
+  --settings-accent-soft: rgba(103, 232, 249, 0.16);
+  --settings-text-color: var(--basic1-text);
+  --settings-muted-color: var(--basic1-muted);
   --widget-surface-background:
     radial-gradient(circle at 18% 18%, rgba(103, 232, 249, 0.14), transparent 31%),
     radial-gradient(circle at 82% 84%, rgba(52, 242, 176, 0.13), transparent 34%),

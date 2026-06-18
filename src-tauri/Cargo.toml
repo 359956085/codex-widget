@@ -1,6 +1,6 @@
 [package]
 name = "codex-quota-widget"
-version = "0.5.0"
+version = "0.6.0"
 description = "通过 Codex CLI 读取 Codex 额度的 Rust 版悬浮小组件。"
 authors = ["fengshi"]
 edition = "2021"

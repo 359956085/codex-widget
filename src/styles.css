@@ -10,6 +10,15 @@
     inset 0 0 34px rgba(0, 0, 0, 0.16);
   --widget-surface-backdrop: blur(24px) saturate(1.24);
   --meter-primary-color: rgba(255, 255, 255, 0.94);
+  --settings-panel-background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)),
+    rgba(15, 26, 38, 0.94);
+  --settings-control-background: rgba(255, 255, 255, 0.1);
+  --settings-control-border: rgba(255, 255, 255, 0.14);
+  --settings-accent-color: #67b7ff;
+  --settings-accent-soft: rgba(103, 183, 255, 0.16);
+  --settings-text-color: rgba(255, 255, 255, 0.94);
+  --settings-muted-color: rgba(225, 237, 248, 0.62);
   font-family:
     Inter,
     "Segoe UI",
@@ -44,7 +53,8 @@ button {
   font: inherit;
 }
 
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -475,12 +485,10 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   z-index: 8;
   display: grid;
   grid-template-rows: 30px minmax(0, 1fr) 34px;
-  gap: 8px;
+  gap: 7px;
   padding: 12px;
   border-radius: 16px;
-  background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)),
-    rgba(15, 26, 38, 0.94);
+  background: var(--settings-panel-background);
   backdrop-filter: blur(26px) saturate(1.18);
   cursor: default;
 }
@@ -528,7 +536,19 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   min-height: 0;
   gap: 8px;
   overflow-y: auto;
-  padding-right: 2px;
+  overflow-x: hidden;
+  padding: 0 2px 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--settings-control-border) transparent;
+}
+
+.settings-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.settings-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--settings-control-border);
 }
 
 .settings-field {
@@ -551,7 +571,7 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
 .settings-field > span,
 .settings-copy > span {
   overflow: hidden;
-  color: rgba(225, 237, 248, 0.78);
+  color: var(--settings-text-color);
   font-size: 11px;
   line-height: 14px;
   text-overflow: ellipsis;
@@ -561,7 +581,7 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
 .settings-field small,
 .settings-copy small {
   overflow: hidden;
-  color: rgba(225, 237, 248, 0.52);
+  color: var(--settings-muted-color);
   font-size: 10px;
   line-height: 12px;
   text-overflow: ellipsis;
@@ -580,16 +600,16 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   padding: 0 8px;
   border: 0;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.94);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  color: var(--settings-text-color);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
   outline: none;
 }
 
 .settings-input:focus {
   box-shadow:
-    inset 0 0 0 1px rgba(103, 183, 255, 0.86),
-    0 0 0 2px rgba(103, 183, 255, 0.14);
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 0 2px var(--settings-accent-soft);
 }
 
 .settings-input::placeholder {
@@ -609,6 +629,116 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
 .settings-select option {
   color: #132433;
   background: #ffffff;
+}
+
+.custom-select-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.custom-select-shell .settings-select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.custom-select-trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--settings-text-color);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
+  text-align: left;
+  outline: none;
+}
+
+.custom-select-trigger:focus-visible,
+.custom-select-shell.open .custom-select-trigger {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 0 2px var(--settings-accent-soft);
+}
+
+.custom-select-value {
+  overflow: hidden;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select-arrow {
+  justify-self: end;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.75;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: none;
+  max-height: 92px;
+  padding: 4px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--settings-panel-background);
+  box-shadow:
+    inset 0 0 0 1px var(--settings-control-border),
+    0 8px 22px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.custom-select-shell.open .custom-select-menu {
+  display: grid;
+  gap: 3px;
+}
+
+.custom-select-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 7px;
+  color: var(--settings-text-color);
+  background: transparent;
+  text-align: left;
+}
+
+.custom-select-option::after {
+  justify-self: end;
+  color: var(--settings-accent-color);
+  font-size: 11px;
+  line-height: 1;
+  content: "";
+}
+
+.custom-select-option[data-selected="true"] {
+  background: var(--settings-accent-soft);
+}
+
+.custom-select-option[data-selected="true"]::after {
+  content: "\2713";
+}
+
+.custom-select-option:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .switch-control {
@@ -631,8 +761,8 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
   transition:
     background 140ms ease,
     box-shadow 140ms ease;
@@ -652,8 +782,8 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
 }
 
 .switch-control input:checked + .switch-track {
-  background: rgba(46, 232, 133, 0.36);
-  box-shadow: inset 0 0 0 1px rgba(46, 232, 133, 0.42);
+  background: var(--settings-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-accent-color);
 }
 
 .switch-control input:checked + .switch-track::after {
@@ -662,12 +792,14 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
 
 .switch-control input:focus-visible + .switch-track {
   box-shadow:
-    inset 0 0 0 1px rgba(103, 183, 255, 0.86),
-    0 0 0 2px rgba(103, 183, 255, 0.14);
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 0 2px var(--settings-accent-soft);
 }
 
 .settings-panel button,
 .settings-select,
+.custom-select-trigger,
+.custom-select-option,
 .switch-control,
 .switch-control * {
   cursor: pointer;
@@ -690,18 +822,18 @@ body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
   height: 28px;
   padding: 0 12px;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--settings-text-color);
   cursor: pointer;
 }
 
 .primary-button {
-  background: rgba(46, 232, 133, 0.36);
-  box-shadow: inset 0 0 0 1px rgba(46, 232, 133, 0.4);
+  background: var(--settings-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-accent-color);
 }
 
 .secondary-button {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
 }
 
 .primary-button:disabled {
