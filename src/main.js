@@ -1,195 +1,43 @@
 import "./styles.css";
 import "./themes.css";
 
+import {
+  APP_VERSION_LABEL,
+  BALL_SIZE,
+  CLICK_DELAY_MS,
+  DEFAULT_SETTINGS,
+  i18n,
+  PANEL_DOUBLE_CLICK_DISTANCE,
+  PANEL_DOUBLE_CLICK_MS,
+  PANEL_SIZE,
+  POSITION_SAVE_DEBOUNCE_MS,
+  SNAP_DISTANCE,
+  THEMES,
+  UPDATE_CHECK_INTERVAL_MS,
+  WIDGET_MODES
+} from "./app/constants.js";
+import {
+  formatWindowLabel,
+  getVisualState,
+  primaryRemainingPercent,
+  stateLabel,
+  statusLabel,
+  waterFillPercent
+} from "./app/formatters.js";
+import { initializeActionIcons, updateActionButton } from "./app/icons.js";
+import {
+  normalizeBallDock,
+  normalizeInputValue,
+  normalizeSettings,
+  normalizeTheme,
+  normalizeWindowPosition
+} from "./app/settings-model.js";
 import { updateGauge } from "./components/gauge.js";
-import { version as packageVersion } from "../package.json";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { availableMonitors, currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
-import {
-  CalendarDays,
-  CircleDot,
-  Clock3,
-  createElement as createLucideElement,
-  Crown,
-  FolderOpen,
-  Minus,
-  Pin,
-  PinOff,
-  RefreshCw,
-  Settings,
-  X
-} from "lucide";
-
-const DEFAULT_SETTINGS = {
-  codexCliPath: "",
-  updateProxy: "",
-  refreshIntervalMinutes: 5,
-  locale: "zh",
-  theme: "default",
-  autoUpdateEnabled: true,
-  autoStartEnabled: false,
-  widgetMode: "panel",
-  panelPosition: null,
-  ballPosition: null,
-  ballDock: null
-};
-
-const APP_VERSION_LABEL = packageVersion ? `v${String(packageVersion).trim()}` : "";
-const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const WIDGET_MODES = {
-  PANEL: "panel",
-  BALL: "ball"
-};
-const THEMES = {
-  default: {
-    label: {
-      zh: "默认主题",
-      en: "Default"
-    }
-  },
-  basic1: {
-    label: {
-      zh: "基础主题 1",
-      en: "Basic theme 1"
-    }
-  }
-};
-const PANEL_SIZE = { width: 390, height: 236 };
-const BALL_SIZE = 88;
-const SNAP_DISTANCE = 24;
-const CLICK_DELAY_MS = 220;
-const PANEL_DOUBLE_CLICK_MS = 320;
-const PANEL_DOUBLE_CLICK_DISTANCE = 8;
-const POSITION_SAVE_DEBOUNCE_MS = 300;
-const ACTION_ICONS = {
-  "calendar-days": CalendarDays,
-  "circle-dot": CircleDot,
-  "clock-3": Clock3,
-  crown: Crown,
-  "folder-open": FolderOpen,
-  minus: Minus,
-  pin: Pin,
-  "pin-off": PinOff,
-  "refresh-cw": RefreshCw,
-  settings: Settings,
-  x: X
-};
-
-const i18n = {
-  zh: {
-    brandName: "Codex CLI 额度",
-    loading: "读取中",
-    ready: "额度正常",
-    low: "额度偏低",
-    critical: "额度不足",
-    empty: "额度耗尽",
-    error: "读取失败",
-    remaining: "剩余",
-    primaryFallback: "5小时窗口",
-    secondaryFallback: "7天窗口",
-    plan: "套餐",
-    unknown: "未知",
-    noData: "暂无数据",
-    reading: "正在通过 Codex CLI 读取额度...",
-    refreshedAt: "已刷新",
-    nextReset: "重置",
-    primaryResetLabel: "5小时",
-    secondaryResetLabel: "周重置",
-    pin: "置顶",
-    unpin: "取消置顶",
-    refresh: "刷新数据",
-    hide: "隐藏",
-    exit: "退出",
-    ballMode: "悬浮球",
-    panelMode: "完整面板",
-    unavailable: "未读取到额度数据",
-    openCodex: "打开 Codex CLI",
-    checkingUpdate: "正在检查更新...",
-    updateAvailable: "发现新版本",
-    updateDownloading: "正在下载更新",
-    updateInstalling: "正在安装更新",
-    updateReady: "更新已安装，重启后生效",
-    updateFailed: "更新检查失败",
-    updateLatest: "已是最新版本",
-    checkUpdate: "检查更新",
-    settings: "设置",
-    close: "关闭",
-    codexPath: "Codex CLI 路径",
-    chooseCodex: "选择 Codex CLI (codex.exe)",
-    updateProxy: "更新代理",
-    refreshInterval: "刷新分钟",
-    theme: "主题",
-    language: "语言",
-    autoUpdate: "自动更新",
-    autoUpdateHint: "更新依赖 GitHub，网络不可达时可能需要配置代理。",
-    autoStart: "开机自启",
-    autoStartHint: "登录系统后自动启动本应用，仅对当前用户生效。",
-    updateProxyHint: "仅用于 GitHub 自动更新，不影响 Codex CLI。",
-    save: "保存",
-    cancel: "取消",
-    settingsSaved: "设置已保存",
-    codexPathPlaceholder: "留空自动探测",
-    updateProxyPlaceholder: "http://127.0.0.1:7890"
-  },
-  en: {
-    brandName: "Codex CLI Quota",
-    loading: "Loading",
-    ready: "Quota healthy",
-    low: "Quota low",
-    critical: "Quota insufficient",
-    empty: "Quota empty",
-    error: "Read failed",
-    remaining: "Remain",
-    primaryFallback: "5h window",
-    secondaryFallback: "7d window",
-    plan: "Plan",
-    unknown: "Unknown",
-    noData: "No data",
-    reading: "Reading quota via Codex CLI...",
-    refreshedAt: "Refreshed",
-    nextReset: "Reset",
-    primaryResetLabel: "5h reset",
-    secondaryResetLabel: "Weekly reset",
-    pin: "Pin",
-    unpin: "Unpin",
-    refresh: "Refresh Data",
-    hide: "Hide",
-    exit: "Exit",
-    ballMode: "Floating ball",
-    panelMode: "Full panel",
-    unavailable: "No quota data",
-    openCodex: "Open Codex CLI",
-    checkingUpdate: "Checking for updates...",
-    updateAvailable: "Update available",
-    updateDownloading: "Downloading update",
-    updateInstalling: "Installing update",
-    updateReady: "Update installed. Restart to apply.",
-    updateFailed: "Update check failed",
-    updateLatest: "Already up to date",
-    checkUpdate: "Check for updates",
-    settings: "Settings",
-    close: "Close",
-    codexPath: "Codex CLI path",
-    chooseCodex: "Choose Codex CLI (codex.exe)",
-    updateProxy: "Update proxy",
-    refreshInterval: "Refresh min",
-    theme: "Theme",
-    language: "Language",
-    autoUpdate: "Auto update",
-    autoUpdateHint: "Updates depend on GitHub. Configure a proxy if the network cannot reach it.",
-    autoStart: "Start at login",
-    autoStartHint: "Launch this app automatically after signing in. Current user only.",
-    updateProxyHint: "Only used for GitHub updates. It does not affect Codex CLI.",
-    save: "Save",
-    cancel: "Cancel",
-    settingsSaved: "Settings saved",
-    codexPathPlaceholder: "Empty for auto detect",
-    updateProxyPlaceholder: "http://127.0.0.1:7890"
-  }
-};
 
 const els = {
   body: document.body,
@@ -271,7 +119,7 @@ const state = {
   isApplyingWindowMode: false
 };
 
-initializeActionIcons();
+initializeActionIcons(els);
 bindEvents();
 initialize();
 
@@ -949,9 +797,9 @@ function render() {
   els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
   els.planLabel.textContent = text.plan;
 
-  updateActionButton(els.modeBtn, "circle-dot", text.ballMode);
+  updateActionButton(els.modeBtn, "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
   updateActionButton(els.settingsBtn, "settings", text.settings);
-  updateActionButton(els.pinBtn, state.alwaysOnTop ? "pin" : "pin-off", state.alwaysOnTop ? text.unpin : text.pin);
+  updateActionButton(els.pinBtn, state.alwaysOnTop ? "pin" : "pin-off", state.alwaysOnTop ? text.unpin : text.pin, state.alwaysOnTop);
   updateActionButton(els.refreshBtn, "refresh-cw", text.refresh);
   updateActionButton(els.minimizeBtn, "minus", text.hide);
   updateActionButton(els.closeBtn, "x", text.exit);
@@ -1066,55 +914,6 @@ function applyNormalizedSettings(settings, { syncDraft = true } = {}) {
 
 function syncSettingsDraftFromSettings() {
   state.settingsDraft = { ...state.settings };
-}
-
-function normalizeSettings(settings) {
-  const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
-  const widgetMode = settings?.widgetMode === WIDGET_MODES.BALL ? WIDGET_MODES.BALL : WIDGET_MODES.PANEL;
-  return {
-    codexCliPath: typeof settings?.codexCliPath === "string" ? settings.codexCliPath : "",
-    updateProxy: typeof settings?.updateProxy === "string" ? settings.updateProxy : "",
-    refreshIntervalMinutes:
-      Number.isInteger(refreshIntervalMinutes) && refreshIntervalMinutes >= 1 && refreshIntervalMinutes <= 1440
-        ? refreshIntervalMinutes
-        : DEFAULT_SETTINGS.refreshIntervalMinutes,
-    locale: settings?.locale === "en" ? "en" : "zh",
-    theme: normalizeTheme(settings?.theme),
-    autoUpdateEnabled:
-      typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
-    autoStartEnabled:
-      typeof settings?.autoStartEnabled === "boolean" ? settings.autoStartEnabled : DEFAULT_SETTINGS.autoStartEnabled,
-    widgetMode,
-    panelPosition: normalizeWindowPosition(settings?.panelPosition),
-    ballPosition: normalizeWindowPosition(settings?.ballPosition),
-    ballDock: normalizeBallDock(settings?.ballDock)
-  };
-}
-
-function normalizeWindowPosition(position) {
-  if (!position || typeof position !== "object") return null;
-  const x = Number(position.x);
-  const y = Number(position.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-  return {
-    x: Math.round(x),
-    y: Math.round(y)
-  };
-}
-
-function normalizeBallDock(dock) {
-  return dock === "left" || dock === "right" ? dock : null;
-}
-
-function normalizeTheme(theme) {
-  return Object.hasOwn(THEMES, theme) ? theme : DEFAULT_SETTINGS.theme;
-}
-
-function waterFillPercent(remaining, theme) {
-  if (remaining === null) return 0;
-  const value = clamp(remaining, 0, 100);
-  if (theme === "basic1" && value > 0 && value < 20) return 18;
-  return value;
 }
 
 function openSettingsPanel() {
@@ -1306,11 +1105,6 @@ function collectSettingsDraft() {
   };
 }
 
-function normalizeInputValue(value) {
-  const text = value.trim();
-  return text ? text : null;
-}
-
 function scheduleUpdateChecks() {
   if (state.updateTimer) window.clearInterval(state.updateTimer);
   state.updateTimer = null;
@@ -1433,44 +1227,6 @@ function updateCheckOptions() {
   return proxy ? { proxy } : undefined;
 }
 
-function initializeActionIcons() {
-  [
-    [els.modeBtn, "circle-dot"],
-    [els.settingsBtn, "settings"],
-    [els.pinBtn, "pin"],
-    [els.refreshBtn, "refresh-cw"],
-    [els.minimizeBtn, "minus"],
-    [els.closeBtn, "x"],
-    [els.settingsCloseBtn, "x"],
-    [els.chooseCodexBtn, "folder-open"],
-    [els.statusIcon, "refresh-cw"],
-    [document.querySelector('[data-quota-icon="primary"]'), "clock-3"],
-    [document.querySelector('[data-quota-icon="secondary"]'), "calendar-days"],
-    [document.querySelector('[data-quota-icon="plan"]'), "crown"]
-  ].forEach(([button, iconName]) => {
-    setActionButtonIcon(button, iconName);
-  });
-}
-
-function updateActionButton(button, iconName, label) {
-  button.title = label;
-  button.setAttribute("aria-label", label);
-  button.classList.toggle(
-    "active",
-    (button === els.pinBtn && state.alwaysOnTop) || (button === els.modeBtn && state.widgetMode === WIDGET_MODES.BALL)
-  );
-
-  // 图标 DOM 初始化后保持稳定，只在置顶状态切换时替换对应图标，避免每次刷新重建按钮。
-  if (button.dataset.iconName === iconName) return;
-  setActionButtonIcon(button, iconName);
-}
-
-function setActionButtonIcon(button, iconName) {
-  if (!button) return;
-  button.dataset.iconName = iconName;
-  button.replaceChildren(createActionIcon(iconName));
-}
-
 function renderThemeOptions(locale) {
   const currentTheme = normalizeTheme(state.settingsDraft.theme);
   const options = Object.entries(THEMES).map(([value, theme]) => {
@@ -1483,30 +1239,6 @@ function renderThemeOptions(locale) {
   els.themeSelect.value = currentTheme;
 }
 
-function createActionIcon(iconName) {
-  const iconNode = ACTION_ICONS[iconName];
-  if (!iconNode) {
-    console.error("未知按钮图标", iconName);
-    return document.createElement("span");
-  }
-
-  const [tag, attrs, children] = iconNode;
-  return createLucideElement([
-    tag,
-    {
-      ...attrs,
-      "aria-hidden": "true",
-      "data-lucide": iconName,
-      class: `lucide lucide-${iconName}`
-    },
-    children
-  ]);
-}
-
-function primaryRemainingPercent(quota) {
-  return typeof quota?.primary?.remainingPercent === "number" ? quota.primary.remainingPercent : null;
-}
-
 function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale) {
   labelEl.textContent = formatWindowLabel(windowData?.windowDurationMins, fallbackLabel, text, locale);
   if (!windowData || typeof windowData.remainingPercent !== "number") {
@@ -1514,60 +1246,6 @@ function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale)
     return;
   }
   valueEl.textContent = `${windowData.remainingPercent}%`;
-}
-
-function formatWindowLabel(minutes, fallbackLabel, text, locale) {
-  if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) return fallbackLabel;
-  if (minutes % 10080 === 0) {
-    const value = minutes / 10080;
-    return locale === "zh" ? `${value}周窗口` : `${value}w window`;
-  }
-  if (minutes % 1440 === 0) {
-    const value = minutes / 1440;
-    return locale === "zh" ? `${value}天窗口` : `${value}d window`;
-  }
-  if (minutes % 60 === 0) {
-    const value = minutes / 60;
-    return locale === "zh" ? `${value}小时窗口` : `${value}h window`;
-  }
-  return locale === "zh" ? `${minutes}分钟窗口` : `${minutes}m window`;
-}
-
-function statusLabel(quota, text, locale) {
-  if (!quota) return text.noData;
-  const fetchedAt = formatTimeOrPlaceholder(quota.fetchedAt, locale);
-  const primaryResetAt = formatTimeOrPlaceholder(quota.primary?.resetsAt, locale);
-  const secondaryResetAt = formatTimeOrPlaceholder(quota.secondary?.resetsAt, locale);
-  return `${text.refreshedAt} ${fetchedAt} · ${text.primaryResetLabel} ${primaryResetAt} · ${text.secondaryResetLabel} ${secondaryResetAt}`;
-}
-
-function getVisualState(remaining) {
-  if (remaining === null) return "unknown";
-  if (remaining === 0) return "empty";
-  if (remaining <= 10) return "critical";
-  if (remaining < 50) return "low";
-  return "ready";
-}
-
-function stateLabel(visualState, text) {
-  if (visualState === "empty") return text.empty;
-  if (visualState === "critical") return text.critical;
-  if (visualState === "low") return text.low;
-  if (visualState === "ready") return text.ready;
-  return text.unavailable;
-}
-
-function formatDate(value, locale) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-}
-
-function formatTimeOrPlaceholder(value, locale) {
-  return value ? formatDate(value, locale) || "--" : "--";
 }
 
 function showError(error) {
