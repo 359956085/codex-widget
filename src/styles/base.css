@@ -1,0 +1,59 @@
+:root {
+  color: #f7fbff;
+  background: transparent;
+  --widget-surface-background:
+    linear-gradient(130deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)),
+    rgba(17, 28, 40, 0.72);
+  --widget-surface-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    inset 0 0 34px rgba(0, 0, 0, 0.16);
+  --widget-surface-backdrop: blur(24px) saturate(1.24);
+  --meter-primary-color: rgba(255, 255, 255, 0.94);
+  --settings-panel-background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)),
+    rgba(15, 26, 38, 0.94);
+  --settings-control-background: rgba(255, 255, 255, 0.1);
+  --settings-control-border: rgba(255, 255, 255, 0.14);
+  --settings-accent-color: #67b7ff;
+  --settings-accent-soft: rgba(103, 183, 255, 0.16);
+  --settings-text-color: rgba(255, 255, 255, 0.94);
+  --settings-muted-color: rgba(225, 237, 248, 0.62);
+  font-family:
+    Inter,
+    "Segoe UI",
+    "Microsoft YaHei",
+    system-ui,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  cursor: default;
+}
+
+button {
+  border: 0;
+  font: inherit;
+}
+
+input,
+select {
+  font: inherit;
+}

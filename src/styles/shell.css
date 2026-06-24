@@ -1,0 +1,285 @@
+.widget {
+  position: relative;
+  width: 390px;
+  height: 236px;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  background: var(--widget-surface-background);
+  box-shadow: var(--widget-surface-shadow);
+  backdrop-filter: var(--widget-surface-backdrop);
+  cursor: grab;
+}
+
+.widget:active {
+  cursor: grabbing;
+}
+
+.widget::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(100deg, rgba(255, 255, 255, 0.24), transparent 34%),
+    radial-gradient(circle at 80% 16%, rgba(126, 211, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 20% 90%, rgba(69, 244, 176, 0.12), transparent 35%);
+}
+
+.titlebar,
+.content,
+.status {
+  position: relative;
+  z-index: 1;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  gap: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.titlebar:active,
+.content:active,
+.status:active {
+  cursor: grabbing;
+}
+
+.brand {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+  cursor: grab;
+}
+
+.brand-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.brand-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-title {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-badge {
+  flex: 0 0 auto;
+  margin-left: 10px;
+  padding: 0;
+  color: rgba(221, 235, 246, 0.68);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.version-badge:hover {
+  color: rgba(244, 250, 255, 0.9);
+}
+
+.brand-state {
+  overflow: hidden;
+  color: rgba(221, 235, 246, 0.7);
+  font-size: 11px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.traffic-light {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7b8794;
+  box-shadow: 0 0 18px rgba(123, 135, 148, 0.7);
+}
+
+.traffic-light.ready,
+.status-dot.ready,
+.liquid-meter[data-level="ready"] .liquid-fill {
+  background: #2ee885;
+}
+
+.traffic-light.low,
+.status-dot.low,
+.liquid-meter[data-level="low"] .liquid-fill {
+  background: #ffcc3d;
+}
+
+.traffic-light.empty,
+.traffic-light.critical,
+.traffic-light.error,
+.status-dot.empty,
+.status-dot.critical,
+.status-dot.error,
+.liquid-meter[data-level="empty"] .liquid-fill,
+.liquid-meter[data-level="critical"] .liquid-fill,
+.liquid-meter[data-level="error"] .liquid-fill {
+  background: #ff5a67;
+}
+
+.traffic-light.loading,
+.status-dot.loading {
+  background: #67b7ff;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.window-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 5px;
+  cursor: default;
+}
+
+.window-actions,
+.window-actions * {
+  cursor: default;
+}
+
+.window-actions .icon-button,
+.window-actions .icon-button * {
+  cursor: pointer;
+}
+
+.icon-button,
+.text-button {
+  display: inline-grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  color: rgba(244, 249, 255, 0.86);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.text-button {
+  width: 30px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
+}
+
+.icon-button:hover,
+.text-button:hover,
+.icon-button.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.icon-button:active,
+.text-button:active {
+  transform: translateY(1px);
+}
+
+.icon-button:disabled,
+.text-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.window-actions .icon-button:disabled,
+.window-actions .icon-button:disabled * {
+  cursor: default;
+}
+
+.icon-button.danger:hover {
+  color: #ffffff;
+  background: rgba(255, 83, 99, 0.78);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  height: 142px;
+  gap: 14px;
+  cursor: grab;
+}
+body[data-widget-mode="ball"] .widget {
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--widget-surface-background);
+  box-shadow: var(--widget-surface-shadow);
+  backdrop-filter: var(--widget-surface-backdrop);
+}
+
+body[data-widget-mode="ball"] .widget::before,
+body[data-widget-mode="ball"] .titlebar,
+body[data-widget-mode="ball"] .quota-panel,
+body[data-widget-mode="ball"] .status,
+body[data-widget-mode="ball"] .settings-panel {
+  display: none;
+}
+
+body[data-widget-mode="ball"] .content {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 88px;
+  height: 88px;
+  cursor: grab;
+}
+
+body[data-widget-mode="ball"] .liquid-meter {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 130px;
+  height: 130px;
+  cursor: grab;
+  transform: scale(0.676923);
+  transform-origin: top left;
+}
+
+body[data-widget-mode="ball"] .meter-copy {
+  gap: 0;
+}
+
+body[data-widget-mode="ball"] .meter-copy span {
+  display: none;
+}
+
+/* 半圆吸附时只保留液位视觉，避免文字挤在半圆可视区域内。 */
+body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
+  display: none;
+}

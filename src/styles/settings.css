@@ -1,0 +1,361 @@
+.settings-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr) 34px;
+  gap: 7px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--settings-panel-background);
+  backdrop-filter: blur(26px) saturate(1.18);
+  cursor: default;
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-panel,
+.settings-panel * {
+  cursor: default;
+}
+
+.settings-panel input,
+.settings-panel textarea {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.settings-head,
+.settings-actions,
+.settings-row,
+.path-control {
+  display: flex;
+  align-items: center;
+}
+
+.settings-head {
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.settings-head strong {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-scroll {
+  display: grid;
+  min-height: 0;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 2px 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--settings-control-border) transparent;
+}
+
+.settings-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.settings-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--settings-control-border);
+}
+
+.settings-field {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.settings-row {
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.settings-field > span,
+.settings-copy > span {
+  overflow: hidden;
+  color: var(--settings-text-color);
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-field small,
+.settings-copy small {
+  overflow: hidden;
+  color: var(--settings-muted-color);
+  font-size: 10px;
+  line-height: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path-control {
+  min-width: 0;
+  gap: 6px;
+}
+
+.settings-input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--settings-text-color);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
+  outline: none;
+}
+
+.settings-input:focus {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 0 2px var(--settings-accent-soft);
+}
+
+.settings-input::placeholder {
+  color: rgba(225, 237, 248, 0.42);
+}
+
+.settings-select {
+  appearance: none;
+  color: rgba(255, 255, 255, 0.94);
+  background:
+    linear-gradient(45deg, transparent 50%, rgba(244, 249, 255, 0.78) 50%) right 12px center / 5px 5px no-repeat,
+    linear-gradient(135deg, rgba(244, 249, 255, 0.78) 50%, transparent 50%) right 7px center / 5px 5px no-repeat,
+    rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.settings-select option {
+  color: #132433;
+  background: #ffffff;
+}
+
+.custom-select-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.custom-select-shell .settings-select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.custom-select-trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--settings-text-color);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
+  text-align: left;
+  outline: none;
+}
+
+.custom-select-trigger:focus-visible,
+.custom-select-shell.open .custom-select-trigger {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 0 2px var(--settings-accent-soft);
+}
+
+.custom-select-value {
+  overflow: hidden;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select-arrow {
+  justify-self: end;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.75;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: none;
+  max-height: 92px;
+  padding: 4px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--settings-panel-background);
+  box-shadow:
+    inset 0 0 0 1px var(--settings-control-border),
+    0 8px 22px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.custom-select-shell.open .custom-select-menu {
+  display: grid;
+  gap: 3px;
+}
+
+.custom-select-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 7px;
+  color: var(--settings-text-color);
+  background: transparent;
+  text-align: left;
+}
+
+.custom-select-option::after {
+  justify-self: end;
+  color: var(--settings-accent-color);
+  font-size: 11px;
+  line-height: 1;
+  content: "";
+}
+
+.custom-select-option[data-selected="true"] {
+  background: var(--settings-accent-soft);
+}
+
+.custom-select-option[data-selected="true"]::after {
+  content: "\2713";
+}
+
+.custom-select-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.switch-control {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.switch-control input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.switch-track::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  content: "";
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transition: transform 140ms ease;
+}
+
+.switch-control input:checked + .switch-track {
+  background: var(--settings-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-accent-color);
+}
+
+.switch-control input:checked + .switch-track::after {
+  transform: translateX(18px);
+}
+
+.switch-control input:focus-visible + .switch-track {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 0 2px var(--settings-accent-soft);
+}
+
+.settings-panel button,
+.settings-select,
+.custom-select-trigger,
+.custom-select-option,
+.switch-control,
+.switch-control * {
+  cursor: pointer;
+}
+
+.settings-panel button:disabled {
+  cursor: default;
+}
+
+.settings-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 70px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--settings-text-color);
+  cursor: pointer;
+}
+
+.primary-button {
+  background: var(--settings-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--settings-accent-color);
+}
+
+.secondary-button {
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
+}
+
+.primary-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}

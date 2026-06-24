@@ -38,7 +38,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
     els.planLabel.textContent = text.plan;
 
-    updateActionButton(els.modeBtn, activeTheme === "basic2" ? "hourglass" : "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
+    updateActionButton(els.modeBtn, "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
     updateActionButton(els.settingsBtn, "settings", text.settings);
     updateActionButton(
       els.pinBtn,
