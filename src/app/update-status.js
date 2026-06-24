@@ -9,6 +9,8 @@ export function formatUpdateStatus(text, status) {
   }
   if (status.type === "installing") return text.updateInstalling;
   if (status.type === "ready") return text.updateReady;
+  if (status.type === "checkFailed") return text.updateCheckFailed;
+  if (status.type === "updateFailed") return text.updateInstallFailed;
   if (status.type === "failed") return text.updateFailed;
   if (status.type === "latest") return text.updateLatest;
   if (status.type === "saved") return text.settingsSaved;

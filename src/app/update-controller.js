@@ -1,5 +1,8 @@
 import { UPDATE_CHECK_INTERVAL_MS } from "./constants.js";
 
+const TRANSIENT_STATUS_DURATION_MS = 1800;
+const TRANSIENT_STATUS_TYPES = new Set(["latest", "saved", "checkFailed", "updateFailed"]);
+
 export function createUpdateController({ state, service, render }) {
   function scheduleUpdateChecks() {
     if (state.updateTimer) window.clearInterval(state.updateTimer);
@@ -20,7 +23,7 @@ export function createUpdateController({ state, service, render }) {
     setUpdateStatus({ type: "checking" });
 
     try {
-      const update = await service.updater.check(updateCheckOptions());
+      const update = await readAvailableUpdate();
       if (!update) {
         if (manual) {
           setUpdateStatus({ type: "latest" });
@@ -31,11 +34,17 @@ export function createUpdateController({ state, service, render }) {
       }
 
       setUpdateStatus({ type: "available", version: update.version });
-      await downloadAndInstallUpdate(update);
+      try {
+        await downloadAndInstallUpdate(update);
+      } catch (error) {
+        console.error("更新失败", error);
+        setUpdateStatus({ type: "updateFailed" });
+        return;
+      }
       setUpdateStatus({ type: "ready" });
     } catch (error) {
-      console.error("自动更新失败", error);
-      setUpdateStatus({ type: "failed" });
+      console.error("获取版本失败", error);
+      setUpdateStatus({ type: "checkFailed" });
     } finally {
       state.updateChecking = false;
       render();
@@ -67,37 +76,45 @@ export function createUpdateController({ state, service, render }) {
     });
   }
 
+  async function readAvailableUpdate() {
+    return service.updater.check(updateCheckOptions());
+  }
+
   function setUpdateStatus(nextStatus) {
-    if (nextStatus?.type !== "latest") {
-      clearLatestStatusTimer();
+    if (!isTransientStatus(nextStatus)) {
+      clearTransientStatusTimer();
     }
     state.updateStatus = nextStatus;
     render();
-    if (nextStatus?.type === "latest") {
-      scheduleLatestStatusClear();
+    if (isTransientStatus(nextStatus)) {
+      scheduleTransientStatusClear(nextStatus.type);
     }
   }
 
   function clearUpdateStatus() {
-    clearLatestStatusTimer();
+    clearTransientStatusTimer();
     state.updateStatus = null;
     render();
   }
 
-  function scheduleLatestStatusClear() {
-    clearLatestStatusTimer();
-    state.latestStatusTimer = window.setTimeout(() => {
-      state.latestStatusTimer = null;
-      if (state.updateStatus?.type === "latest") {
-        clearUpdateStatus();
-      }
-    }, 1800);
+  function isTransientStatus(status) {
+    return TRANSIENT_STATUS_TYPES.has(status?.type);
   }
 
-  function clearLatestStatusTimer() {
-    if (!state.latestStatusTimer) return;
-    window.clearTimeout(state.latestStatusTimer);
-    state.latestStatusTimer = null;
+  function scheduleTransientStatusClear(statusType) {
+    clearTransientStatusTimer();
+    state.transientStatusTimer = window.setTimeout(() => {
+      state.transientStatusTimer = null;
+      if (state.updateStatus?.type === statusType) {
+        clearUpdateStatus();
+      }
+    }, TRANSIENT_STATUS_DURATION_MS);
+  }
+
+  function clearTransientStatusTimer() {
+    if (!state.transientStatusTimer) return;
+    window.clearTimeout(state.transientStatusTimer);
+    state.transientStatusTimer = null;
   }
 
   function updateCheckOptions() {

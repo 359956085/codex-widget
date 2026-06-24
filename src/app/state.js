@@ -15,7 +15,7 @@ export function createAppState() {
     updateStatus: null,
     updateChecking: false,
     updateTimer: null,
-    latestStatusTimer: null,
+    transientStatusTimer: null,
     settingsOpen: false,
     savingSettings: false,
     widgetMode: DEFAULT_SETTINGS.widgetMode,
