@@ -1,22 +1,23 @@
 body[data-theme="basic2"] {
-  --basic2-bg: #12100c;
+  --basic2-bg: #100e0a;
   --basic2-panel: #17140f;
-  --basic2-panel-deep: #0c0b09;
+  --basic2-panel-deep: #080806;
   --basic2-gold: #ffc66d;
-  --basic2-gold-hot: #ffe6a3;
-  --basic2-orange: #ff8a3d;
-  --basic2-line: rgba(255, 198, 109, 0.34);
+  --basic2-gold-hot: #ffe9a8;
+  --basic2-orange: #ff8b3d;
+  --basic2-line: rgba(255, 198, 109, 0.38);
   --basic2-line-soft: rgba(255, 198, 109, 0.16);
-  --basic2-text: rgba(255, 255, 255, 0.94);
-  --basic2-muted: rgba(238, 222, 195, 0.68);
-  --basic2-faint: rgba(226, 203, 169, 0.46);
-  --basic2-card: rgba(31, 28, 22, 0.78);
+  --basic2-text: rgba(255, 255, 255, 0.96);
+  --basic2-muted: rgba(232, 215, 185, 0.7);
+  --basic2-faint: rgba(226, 203, 169, 0.5);
+  --basic2-card: rgba(25, 23, 18, 0.88);
   --basic2-meter-a: var(--basic2-gold-hot);
   --basic2-meter-b: var(--basic2-gold);
   --basic2-meter-c: var(--basic2-orange);
   --basic2-meter-rgb: 255, 198, 109;
+  --remaining-angle: 0deg;
   --settings-panel-background:
-    radial-gradient(circle at 8% 0%, rgba(255, 230, 163, 0.13), transparent 34%),
+    radial-gradient(circle at 10% 0%, rgba(255, 230, 163, 0.12), transparent 35%),
     radial-gradient(circle at 92% 100%, rgba(255, 138, 61, 0.14), transparent 34%),
     linear-gradient(145deg, rgba(31, 27, 20, 0.96), rgba(12, 11, 9, 0.98));
   --settings-control-background:
@@ -28,24 +29,26 @@ body[data-theme="basic2"] {
   --settings-text-color: var(--basic2-text);
   --settings-muted-color: var(--basic2-muted);
   --widget-surface-background:
-    radial-gradient(circle at 8% 6%, rgba(255, 230, 163, 0.16), transparent 22%),
-    radial-gradient(circle at 92% 96%, rgba(255, 138, 61, 0.22), transparent 24%),
-    linear-gradient(145deg, rgba(27, 24, 18, 0.98), rgba(13, 12, 10, 0.99) 58%, rgba(22, 18, 12, 0.98)),
+    radial-gradient(circle at 5% 9%, rgba(255, 225, 145, 0.2), transparent 9%),
+    radial-gradient(circle at 98% 96%, rgba(255, 139, 61, 0.34), transparent 27%),
+    radial-gradient(circle at 80% 106%, rgba(255, 198, 109, 0.2), transparent 30%),
+    linear-gradient(150deg, rgba(28, 25, 18, 0.99), rgba(10, 10, 8, 0.99) 56%, rgba(21, 17, 11, 0.99)),
     var(--basic2-panel);
   --widget-surface-shadow:
-    inset 0 0 0 1px rgba(255, 198, 109, 0.34),
-    inset 0 1px 0 rgba(255, 239, 196, 0.2),
-    inset 0 -22px 40px rgba(0, 0, 0, 0.38),
-    inset 0 -1px 0 rgba(255, 198, 109, 0.44),
-    0 0 0 1px rgba(255, 198, 109, 0.08);
-  --widget-surface-backdrop: blur(24px) saturate(1.22);
+    inset 0 0 0 1px rgba(255, 235, 177, 0.2),
+    inset 0 0 0 2px rgba(72, 49, 22, 0.62),
+    inset 0 1px 0 rgba(255, 245, 207, 0.18),
+    inset 0 -24px 36px rgba(255, 138, 61, 0.07),
+    inset 0 -44px 68px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 198, 109, 0.1);
+  --widget-surface-backdrop: blur(26px) saturate(1.24);
   --meter-primary-color: #ffffff;
 }
 
 body[data-theme="basic2"][data-state="low"],
 body[data-theme="basic2"] .gauge-layer[data-level="low"],
 body[data-theme="basic2"] .liquid-meter[data-level="low"] {
-  --basic2-meter-a: #ffe88a;
+  --basic2-meter-a: #fff0a4;
   --basic2-meter-b: #ffc247;
   --basic2-meter-c: #ff9a3d;
   --basic2-meter-rgb: 255, 194, 71;
@@ -80,7 +83,7 @@ body[data-theme="basic2"] .liquid-meter[data-level="unknown"] {
 
 body[data-theme="basic2"] .widget {
   padding: 11px 12px 10px;
-  border: 1px solid rgba(255, 198, 109, 0.38);
+  border: 1px solid rgba(255, 208, 127, 0.5);
   border-radius: 16px;
   background: var(--widget-surface-background);
   box-shadow: var(--widget-surface-shadow);
@@ -88,11 +91,16 @@ body[data-theme="basic2"] .widget {
 
 body[data-theme="basic2"] .widget::before {
   z-index: 0;
+  opacity: 0.9;
   background:
-    radial-gradient(circle at 7% 8%, rgba(255, 230, 163, 0.24), transparent 7%),
-    radial-gradient(circle at 96% 94%, rgba(255, 138, 61, 0.28), transparent 22%),
-    linear-gradient(118deg, rgba(255, 255, 255, 0.08), transparent 30%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 5px);
+    radial-gradient(circle at 5% 7%, rgba(255, 234, 166, 0.22), transparent 7%),
+    radial-gradient(circle at 98% 98%, rgba(255, 144, 45, 0.25), transparent 23%),
+    radial-gradient(circle at 74% 108%, rgba(255, 198, 109, 0.13), transparent 30%),
+    radial-gradient(circle at 18% 26%, rgba(255, 230, 163, 0.14) 0 0.55px, transparent 0.85px),
+    radial-gradient(circle at 76% 72%, rgba(255, 198, 109, 0.12) 0 0.55px, transparent 0.9px),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.045), transparent 32%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 7px);
+  background-size: auto, auto, auto, 17px 17px, 23px 23px, auto, auto;
 }
 
 body[data-theme="basic2"] .widget::after {
@@ -102,15 +110,16 @@ body[data-theme="basic2"] .widget::after {
   pointer-events: none;
   border-radius: 15px;
   content: "";
-  opacity: 0.38;
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 230, 163, 0.85) 0 0.55px, transparent 0.75px),
-    radial-gradient(circle at 73% 82%, rgba(255, 198, 109, 0.65) 0 0.5px, transparent 0.8px),
-    radial-gradient(circle at 88% 92%, rgba(255, 138, 61, 0.9) 0 0.6px, transparent 1px);
-  background-size: 18px 18px, 23px 23px, 31px 31px;
+  opacity: 0.66;
+  background:
+    linear-gradient(180deg, rgba(255, 245, 207, 0.08), transparent 18%),
+    radial-gradient(circle at 96% 94%, rgba(255, 151, 50, 0.42), transparent 17%),
+    radial-gradient(circle at 86% 96%, rgba(255, 198, 109, 0.26), transparent 24%),
+    linear-gradient(90deg, rgba(255, 198, 109, 0.06), transparent 35%, rgba(255, 198, 109, 0.08));
   box-shadow:
-    inset 0 0 22px rgba(255, 198, 109, 0.08),
-    inset 0 -12px 26px rgba(255, 138, 61, 0.16);
+    inset 0 0 26px rgba(255, 198, 109, 0.08),
+    inset 0 0 62px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 0 rgba(255, 198, 109, 0.6);
   mix-blend-mode: screen;
 }
 
@@ -134,10 +143,10 @@ body[data-theme="basic2"] .traffic-light {
   width: 10px;
   height: 10px;
   background:
-    radial-gradient(circle at 35% 32%, #fff4bf 0 24%, var(--basic2-meter-a) 25% 56%, var(--basic2-meter-c) 100%);
+    radial-gradient(circle at 34% 28%, #fff7c8 0 21%, var(--basic2-meter-a) 22% 58%, var(--basic2-meter-c) 100%);
   box-shadow:
     0 0 0 2px rgba(255, 198, 109, 0.22),
-    0 0 13px rgba(var(--basic2-meter-rgb), 0.88),
+    0 0 14px rgba(var(--basic2-meter-rgb), 0.9),
     inset 0 0 4px rgba(255, 255, 255, 0.72);
 }
 
@@ -149,11 +158,11 @@ body[data-theme="basic2"] .brand-name {
   display: flex;
   align-items: center;
   color: var(--basic2-text);
-  font-size: 13px;
-  font-weight: 820;
+  font-size: 14px;
+  font-weight: 850;
   line-height: 16px;
   text-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.7),
+    0 1px 1px rgba(0, 0, 0, 0.72),
     0 0 14px rgba(255, 198, 109, 0.16);
 }
 
@@ -161,34 +170,36 @@ body[data-theme="basic2"] .version-badge {
   flex: 0 0 auto;
   margin-left: 8px;
   padding: 1px 8px 2px;
-  border: 1px solid rgba(255, 198, 109, 0.48);
+  border: 1px solid rgba(255, 198, 109, 0.58);
   border-radius: 999px;
-  color: rgba(255, 231, 172, 0.96);
+  color: rgba(255, 231, 172, 0.98);
   font-size: 9px;
-  font-weight: 760;
+  font-weight: 800;
   line-height: 11px;
   background:
+    radial-gradient(circle at 50% 0%, rgba(255, 245, 207, 0.18), transparent 62%),
     linear-gradient(180deg, rgba(255, 198, 109, 0.18), rgba(255, 138, 61, 0.08)),
-    rgba(18, 16, 12, 0.72);
+    rgba(18, 16, 12, 0.8);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -6px 12px rgba(0, 0, 0, 0.22),
-    0 0 12px rgba(255, 198, 109, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.24),
+    0 0 13px rgba(255, 198, 109, 0.18);
 }
 
 body[data-theme="basic2"] .version-badge:hover {
   color: #fff5cc;
   background:
-    linear-gradient(180deg, rgba(255, 198, 109, 0.25), rgba(255, 138, 61, 0.12)),
-    rgba(28, 23, 16, 0.82);
+    radial-gradient(circle at 50% 0%, rgba(255, 245, 207, 0.23), transparent 62%),
+    linear-gradient(180deg, rgba(255, 198, 109, 0.26), rgba(255, 138, 61, 0.12)),
+    rgba(28, 23, 16, 0.86);
 }
 
 body[data-theme="basic2"] .brand-state {
   color: var(--basic2-gold);
   font-size: 10px;
-  font-weight: 760;
+  font-weight: 800;
   line-height: 12px;
-  text-shadow: 0 0 12px rgba(255, 198, 109, 0.24);
+  text-shadow: 0 0 12px rgba(255, 198, 109, 0.26);
 }
 
 body[data-theme="basic2"] .window-actions {
@@ -199,58 +210,94 @@ body[data-theme="basic2"] .icon-button {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  color: rgba(255, 230, 179, 0.88);
+  color: rgba(255, 231, 178, 0.9);
   background:
-    radial-gradient(circle at 36% 22%, rgba(255, 255, 255, 0.14), transparent 30%),
-    linear-gradient(180deg, rgba(37, 33, 25, 0.9), rgba(10, 9, 8, 0.96));
+    radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 50% 110%, rgba(255, 198, 109, 0.09), transparent 55%),
+    linear-gradient(180deg, rgba(38, 34, 26, 0.94), rgba(8, 8, 7, 0.98));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 198, 109, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -7px 13px rgba(0, 0, 0, 0.42),
-    0 0 8px rgba(0, 0, 0, 0.32);
+    inset 0 0 0 1px rgba(255, 198, 109, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -8px 13px rgba(0, 0, 0, 0.44),
+    0 0 0 1px rgba(0, 0, 0, 0.38),
+    0 0 9px rgba(0, 0, 0, 0.34);
 }
 
 body[data-theme="basic2"] .icon-button svg {
   width: 13px;
   height: 13px;
   stroke-width: 2.55;
-  filter: drop-shadow(0 0 4px rgba(255, 198, 109, 0.3));
+  filter: drop-shadow(0 0 4px rgba(255, 198, 109, 0.35));
 }
 
 body[data-theme="basic2"] .icon-button:hover,
 body[data-theme="basic2"] .icon-button.active {
-  color: #fff3c4;
+  color: #fff4c4;
   background:
-    radial-gradient(circle at 36% 22%, rgba(255, 244, 191, 0.22), transparent 32%),
-    linear-gradient(180deg, rgba(78, 55, 27, 0.92), rgba(22, 16, 9, 0.98));
+    radial-gradient(circle at 36% 20%, rgba(255, 246, 199, 0.3), transparent 34%),
+    radial-gradient(circle at 50% 110%, rgba(255, 138, 61, 0.24), transparent 56%),
+    linear-gradient(180deg, rgba(86, 60, 28, 0.92), rgba(22, 16, 9, 0.98));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 198, 109, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -7px 13px rgba(0, 0, 0, 0.38),
-    0 0 16px rgba(255, 198, 109, 0.26);
+    inset 0 0 0 1px rgba(255, 198, 109, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -8px 13px rgba(0, 0, 0, 0.38),
+    0 0 18px rgba(255, 198, 109, 0.32),
+    0 0 4px rgba(255, 231, 172, 0.28);
 }
 
 body[data-theme="basic2"] .icon-button.danger:hover {
-  color: #ffe3ca;
+  color: #ffe6cf;
   background:
-    radial-gradient(circle at 35% 22%, rgba(255, 232, 202, 0.18), transparent 32%),
-    linear-gradient(180deg, rgba(86, 39, 22, 0.92), rgba(24, 10, 8, 0.98));
+    radial-gradient(circle at 35% 22%, rgba(255, 232, 202, 0.22), transparent 32%),
+    linear-gradient(180deg, rgba(86, 39, 22, 0.94), rgba(24, 10, 8, 0.98));
 }
 
 body[data-theme="basic2"] .content {
-  grid-template-columns: 137px minmax(0, 1fr);
+  grid-template-columns: 140px minmax(0, 1fr);
   height: 143px;
-  gap: 10px;
+  gap: 8px;
 }
 
 body[data-theme="basic2"] .liquid-meter {
   isolation: isolate;
-  width: 132px;
-  height: 132px;
+  width: 136px;
+  height: 136px;
   overflow: visible;
   border-radius: 50%;
   background: transparent;
   box-shadow: none;
+}
+
+body[data-theme="basic2"] .liquid-meter::before,
+body[data-theme="basic2"] .liquid-meter::after {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  content: "";
+}
+
+body[data-theme="basic2"] .liquid-meter::before {
+  inset: 0;
+  z-index: 4;
+  opacity: 0.86;
+  background:
+    repeating-conic-gradient(from -90deg, rgba(255, 198, 109, 0.78) 0deg 0.85deg, transparent 0.85deg 3deg),
+    radial-gradient(circle, transparent 66%, rgba(255, 198, 109, 0.18) 67%, transparent 71%);
+  -webkit-mask: radial-gradient(circle, transparent 69%, #000 70% 73%, transparent 74%);
+  mask: radial-gradient(circle, transparent 69%, #000 70% 73%, transparent 74%);
+  filter: drop-shadow(0 0 5px rgba(255, 198, 109, 0.18));
+}
+
+body[data-theme="basic2"] .liquid-meter::after {
+  inset: 8px;
+  z-index: 7;
+  background:
+    conic-gradient(from -90deg, var(--basic2-meter-a) 0deg, var(--basic2-meter-b) var(--remaining-angle, 0deg), rgba(255, 198, 109, 0.15) var(--remaining-angle, 0deg) 360deg);
+  -webkit-mask: radial-gradient(circle, transparent 68%, #000 70% 78%, transparent 80%);
+  mask: radial-gradient(circle, transparent 68%, #000 70% 78%, transparent 80%);
+  filter:
+    drop-shadow(0 0 6px rgba(255, 238, 178, 0.72))
+    drop-shadow(0 0 14px rgba(var(--basic2-meter-rgb), 0.38));
 }
 
 body[data-theme="basic2"] .gauge-layer {
@@ -270,21 +317,21 @@ body[data-theme="basic2"] .meter-copy {
 
 body[data-theme="basic2"] .basic-gauge {
   display: block;
-  width: 132px;
-  height: 132px;
+  width: 136px;
+  height: 136px;
   overflow: visible;
   color: var(--basic2-meter-a);
   filter:
-    drop-shadow(0 0 9px rgba(var(--basic2-meter-rgb), 0.24))
-    drop-shadow(0 9px 12px rgba(0, 0, 0, 0.46));
+    drop-shadow(0 0 11px rgba(var(--basic2-meter-rgb), 0.24))
+    drop-shadow(0 11px 13px rgba(0, 0, 0, 0.5));
 }
 
 body[data-theme="basic2"] .gauge-sphere-stop-a {
-  stop-color: rgba(255, 240, 196, 0.32);
+  stop-color: rgba(255, 240, 196, 0.38);
 }
 
 body[data-theme="basic2"] .gauge-sphere-stop-b {
-  stop-color: rgba(42, 34, 23, 0.9);
+  stop-color: rgba(43, 35, 22, 0.94);
 }
 
 body[data-theme="basic2"] .gauge-sphere-stop-c {
@@ -300,83 +347,104 @@ body[data-theme="basic2"] .gauge-accent-stop-b {
 }
 
 body[data-theme="basic2"] .gauge-glow {
-  fill: rgba(255, 198, 109, 0.06);
-  stroke: rgba(255, 198, 109, 0.54);
+  fill: rgba(255, 198, 109, 0.055);
+  stroke: rgba(255, 198, 109, 0.5);
   stroke-width: 1;
   filter:
-    drop-shadow(0 0 8px rgba(var(--basic2-meter-rgb), 0.58))
-    drop-shadow(0 0 18px rgba(255, 138, 61, 0.22));
+    drop-shadow(0 0 8px rgba(var(--basic2-meter-rgb), 0.6))
+    drop-shadow(0 0 20px rgba(255, 138, 61, 0.24));
 }
 
 body[data-theme="basic2"] .gauge-sphere {
   fill: url("#basicGaugeSphere");
-  stroke: rgba(255, 198, 109, 0.36);
-  stroke-width: 1.4;
+  stroke: rgba(255, 198, 109, 0.34);
+  stroke-width: 1.2;
+  filter:
+    drop-shadow(0 0 0 rgba(255, 255, 255, 0))
+    drop-shadow(0 8px 10px rgba(0, 0, 0, 0.42));
 }
 
 body[data-theme="basic2"] .gauge-glass-sheen {
-  fill: rgba(255, 240, 196, 0.23);
-  opacity: 0.82;
+  fill: rgba(255, 240, 196, 0.24);
+  opacity: 0.78;
+}
+
+body[data-theme="basic2"] .gauge-outer-track {
+  fill: none;
+  stroke: rgba(255, 198, 109, 0.16);
+  stroke-width: 9.4;
+  stroke-linecap: round;
+}
+
+body[data-theme="basic2"] .gauge-outer-progress {
+  fill: none;
+  stroke: url("#basicGaugeAccent");
+  stroke-width: 9.4;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 238, 178, 0.86))
+    drop-shadow(0 0 12px rgba(var(--basic2-meter-rgb), 0.64));
+  transition: stroke-dashoffset 360ms ease;
 }
 
 body[data-theme="basic2"] .gauge-track {
   fill: none;
-  stroke: rgba(255, 198, 109, 0.18);
-  stroke-width: 6.2;
+  stroke: rgba(255, 198, 109, 0.16);
+  stroke-width: 3.2;
   stroke-linecap: round;
 }
 
 body[data-theme="basic2"] .gauge-progress {
   fill: none;
-  stroke: url("#basicGaugeAccent");
-  stroke-width: 8;
+  stroke: rgba(255, 239, 188, 0.36);
+  stroke-width: 3.4;
   stroke-linecap: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
-  filter:
-    drop-shadow(0 0 5px rgba(255, 238, 178, 0.9))
-    drop-shadow(0 0 12px rgba(var(--basic2-meter-rgb), 0.68));
+  filter: drop-shadow(0 0 8px rgba(var(--basic2-meter-rgb), 0.26));
   transition: stroke-dashoffset 360ms ease;
 }
 
 body[data-theme="basic2"] .gauge-mark {
   fill: url("#basicGaugeAccent");
   filter:
-    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7))
-    drop-shadow(0 0 7px rgba(var(--basic2-meter-rgb), 0.5));
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.72))
+    drop-shadow(0 0 8px rgba(var(--basic2-meter-rgb), 0.54));
 }
 
 body[data-theme="basic2"] .gauge-percent {
-  fill: rgba(255, 255, 255, 0.98);
+  fill: rgba(255, 255, 255, 0.99);
   font-size: 20px;
-  font-weight: 720;
+  font-weight: 820;
   letter-spacing: 0;
   text-shadow:
-    0 2px 3px rgba(0, 0, 0, 0.78),
+    0 2px 3px rgba(0, 0, 0, 0.82),
     0 0 12px rgba(255, 198, 109, 0.18);
 }
 
 body[data-theme="basic2"] .gauge-label {
-  fill: rgba(255, 255, 255, 0.96);
+  fill: rgba(255, 255, 255, 0.98);
   font-size: 10px;
-  font-weight: 780;
+  font-weight: 820;
   letter-spacing: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.72);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.74);
 }
 
 body[data-theme="basic2"] .gauge-layer[data-gauge-mode="panel"] .gauge-percent {
-  font-size: 30px;
-  font-weight: 880;
+  font-size: 33px;
+  font-weight: 900;
 }
 
 body[data-theme="basic2"] .gauge-layer[data-gauge-mode="panel"] .gauge-label {
   font-size: 14px;
-  font-weight: 820;
+  font-weight: 850;
 }
 
 body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"] .gauge-percent {
   font-size: 18px;
-  font-weight: 760;
+  font-weight: 820;
 }
 
 body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"] .gauge-label {
@@ -388,83 +456,87 @@ body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"]:not([data-gauge-d
 }
 
 body[data-theme="basic2"] .quota-panel {
-  gap: 3px;
+  gap: 4px;
 }
 
 body[data-theme="basic2"] .quota-card {
   grid-template-columns: 34px minmax(0, 1fr) auto;
-  height: 42px;
-  padding: 0 10px 0 8px;
-  border: 1px solid rgba(255, 198, 109, 0.28);
+  height: 43px;
+  padding: 0 9px 0 8px;
+  border: 1px solid rgba(255, 198, 109, 0.34);
   border-radius: 14px;
   background:
-    linear-gradient(135deg, rgba(255, 239, 196, 0.08), rgba(255, 198, 109, 0.02) 45%, transparent),
-    rgba(28, 25, 19, 0.78);
+    radial-gradient(circle at 0% 0%, rgba(255, 230, 163, 0.08), transparent 38%),
+    linear-gradient(135deg, rgba(255, 239, 196, 0.055), rgba(255, 198, 109, 0.018) 48%, transparent),
+    rgba(19, 18, 15, 0.86);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -10px 18px rgba(0, 0, 0, 0.24),
-    0 0 0 1px rgba(0, 0, 0, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -11px 18px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 0, 0, 0.24),
+    0 4px 12px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(18px) saturate(1.12);
 }
 
 body[data-theme="basic2"] .quota-card.primary,
 body[data-theme="basic2"] .quota-card.slim {
   background:
-    linear-gradient(135deg, rgba(255, 198, 109, 0.12), transparent 42%),
-    rgba(32, 28, 21, 0.82);
+    radial-gradient(circle at 0% 0%, rgba(255, 230, 163, 0.1), transparent 42%),
+    linear-gradient(135deg, rgba(255, 198, 109, 0.1), transparent 45%),
+    rgba(21, 20, 16, 0.88);
 }
 
 body[data-theme="basic2"] .quota-icon {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
   border-radius: 50%;
   color: var(--basic2-gold);
   background:
-    radial-gradient(circle at 35% 25%, rgba(255, 241, 198, 0.18), transparent 34%),
+    radial-gradient(circle at 35% 24%, rgba(255, 241, 198, 0.25), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(255, 138, 61, 0.14), transparent 58%),
     rgba(255, 198, 109, 0.08);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 198, 109, 0.42),
-    inset 0 -8px 12px rgba(0, 0, 0, 0.3),
-    0 0 10px rgba(255, 198, 109, 0.12);
+    inset 0 0 0 1px rgba(255, 198, 109, 0.5),
+    inset 0 -8px 12px rgba(0, 0, 0, 0.32),
+    0 0 11px rgba(255, 198, 109, 0.15);
 }
 
 body[data-theme="basic2"] .quota-icon svg {
   width: 15px;
   height: 15px;
-  stroke-width: 2.35;
-  filter: drop-shadow(0 0 4px rgba(255, 198, 109, 0.32));
+  stroke-width: 2.45;
+  filter: drop-shadow(0 0 4px rgba(255, 198, 109, 0.36));
 }
 
 body[data-theme="basic2"] .quota-card > span:not(.quota-icon) {
-  color: rgba(238, 222, 195, 0.78);
+  color: rgba(232, 215, 185, 0.84);
   font-size: 11px;
-  font-weight: 720;
+  font-weight: 760;
   line-height: 14px;
 }
 
 body[data-theme="basic2"] .quota-card strong {
   max-width: 58px;
-  color: rgba(255, 255, 255, 0.96);
-  font-size: 18px;
-  font-weight: 860;
+  color: rgba(255, 255, 255, 0.98);
+  font-size: 19px;
+  font-weight: 900;
   line-height: 20px;
   text-shadow:
-    0 2px 2px rgba(0, 0, 0, 0.7),
-    0 0 10px rgba(255, 255, 255, 0.09);
+    0 2px 2px rgba(0, 0, 0, 0.72),
+    0 0 10px rgba(255, 255, 255, 0.1);
 }
 
 body[data-theme="basic2"] .quota-card.slim strong {
   color: transparent;
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 900;
   text-transform: lowercase;
-  background: linear-gradient(180deg, #fff1bf, var(--basic2-gold) 52%, var(--basic2-orange));
+  background: linear-gradient(180deg, #fff2c2, var(--basic2-gold) 52%, var(--basic2-orange));
   -webkit-background-clip: text;
   background-clip: text;
   text-shadow: none;
-  filter: drop-shadow(0 0 6px rgba(255, 198, 109, 0.32));
+  filter: drop-shadow(0 0 6px rgba(255, 198, 109, 0.34));
 }
 
 body[data-theme="basic2"] .status {
@@ -472,10 +544,10 @@ body[data-theme="basic2"] .status {
   height: 34px;
   gap: 8px;
   padding: 8px 0 0;
-  border-top: 1px solid rgba(255, 198, 109, 0.2);
+  border-top: 1px solid rgba(255, 198, 109, 0.26);
   color: var(--basic2-faint);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 640;
   line-height: 12px;
 }
 
@@ -489,7 +561,7 @@ body[data-theme="basic2"] .status-icon {
   width: 17px;
   height: 17px;
   color: var(--basic2-gold);
-  filter: drop-shadow(0 0 7px rgba(var(--basic2-meter-rgb), 0.55));
+  filter: drop-shadow(0 0 7px rgba(var(--basic2-meter-rgb), 0.58));
 }
 
 body[data-theme="basic2"] .status-icon svg {
@@ -510,18 +582,28 @@ body[data-theme="basic2"][data-widget-mode="ball"] .widget {
   border-radius: 50%;
   background:
     radial-gradient(circle at 34% 22%, rgba(255, 239, 196, 0.16), transparent 32%),
-    linear-gradient(145deg, rgba(30, 26, 19, 0.98), rgba(8, 8, 7, 0.99));
+    radial-gradient(circle at 76% 86%, rgba(255, 138, 61, 0.14), transparent 42%),
+    linear-gradient(145deg, rgba(30, 26, 19, 0.99), rgba(8, 8, 7, 0.99));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 198, 109, 0.34),
-    inset 0 1px 0 rgba(255, 245, 207, 0.14),
-    inset 0 -18px 30px rgba(0, 0, 0, 0.44),
-    0 0 0 1px rgba(255, 198, 109, 0.08);
+    inset 0 0 0 1px rgba(255, 198, 109, 0.38),
+    inset 0 1px 0 rgba(255, 245, 207, 0.16),
+    inset 0 -18px 30px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 198, 109, 0.1),
+    0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+body[data-theme="basic2"][data-widget-mode="ball"] .widget::before {
+  display: block;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 21%, rgba(255, 245, 207, 0.12), transparent 32%),
+    radial-gradient(circle at 50% 100%, rgba(255, 138, 61, 0.15), transparent 55%);
 }
 
 body[data-theme="basic2"][data-widget-mode="ball"] .widget::after {
   inset: 0;
   border-radius: 50%;
-  opacity: 0.28;
+  opacity: 0.32;
 }
 
 body[data-theme="basic2"][data-widget-mode="ball"] .content {
@@ -530,15 +612,24 @@ body[data-theme="basic2"][data-widget-mode="ball"] .content {
 }
 
 body[data-theme="basic2"][data-widget-mode="ball"] .liquid-meter {
-  width: 132px;
-  height: 132px;
-  transform: scale(0.666667);
+  width: 136px;
+  height: 136px;
+  transform: scale(0.647059);
   transform-origin: top left;
 }
 
 body[data-theme="basic2"][data-widget-mode="ball"] .basic-gauge {
-  width: 132px;
-  height: 132px;
+  width: 136px;
+  height: 136px;
+}
+
+body[data-theme="basic2"][data-widget-mode="ball"] .gauge-outer-track,
+body[data-theme="basic2"][data-widget-mode="ball"] .gauge-outer-progress {
+  stroke-width: 10.2;
+}
+
+body[data-theme="basic2"][data-widget-mode="ball"] .liquid-meter::before {
+  opacity: 0.78;
 }
 
 body[data-theme="basic2"] .settings-head strong {

@@ -17,6 +17,7 @@ export function updateGauge({ root, percent, level, label, mode = "panel", dock 
   root.dataset.level = level || "unknown";
   root.dataset.gaugeMode = gaugeMode;
   root.dataset.gaugeDock = gaugeDock;
+  gauge.outerProgress.style.strokeDashoffset = String(100 - progress);
   gauge.progress.style.strokeDashoffset = String(100 - progress);
   gauge.percent.textContent = displayText;
   gauge.label.textContent = label || "";
@@ -41,6 +42,25 @@ function ensureGauge(root) {
     pathLength: 100,
     transform: "rotate(-90 65 65)"
   });
+  const outerTrack = svgElement("circle", {
+    class: "gauge-outer-track",
+    cx: 65,
+    cy: 65,
+    r: 51,
+    pathLength: 100,
+    fill: "none",
+    stroke: "none"
+  });
+  const outerProgress = svgElement("circle", {
+    class: "gauge-outer-progress",
+    cx: 65,
+    cy: 65,
+    r: 51,
+    pathLength: 100,
+    fill: "none",
+    stroke: "none",
+    transform: "rotate(-90 65 65)"
+  });
   const inner = svgElement("g", { class: "gauge-inner" });
   const mark = svgElement("path", {
     class: "gauge-mark",
@@ -62,11 +82,13 @@ function ensureGauge(root) {
     svgElement("circle", { class: "gauge-glow", cx: 65, cy: 65, r: 58 }),
     svgElement("circle", { class: "gauge-sphere", cx: 65, cy: 65, r: 56 }),
     svgElement("path", { class: "gauge-glass-sheen", d: "M24 59c4-22 20-38 43-42 17-3 31 2 41 11-13-3-30-2-47 6-17 8-29 18-37 25Z" }),
+    outerTrack,
+    outerProgress,
     inner
   );
 
   root.replaceChildren(svg);
-  root.__gauge = { svg, inner, progress, mark, percent, label };
+  root.__gauge = { svg, inner, outerProgress, progress, mark, percent, label };
   return root.__gauge;
 }
 
