@@ -27,7 +27,7 @@ const ACTION_ICONS = {
   x: X
 };
 
-export function initializeActionIcons(els) {
+export function initializeActionIcons(els, logger) {
   [
     [els.modeBtn, "circle-dot"],
     [els.settingsBtn, "settings"],
@@ -42,7 +42,7 @@ export function initializeActionIcons(els) {
     [document.querySelector('[data-quota-icon="secondary"]'), "calendar-days"],
     [document.querySelector('[data-quota-icon="plan"]'), "crown"]
   ].forEach(([button, iconName]) => {
-    setActionButtonIcon(button, iconName);
+    setActionButtonIcon(button, iconName, logger);
   });
 }
 
@@ -56,15 +56,16 @@ export function updateActionButton(button, iconName, label, active = false) {
   setActionButtonIcon(button, iconName);
 }
 
-function setActionButtonIcon(button, iconName) {
+function setActionButtonIcon(button, iconName, logger) {
   if (!button) return;
   button.dataset.iconName = iconName;
-  button.replaceChildren(createActionIcon(iconName));
+  button.replaceChildren(createActionIcon(iconName, logger));
 }
 
-export function createActionIcon(iconName) {
+export function createActionIcon(iconName, logger) {
   const iconNode = ACTION_ICONS[iconName];
   if (!iconNode) {
+    logger?.error("未知按钮图标", iconName, "frontend.icons");
     console.error("未知按钮图标", iconName);
     return document.createElement("span");
   }

@@ -25,8 +25,13 @@ export function createWindowController({
   render,
   applyNormalizedSettings,
   saveCurrentSettings,
-  showError
+  showError,
+  logger
 }) {
+  function logWindowError(message, error) {
+    logger?.error(message, error, "frontend.window");
+  }
+
   function bindEvents() {
     els.widget.addEventListener("pointerdown", startWindowDrag);
     els.widget.addEventListener("pointermove", moveBallDrag);
@@ -69,7 +74,7 @@ export function createWindowController({
     try {
       await service.window.startDragging();
     } catch (error) {
-      console.error("启动窗口拖动失败", error);
+      logWindowError("启动窗口拖动失败", error);
     }
   }
 
@@ -129,7 +134,7 @@ export function createWindowController({
       };
       render();
     } catch (error) {
-      console.error("启动悬浮球拖动失败", error);
+      logWindowError("启动悬浮球拖动失败", error);
       state.ballDrag = null;
     }
   }
@@ -165,7 +170,7 @@ export function createWindowController({
       if (!state.ballDrag) return;
       service.window
         .setPosition({ x: drag.nextX, y: drag.nextY })
-        .catch((error) => console.error("移动悬浮球失败", error));
+        .catch((error) => logWindowError("移动悬浮球失败", error));
     });
   }
 
@@ -238,7 +243,7 @@ export function createWindowController({
         scheduleSaveCurrentWindowPosition();
       });
     } catch (error) {
-      console.error("监听窗口移动失败", error);
+      logWindowError("监听窗口移动失败", error);
     }
   }
 
@@ -269,8 +274,9 @@ export function createWindowController({
       await persistWindowPosition(position, state.widgetMode, state.ballDock, { silent });
     } catch (error) {
       if (silent) {
-        console.error("保存窗口位置失败", error);
+        logWindowError("保存窗口位置失败", error);
       } else {
+        logWindowError("保存窗口位置失败", error);
         showError(error);
       }
     }
@@ -295,7 +301,7 @@ export function createWindowController({
     try {
       return normalizeWindowPosition(await service.window.outerPosition());
     } catch (error) {
-      console.error("读取窗口位置失败", error);
+      logWindowError("读取窗口位置失败", error);
       return null;
     }
   }
@@ -352,7 +358,7 @@ export function createWindowController({
         await applyPanelWindow(targetPosition);
       }
     } catch (error) {
-      console.error("切换窗口模式失败", error);
+      logWindowError("切换窗口模式失败", error);
     } finally {
       window.setTimeout(() => {
         state.isApplyingWindowMode = false;
@@ -431,7 +437,7 @@ export function createWindowController({
       await persistWindowPosition(nextPosition, WIDGET_MODES.BALL, dock);
       render();
     } catch (error) {
-      console.error("悬浮球吸附失败", error);
+      logWindowError("悬浮球吸附失败", error);
     }
   }
 
@@ -456,7 +462,7 @@ export function createWindowController({
       await persistWindowPosition(nextPosition, WIDGET_MODES.BALL, null);
       render();
     } catch (error) {
-      console.error("展开悬浮球失败", error);
+      logWindowError("展开悬浮球失败", error);
     }
   }
 

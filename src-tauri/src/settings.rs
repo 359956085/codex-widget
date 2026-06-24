@@ -5,6 +5,8 @@ use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+use crate::logging::LogLevel;
+
 const SETTINGS_FILE_NAME: &str = "settings.json";
 const DEFAULT_REFRESH_INTERVAL_MINUTES: u16 = 5;
 const MIN_REFRESH_INTERVAL_MINUTES: u16 = 1;
@@ -83,6 +85,8 @@ pub struct AppSettings {
     #[serde(default = "default_auto_start_enabled")]
     pub auto_start_enabled: bool,
     #[serde(default)]
+    pub log_level: LogLevel,
+    #[serde(default)]
     pub widget_mode: WidgetMode,
     #[serde(default)]
     pub panel_position: Option<WindowPosition>,
@@ -102,6 +106,7 @@ impl Default for AppSettings {
             theme: ThemeMode::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
+            log_level: LogLevel::default(),
             widget_mode: WidgetMode::default(),
             panel_position: None,
             ball_position: None,
@@ -249,6 +254,7 @@ fn validate_proxy(proxy: &str) -> Result<()> {
     Ok(())
 }
 
+//noinspection NonAsciiCharacters
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,6 +293,7 @@ mod tests {
             theme: ThemeMode::Basic1,
             auto_update_enabled: false,
             auto_start_enabled: true,
+            log_level: LogLevel::Debug,
             widget_mode: WidgetMode::Ball,
             panel_position: Some(WindowPosition { x: 120, y: 80 }),
             ball_position: Some(WindowPosition { x: 1800, y: 240 }),
@@ -303,6 +310,7 @@ mod tests {
             Some("http://127.0.0.1:7890".to_string())
         );
         assert_eq!(loaded.theme, ThemeMode::Basic1);
+        assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
         assert_eq!(loaded.widget_mode, WidgetMode::Ball);
@@ -338,6 +346,7 @@ mod tests {
         assert!(settings.auto_update_enabled);
         assert!(!settings.auto_start_enabled);
         assert_eq!(settings.theme, ThemeMode::Default);
+        assert_eq!(settings.log_level, LogLevel::Off);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);
         assert_eq!(settings.ball_position, None);

@@ -1,6 +1,7 @@
 mod app_state;
 mod autostart;
 mod commands;
+mod logging;
 mod quota;
 mod settings;
 mod tray;
@@ -12,7 +13,7 @@ use tauri_plugin_autostart::MacosLauncher;
 use app_state::AppState;
 use commands::{
     close_app, get_always_on_top, get_quota, get_settings, hide_window, open_codex, save_settings,
-    set_always_on_top,
+    set_always_on_top, write_frontend_log,
 };
 use settings::SettingsService;
 use tray::{create_tray, load_app_icon};
@@ -37,6 +38,9 @@ pub fn run() {
             window.set_shadow(false)?;
             window.set_icon(load_app_icon()?)?;
             let settings = SettingsService::load(app.handle()).unwrap_or_default();
+            app.state::<AppState>()
+                .logger
+                .configure(app.handle(), settings.log_level)?;
             apply_startup_window_state(&window, &settings)?;
             window.show()?;
             create_tray(app.handle())?;
@@ -50,7 +54,8 @@ pub fn run() {
             set_always_on_top,
             open_codex,
             get_settings,
-            save_settings
+            save_settings,
+            write_frontend_log
         ])
         .run(tauri::generate_context!())
         .expect("运行 Tauri 应用失败");

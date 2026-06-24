@@ -14,7 +14,8 @@ export function createTauriService() {
       getSettings: () => invoke("get_settings"),
       hideWindow: () => invoke("hide_window"),
       saveSettings: (settings) => invoke("save_settings", { settings }),
-      setAlwaysOnTop: (value) => invoke("set_always_on_top", { value })
+      setAlwaysOnTop: (value) => invoke("set_always_on_top", { value }),
+      writeFrontendLog: (level, message, context) => invoke("write_frontend_log", { level, message, context })
     },
     dialog: {
       chooseCodexPath: () =>

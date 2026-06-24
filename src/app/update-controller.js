@@ -3,7 +3,7 @@ import { UPDATE_CHECK_INTERVAL_MS } from "./constants.js";
 const TRANSIENT_STATUS_DURATION_MS = 1800;
 const TRANSIENT_STATUS_TYPES = new Set(["latest", "saved", "checkFailed", "updateFailed"]);
 
-export function createUpdateController({ state, service, render }) {
+export function createUpdateController({ state, service, render, logger }) {
   function scheduleUpdateChecks() {
     if (state.updateTimer) window.clearInterval(state.updateTimer);
     state.updateTimer = null;
@@ -37,13 +37,13 @@ export function createUpdateController({ state, service, render }) {
       try {
         await downloadAndInstallUpdate(update);
       } catch (error) {
-        console.error("更新失败", error);
+        logger?.error("更新失败", error, "frontend.update");
         setUpdateStatus({ type: "updateFailed" });
         return;
       }
       setUpdateStatus({ type: "ready" });
     } catch (error) {
-      console.error("获取版本失败", error);
+      logger?.error("获取版本失败", error, "frontend.update");
       setUpdateStatus({ type: "checkFailed" });
     } finally {
       state.updateChecking = false;

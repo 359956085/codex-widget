@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, THEMES, WIDGET_MODES } from "./constants.js";
+import { DEFAULT_SETTINGS, LOG_LEVELS, THEMES, WIDGET_MODES } from "./constants.js";
 
 export function normalizeSettings(settings) {
   const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
@@ -12,6 +12,7 @@ export function normalizeSettings(settings) {
         : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: settings?.locale === "en" ? "en" : "zh",
     theme: normalizeTheme(settings?.theme),
+    logLevel: normalizeLogLevel(settings?.logLevel),
     autoUpdateEnabled:
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
     autoStartEnabled:
@@ -40,6 +41,10 @@ export function normalizeBallDock(dock) {
 
 export function normalizeTheme(theme) {
   return Object.hasOwn(THEMES, theme) ? theme : DEFAULT_SETTINGS.theme;
+}
+
+export function normalizeLogLevel(logLevel) {
+  return Object.hasOwn(LOG_LEVELS, logLevel) ? logLevel : DEFAULT_SETTINGS.logLevel;
 }
 
 export function normalizeInputValue(value) {

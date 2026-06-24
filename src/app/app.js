@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from "./constants.js";
 import { createElements } from "./dom.js";
 import { initializeActionIcons } from "./icons.js";
+import { createLogger } from "./logger.js";
 import { createQuotaController } from "./quota-controller.js";
 import { createRenderer } from "./render.js";
 import { createSettingsController } from "./settings-controller.js";
@@ -13,6 +14,7 @@ export function createApp() {
   const els = createElements();
   const state = createAppState();
   const service = createTauriService();
+  const logger = createLogger(service);
   let render = () => {};
 
   function applySettings(settings) {
@@ -33,7 +35,7 @@ export function createApp() {
       render();
     } catch (error) {
       if (silent) {
-        console.error("保存设置失败", error);
+        logger.error("保存设置失败", error, "frontend.settings");
       } else {
         showError(error);
       }
@@ -58,20 +60,23 @@ export function createApp() {
     render: () => render(),
     applyNormalizedSettings,
     saveCurrentSettings,
-    showError
+    showError,
+    logger
   });
 
   const quotaController = createQuotaController({
     state,
     service,
     render: () => render(),
-    normalizeError
+    normalizeError,
+    logger
   });
 
   const updateController = createUpdateController({
     state,
     service,
-    render: () => render()
+    render: () => render(),
+    logger
   });
 
   const settingsController = createSettingsController({
@@ -88,6 +93,7 @@ export function createApp() {
     scheduleAutoRefresh: quotaController.scheduleAutoRefresh,
     refreshQuota: quotaController.refreshQuota,
     scheduleUpdateChecks: updateController.scheduleUpdateChecks,
+    logger,
     clearPanelClick: windowController.clearPanelClick
   });
 
@@ -119,7 +125,7 @@ export function createApp() {
   }
 
   async function start() {
-    initializeActionIcons(els);
+    initializeActionIcons(els, logger);
     bindEvents();
     await initialize();
   }
@@ -157,7 +163,7 @@ export function createApp() {
       const settings = await service.commands.getSettings();
       applySettings(settings);
     } catch (error) {
-      console.error("读取设置失败", error);
+      logger.error("读取设置失败", error, "frontend.settings");
       applySettings(DEFAULT_SETTINGS);
     }
   }

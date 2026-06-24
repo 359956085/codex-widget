@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS = {
   refreshIntervalMinutes: 5,
   locale: "zh",
   theme: "default",
+  logLevel: "off",
   autoUpdateEnabled: true,
   autoStartEnabled: false,
   widgetMode: "panel",
@@ -31,6 +32,45 @@ export const THEMES = {
     label: {
       zh: "基础主题 1",
       en: "Basic theme 1"
+    }
+  }
+};
+
+export const LOG_LEVELS = {
+  off: {
+    label: {
+      zh: "关闭",
+      en: "Off"
+    }
+  },
+  error: {
+    label: {
+      zh: "错误",
+      en: "Error"
+    }
+  },
+  warn: {
+    label: {
+      zh: "警告",
+      en: "Warn"
+    }
+  },
+  info: {
+    label: {
+      zh: "信息",
+      en: "Info"
+    }
+  },
+  debug: {
+    label: {
+      zh: "调试",
+      en: "Debug"
+    }
+  },
+  trace: {
+    label: {
+      zh: "跟踪",
+      en: "Trace"
     }
   }
 };
@@ -90,6 +130,7 @@ export const i18n = {
     refreshInterval: "刷新分钟",
     theme: "主题",
     language: "语言",
+    logLevel: "日志等级",
     autoUpdate: "自动更新",
     autoUpdateHint: "更新依赖 GitHub，网络不可达时可能需要配置代理。",
     autoStart: "开机自启",
@@ -147,6 +188,7 @@ export const i18n = {
     refreshInterval: "Refresh min",
     theme: "Theme",
     language: "Language",
+    logLevel: "Log level",
     autoUpdate: "Auto update",
     autoUpdateHint: "Updates depend on GitHub. Configure a proxy if the network cannot reach it.",
     autoStart: "Start at login",

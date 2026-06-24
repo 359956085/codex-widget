@@ -1,6 +1,6 @@
-import { DEFAULT_SETTINGS, THEMES } from "./constants.js";
+import { DEFAULT_SETTINGS, LOG_LEVELS, THEMES } from "./constants.js";
 import { syncSettingsDraftFromSettings } from "./state.js";
-import { normalizeInputValue, normalizeTheme } from "./settings-model.js";
+import { normalizeInputValue, normalizeLogLevel, normalizeTheme } from "./settings-model.js";
 
 export function createSettingsController({
   els,
@@ -16,6 +16,7 @@ export function createSettingsController({
   scheduleAutoRefresh,
   refreshQuota,
   scheduleUpdateChecks,
+  logger,
   clearPanelClick
 }) {
   function bindEvents() {
@@ -28,6 +29,7 @@ export function createSettingsController({
     els.autoStartSwitch.addEventListener("change", syncAutoStartDraft);
     els.themeSelect.addEventListener("change", () => selectSettingsTheme(els.themeSelect.value));
     els.localeSelect.addEventListener("change", () => selectSettingsLocale(els.localeSelect.value));
+    els.logLevelSelect.addEventListener("change", () => selectLogLevel(els.logLevelSelect.value));
 
     els.customSelectShells.forEach((shell) => {
       const trigger = shell.querySelector(".custom-select-trigger");
@@ -75,6 +77,7 @@ export function createSettingsController({
     renderThemeOptions(renderLocale());
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
+    els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
     syncCustomSelects();
   }
 
@@ -91,6 +94,7 @@ export function createSettingsController({
     els.refreshIntervalLabel.textContent = text.refreshInterval;
     els.themeLabel.textContent = text.theme;
     els.languageLabel.textContent = text.language;
+    els.logLevelLabel.textContent = text.logLevel;
     els.codexPathInput.placeholder = text.codexPathPlaceholder;
     els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
     els.cancelSettingsBtn.textContent = text.cancel;
@@ -99,8 +103,10 @@ export function createSettingsController({
     els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
     els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
     renderThemeOptions(renderLocale());
+    renderLogLevelOptions(renderLocale());
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
+    els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
     syncCustomSelects();
   }
 
@@ -178,6 +184,11 @@ export function createSettingsController({
     render();
   }
 
+  function selectLogLevel(logLevel) {
+    state.settingsDraft.logLevel = normalizeLogLevel(logLevel);
+    render();
+  }
+
   async function chooseCodexPath() {
     if (!service.isAvailable()) return;
 
@@ -188,6 +199,7 @@ export function createSettingsController({
         state.settingsDraft.codexCliPath = selected;
       }
     } catch (error) {
+      logger.error("选择 Codex CLI 路径失败", error, "frontend.settings");
       state.error = normalizeError(error);
       render();
     }
@@ -212,6 +224,7 @@ export function createSettingsController({
       refreshQuota();
       scheduleUpdateChecks();
     } catch (error) {
+      logger.error("保存设置失败", error, "frontend.settings");
       state.error = normalizeError(error);
     } finally {
       state.savingSettings = false;
@@ -227,6 +240,7 @@ export function createSettingsController({
       refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
       locale: els.localeSelect.value === "en" ? "en" : "zh",
       theme: normalizeTheme(els.themeSelect.value),
+      logLevel: normalizeLogLevel(els.logLevelSelect.value),
       autoUpdateEnabled: els.autoUpdateSwitch.checked,
       autoStartEnabled: els.autoStartSwitch.checked,
       widgetMode: state.widgetMode,
@@ -246,6 +260,18 @@ export function createSettingsController({
     });
     els.themeSelect.replaceChildren(...options);
     els.themeSelect.value = currentTheme;
+  }
+
+  function renderLogLevelOptions(locale) {
+    const currentLogLevel = normalizeLogLevel(state.settingsDraft.logLevel);
+    const options = Object.entries(LOG_LEVELS).map(([value, logLevel]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = logLevel.label[locale] || logLevel.label.zh;
+      return option;
+    });
+    els.logLevelSelect.replaceChildren(...options);
+    els.logLevelSelect.value = currentLogLevel;
   }
 
   return {

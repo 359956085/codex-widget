@@ -46,6 +46,8 @@ export function createElements() {
     themeSelect: document.getElementById("themeSelect"),
     languageLabel: document.getElementById("languageLabel"),
     localeSelect: document.getElementById("localeSelect"),
+    logLevelLabel: document.getElementById("logLevelLabel"),
+    logLevelSelect: document.getElementById("logLevelSelect"),
     customSelectShells: Array.from(document.querySelectorAll(".custom-select-shell")),
     cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
     saveSettingsBtn: document.getElementById("saveSettingsBtn"),
