@@ -30,8 +30,8 @@ body[data-theme="basic2"] {
   --settings-muted-color: var(--basic2-muted);
   --widget-surface-background:
     radial-gradient(circle at 5% 9%, rgba(255, 225, 145, 0.2), transparent 9%),
-    radial-gradient(circle at 98% 96%, rgba(255, 139, 61, 0.34), transparent 27%),
-    radial-gradient(circle at 80% 106%, rgba(255, 198, 109, 0.2), transparent 30%),
+    radial-gradient(ellipse 110px 58px at 106% 112%, rgba(255, 174, 79, 0.2), transparent 70%),
+    radial-gradient(ellipse 190px 80px at 112% 128%, rgba(255, 198, 109, 0.12), transparent 72%),
     linear-gradient(150deg, rgba(28, 25, 18, 0.99), rgba(10, 10, 8, 0.99) 56%, rgba(21, 17, 11, 0.99)),
     var(--basic2-panel);
   --widget-surface-shadow:
@@ -94,8 +94,8 @@ body[data-theme="basic2"] .widget::before {
   opacity: 0.9;
   background:
     radial-gradient(circle at 5% 7%, rgba(255, 234, 166, 0.22), transparent 7%),
-    radial-gradient(circle at 98% 98%, rgba(255, 144, 45, 0.25), transparent 23%),
-    radial-gradient(circle at 74% 108%, rgba(255, 198, 109, 0.13), transparent 30%),
+    radial-gradient(ellipse 104px 52px at 105% 113%, rgba(255, 153, 54, 0.14), transparent 72%),
+    radial-gradient(ellipse 166px 72px at 112% 126%, rgba(255, 198, 109, 0.08), transparent 74%),
     radial-gradient(circle at 18% 26%, rgba(255, 230, 163, 0.14) 0 0.55px, transparent 0.85px),
     radial-gradient(circle at 76% 72%, rgba(255, 198, 109, 0.12) 0 0.55px, transparent 0.9px),
     linear-gradient(118deg, rgba(255, 255, 255, 0.045), transparent 32%),
@@ -110,16 +110,30 @@ body[data-theme="basic2"] .widget::after {
   pointer-events: none;
   border-radius: 15px;
   content: "";
-  opacity: 0.66;
+  opacity: 0.54;
   background:
-    linear-gradient(180deg, rgba(255, 245, 207, 0.08), transparent 18%),
-    radial-gradient(circle at 96% 94%, rgba(255, 151, 50, 0.42), transparent 17%),
-    radial-gradient(circle at 86% 96%, rgba(255, 198, 109, 0.26), transparent 24%),
-    linear-gradient(90deg, rgba(255, 198, 109, 0.06), transparent 35%, rgba(255, 198, 109, 0.08));
+    radial-gradient(circle at 92% 86%, rgba(255, 230, 163, 0.78) 0 0.45px, transparent 0.85px),
+    radial-gradient(circle at 96% 92%, rgba(255, 198, 109, 0.58) 0 0.5px, transparent 0.9px),
+    radial-gradient(circle at 84% 94%, rgba(255, 151, 50, 0.46) 0 0.45px, transparent 0.85px),
+    linear-gradient(90deg, transparent 0 92%, rgba(255, 198, 109, 0.06) 97%, rgba(255, 220, 150, 0.38) 100%),
+    linear-gradient(180deg, transparent 0 87%, rgba(255, 198, 109, 0.06) 96%, rgba(255, 220, 150, 0.4) 100%),
+    radial-gradient(ellipse 72px 38px at 101% 104%, rgba(255, 231, 172, 0.42), transparent 64%),
+    radial-gradient(ellipse 140px 64px at 109% 119%, rgba(255, 142, 48, 0.22), transparent 74%),
+    linear-gradient(180deg, rgba(255, 245, 207, 0.055), transparent 18%);
+  background-size:
+    31px 31px,
+    27px 27px,
+    37px 37px,
+    auto,
+    auto,
+    auto,
+    auto,
+    auto;
   box-shadow:
-    inset 0 0 26px rgba(255, 198, 109, 0.08),
+    inset 0 0 22px rgba(255, 198, 109, 0.06),
     inset 0 0 62px rgba(0, 0, 0, 0.28),
-    inset 0 -1px 0 rgba(255, 198, 109, 0.6);
+    inset -1px 0 0 rgba(255, 220, 150, 0.34),
+    inset 0 -1px 0 rgba(255, 220, 150, 0.42);
   mix-blend-mode: screen;
 }
 
@@ -580,6 +594,7 @@ body[data-theme="basic2"][data-widget-mode="ball"] .widget {
   padding: 0;
   border: 0;
   border-radius: 50%;
+  backdrop-filter: none;
   background:
     radial-gradient(circle at 34% 22%, rgba(255, 239, 196, 0.16), transparent 32%),
     radial-gradient(circle at 76% 86%, rgba(255, 138, 61, 0.14), transparent 42%),
@@ -588,8 +603,8 @@ body[data-theme="basic2"][data-widget-mode="ball"] .widget {
     inset 0 0 0 1px rgba(255, 198, 109, 0.38),
     inset 0 1px 0 rgba(255, 245, 207, 0.16),
     inset 0 -18px 30px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(255, 198, 109, 0.1),
-    0 8px 18px rgba(0, 0, 0, 0.28);
+    inset 0 0 18px rgba(255, 198, 109, 0.08),
+    0 0 0 1px rgba(255, 198, 109, 0.1);
 }
 
 body[data-theme="basic2"][data-widget-mode="ball"] .widget::before {
@@ -621,6 +636,7 @@ body[data-theme="basic2"][data-widget-mode="ball"] .liquid-meter {
 body[data-theme="basic2"][data-widget-mode="ball"] .basic-gauge {
   width: 136px;
   height: 136px;
+  filter: none;
 }
 
 body[data-theme="basic2"][data-widget-mode="ball"] .gauge-outer-track,
