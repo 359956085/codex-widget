@@ -33,6 +33,12 @@ export const THEMES = {
       zh: "基础主题 1",
       en: "Basic theme 1"
     }
+  },
+  basic2: {
+    label: {
+      zh: "基础主题 2",
+      en: "Basic theme 2"
+    }
   }
 };
 

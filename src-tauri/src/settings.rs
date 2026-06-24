@@ -32,6 +32,7 @@ impl Default for Locale {
 pub enum ThemeMode {
     Default,
     Basic1,
+    Basic2,
 }
 
 impl Default for ThemeMode {
@@ -290,7 +291,7 @@ mod tests {
             update_proxy: Some("  http://127.0.0.1:7890  ".to_string()),
             refresh_interval_minutes: 15,
             locale: Locale::En,
-            theme: ThemeMode::Basic1,
+            theme: ThemeMode::Basic2,
             auto_update_enabled: false,
             auto_start_enabled: true,
             log_level: LogLevel::Debug,
@@ -309,7 +310,7 @@ mod tests {
             loaded.update_proxy,
             Some("http://127.0.0.1:7890".to_string())
         );
-        assert_eq!(loaded.theme, ThemeMode::Basic1);
+        assert_eq!(loaded.theme, ThemeMode::Basic2);
         assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
