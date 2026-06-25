@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS, LOG_LEVELS, THEMES } from "./constants.js";
+import { createCustomSelectController } from "./custom-select.js";
 import { syncSettingsDraftFromSettings } from "./state.js";
 import { normalizeInputValue, normalizeLogLevel, normalizeTheme } from "./settings-model.js";
 
@@ -19,6 +20,11 @@ export function createSettingsController({
   logger,
   clearPanelClick
 }) {
+  const customSelects = createCustomSelectController({
+    shells: els.customSelectShells,
+    onChange: handleCustomSelectChange
+  });
+
   function bindEvents() {
     els.settingsBtn.addEventListener("click", openSettingsPanel);
     els.settingsCloseBtn.addEventListener("click", closeSettingsPanel);
@@ -27,31 +33,7 @@ export function createSettingsController({
     els.chooseCodexBtn.addEventListener("click", chooseCodexPath);
     els.autoUpdateSwitch.addEventListener("change", syncAutoUpdateDraft);
     els.autoStartSwitch.addEventListener("change", syncAutoStartDraft);
-    els.themeSelect.addEventListener("change", () => selectSettingsTheme(els.themeSelect.value));
-    els.localeSelect.addEventListener("change", () => selectSettingsLocale(els.localeSelect.value));
-    els.logLevelSelect.addEventListener("change", () => selectLogLevel(els.logLevelSelect.value));
-
-    els.customSelectShells.forEach((shell) => {
-      const trigger = shell.querySelector(".custom-select-trigger");
-      const menu = shell.querySelector(".custom-select-menu");
-      trigger?.addEventListener("click", (event) => {
-        event.preventDefault();
-        toggleCustomSelect(shell);
-      });
-      menu?.addEventListener("click", (event) => {
-        const option = event.target instanceof Element ? event.target.closest(".custom-select-option") : null;
-        if (!option) return;
-        selectCustomOption(shell, option.dataset.value || "");
-      });
-    });
-
-    document.addEventListener("pointerdown", (event) => {
-      if (event.target instanceof Element && event.target.closest(".custom-select-shell")) return;
-      closeCustomSelects();
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeCustomSelects();
-    });
+    customSelects.bindEvents();
   }
 
   function openSettingsPanel() {
@@ -65,6 +47,7 @@ export function createSettingsController({
   function closeSettingsPanel() {
     state.settingsOpen = false;
     syncSettingsDraftFromSettings(state);
+    customSelects.close();
     render();
   }
 
@@ -78,7 +61,7 @@ export function createSettingsController({
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
     els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
-    syncCustomSelects();
+    customSelects.sync();
   }
 
   function renderSettingsPanel(text) {
@@ -107,61 +90,17 @@ export function createSettingsController({
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
     els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
-    syncCustomSelects();
+    customSelects.sync();
   }
 
-  function syncCustomSelects() {
-    els.customSelectShells.forEach(syncCustomSelect);
-  }
-
-  function syncCustomSelect(shell) {
-    const select = shell.querySelector("select");
-    const trigger = shell.querySelector(".custom-select-trigger");
-    const valueNode = shell.querySelector(".custom-select-value");
-    const menu = shell.querySelector(".custom-select-menu");
-    if (!(select instanceof HTMLSelectElement) || !trigger || !valueNode || !menu) return;
-
-    const selectedOption = select.selectedOptions[0] || select.options[0];
-    valueNode.textContent = selectedOption?.textContent || "";
-    trigger.disabled = select.disabled;
-    trigger.setAttribute("aria-expanded", shell.classList.contains("open") ? "true" : "false");
-
-    const options = Array.from(select.options).map((option) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "custom-select-option";
-      button.dataset.value = option.value;
-      button.dataset.selected = option.value === select.value ? "true" : "false";
-      button.textContent = option.textContent;
-      if (option.value === select.value) {
-        button.setAttribute("aria-current", "true");
-      }
-      return button;
-    });
-    menu.replaceChildren(...options);
-  }
-
-  function toggleCustomSelect(shell) {
-    const shouldOpen = !shell.classList.contains("open");
-    closeCustomSelects(shell);
-    shell.classList.toggle("open", shouldOpen);
-    syncCustomSelect(shell);
-  }
-
-  function closeCustomSelects(exceptShell = null) {
-    els.customSelectShells.forEach((shell) => {
-      if (shell !== exceptShell) shell.classList.remove("open");
-      syncCustomSelect(shell);
-    });
-  }
-
-  function selectCustomOption(shell, value) {
-    const select = shell.querySelector("select");
-    if (!(select instanceof HTMLSelectElement)) return;
-
-    select.value = value;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-    closeCustomSelects();
+  function handleCustomSelectChange(selectId, value) {
+    if (selectId === "themeSelect") {
+      selectSettingsTheme(value);
+    } else if (selectId === "localeSelect") {
+      selectSettingsLocale(value);
+    } else if (selectId === "logLevelSelect") {
+      selectLogLevel(value);
+    }
   }
 
   function syncAutoUpdateDraft() {
@@ -276,7 +215,6 @@ export function createSettingsController({
 
   return {
     bindEvents,
-    closeCustomSelects,
     closeSettingsPanel,
     openSettingsPanel,
     renderSettingsPanel

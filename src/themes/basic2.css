@@ -466,7 +466,7 @@ body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"] .gauge-label {
 }
 
 body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"]:not([data-gauge-dock="none"]) .gauge-percent {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 body[data-theme="basic2"] .quota-panel {
