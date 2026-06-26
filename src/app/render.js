@@ -84,7 +84,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
 
     renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
     renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
-    els.planText.textContent = quota?.planType || text.unknown;
+    els.planText.textContent = formatResetCredits(quota?.resetCredits?.availableCount);
     settingsView.renderSettingsPanel(text);
   }
 
@@ -111,6 +111,13 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
   }
 
   return { render };
+}
+
+function formatResetCredits(availableCount) {
+  if (typeof availableCount === "number" && Number.isInteger(availableCount) && availableCount >= 0) {
+    return String(availableCount);
+  }
+  return "--";
 }
 
 function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale) {

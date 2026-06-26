@@ -2,14 +2,14 @@ use anyhow::{anyhow, Result};
 use chrono::{SecondsFormat, TimeZone, Utc};
 use serde_json::Value;
 
-use super::types::{QuotaSnapshot, QuotaWindow};
+use super::types::{QuotaSnapshot, QuotaWindow, ResetCredits};
 
 pub fn normalize_rate_limits_response(response: &Value) -> Result<QuotaSnapshot> {
     let snapshot = select_snapshot(response).ok_or_else(|| anyhow!("Codex CLI 未返回额度快照。"))?;
-    Ok(normalize_snapshot(snapshot))
+    Ok(normalize_snapshot(response, snapshot))
 }
 
-fn normalize_snapshot(snapshot: &Value) -> QuotaSnapshot {
+fn normalize_snapshot(response: &Value, snapshot: &Value) -> QuotaSnapshot {
     let primary = normalize_window(snapshot.get("primary"));
     let secondary = normalize_window(snapshot.get("secondary"));
     let active_window = primary.as_ref().or(secondary.as_ref());
@@ -23,6 +23,7 @@ fn normalize_snapshot(snapshot: &Value) -> QuotaSnapshot {
         plan_type: read_string(snapshot, "planType").unwrap_or_else(|| "unknown".to_string()),
         reached_type: read_string(snapshot, "rateLimitReachedType"),
         credits: snapshot.get("credits").cloned(),
+        reset_credits: normalize_reset_credits_from_response(response, snapshot),
         primary,
         secondary,
         remaining_percent,
@@ -53,6 +54,18 @@ fn normalize_window(window: Option<&Value>) -> Option<QuotaWindow> {
         remaining_percent: clamp_percent(100.0 - f64::from(used_percent)),
         window_duration_mins: read_u64(window, "windowDurationMins"),
         resets_at: read_unix_seconds(window, "resetsAt").and_then(format_unix_seconds),
+    })
+}
+
+fn normalize_reset_credits_from_response(response: &Value, snapshot: &Value) -> Option<ResetCredits> {
+    normalize_reset_credits(response.get("rateLimitResetCredits"))
+        .or_else(|| normalize_reset_credits(snapshot.get("rateLimitResetCredits")))
+}
+
+fn normalize_reset_credits(value: Option<&Value>) -> Option<ResetCredits> {
+    let value = value?;
+    read_u64(value, "availableCount").map(|available_count| ResetCredits {
+        available_count: Some(available_count),
     })
 }
 
@@ -174,6 +187,59 @@ mod tests {
             primary.resets_at,
             Some("2024-03-09T16:00:00.000Z".to_string())
         );
+    }
+
+    #[test]
+    fn 优先解析根层剩余重置次数() {
+        let response = json!({
+            "rateLimitResetCredits": { "availableCount": 2 },
+            "rateLimits": {
+                "rateLimitResetCredits": { "availableCount": 3 },
+                "primary": { "usedPercent": 12, "windowDurationMins": 300 }
+            }
+        });
+
+        let snapshot = normalize_rate_limits_response(&response).unwrap();
+        assert_eq!(snapshot.reset_credits.unwrap().available_count, Some(2));
+    }
+
+    #[test]
+    fn 根层缺失时回退到快照内重置次数() {
+        let response = json!({
+            "rateLimits": {
+                "rateLimitResetCredits": { "availableCount": 3 },
+                "primary": { "usedPercent": 12, "windowDurationMins": 300 }
+            }
+        });
+
+        let snapshot = normalize_rate_limits_response(&response).unwrap();
+        assert_eq!(snapshot.reset_credits.unwrap().available_count, Some(3));
+    }
+
+    #[test]
+    fn 重置次数为零时保留() {
+        let response = json!({
+            "rateLimitResetCredits": { "availableCount": 0 },
+            "rateLimits": {
+                "primary": { "usedPercent": 12, "windowDurationMins": 300 }
+            }
+        });
+
+        let snapshot = normalize_rate_limits_response(&response).unwrap();
+        assert_eq!(snapshot.reset_credits.unwrap().available_count, Some(0));
+    }
+
+    #[test]
+    fn 重置次数缺失或类型异常时为空() {
+        let response = json!({
+            "rateLimitResetCredits": { "availableCount": -1 },
+            "rateLimits": {
+                "primary": { "usedPercent": 12, "windowDurationMins": 300 }
+            }
+        });
+
+        let snapshot = normalize_rate_limits_response(&response).unwrap();
+        assert_eq!(snapshot.reset_credits, None);
     }
 
     #[test]

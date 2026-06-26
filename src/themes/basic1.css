@@ -408,12 +408,6 @@ body[data-theme="basic1"] .quota-card strong {
   text-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
 }
 
-body[data-theme="basic1"] .quota-card.slim strong {
-  color: var(--basic1-meter-b);
-  font-size: 14px;
-  text-transform: lowercase;
-  text-shadow: 0 0 12px rgba(52, 242, 176, 0.26);
-}
 
 body[data-theme="basic1"] .status {
   grid-template-columns: 17px minmax(0, 1fr);

@@ -42,9 +42,6 @@
   white-space: nowrap;
 }
 
-.quota-card.slim strong {
-  font-size: 13px;
-}
 
 .status {
   display: grid;

@@ -541,17 +541,6 @@ body[data-theme="basic2"] .quota-card strong {
     0 0 10px rgba(255, 255, 255, 0.1);
 }
 
-body[data-theme="basic2"] .quota-card.slim strong {
-  color: transparent;
-  font-size: 15px;
-  font-weight: 900;
-  text-transform: lowercase;
-  background: linear-gradient(180deg, #fff2c2, var(--basic2-gold) 52%, var(--basic2-orange));
-  -webkit-background-clip: text;
-  background-clip: text;
-  text-shadow: none;
-  filter: drop-shadow(0 0 6px rgba(255, 198, 109, 0.34));
-}
 
 body[data-theme="basic2"] .status {
   grid-template-columns: 17px minmax(0, 1fr);

@@ -3,7 +3,6 @@ import {
   CircleDot,
   Clock3,
   createElement as createLucideElement,
-  Crown,
   FolderOpen,
   Minus,
   Pin,
@@ -13,11 +12,34 @@ import {
   X
 } from "lucide";
 
+const RESET_CREDIT_ICON = [
+  "svg",
+  {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: "24",
+    height: "24",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round"
+  },
+  [
+    ["path", { d: "M4.7 14.6a7.8 7.8 0 0 1 13.1-6.9" }],
+    ["path", { d: "M18 4.6v3.2h-3.2" }],
+    ["path", { d: "M19.3 9.4a7.8 7.8 0 0 1-13.1 6.9" }],
+    ["path", { d: "M6 19.4v-3.2h3.2" }],
+    ["path", { d: "M12 8.4l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z" }],
+    ["path", { d: "M5.6 8.4h.01" }]
+  ]
+];
+
 const ACTION_ICONS = {
   "calendar-days": CalendarDays,
   "circle-dot": CircleDot,
   "clock-3": Clock3,
-  crown: Crown,
+  "reset-credit": RESET_CREDIT_ICON,
   "folder-open": FolderOpen,
   minus: Minus,
   pin: Pin,
@@ -40,7 +62,7 @@ export function initializeActionIcons(els, logger) {
     [els.statusIcon, "refresh-cw"],
     [document.querySelector('[data-quota-icon="primary"]'), "clock-3"],
     [document.querySelector('[data-quota-icon="secondary"]'), "calendar-days"],
-    [document.querySelector('[data-quota-icon="plan"]'), "crown"]
+    [document.querySelector('[data-quota-icon="plan"]'), "reset-credit"]
   ].forEach(([button, iconName]) => {
     setActionButtonIcon(button, iconName, logger);
   });

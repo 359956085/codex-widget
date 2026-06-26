@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-widget-rs",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "通过 Codex CLI 读取 Codex 额度的 Rust 版悬浮小组件。",
   "author": "fengshi",
   "license": "MIT",
