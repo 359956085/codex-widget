@@ -45,7 +45,7 @@ pub(crate) fn create_tray(app: &AppHandle) -> tauri::Result<()> {
 
 fn build_tray_menu(app: &AppHandle, always_on_top: bool) -> tauri::Result<Menu<tauri::Wry>> {
     let toggle = MenuItem::with_id(app, "toggle-window", "显示/隐藏", true, None::<&str>)?;
-    let refresh = MenuItem::with_id(app, "refresh-quota", "刷新额度", true, None::<&str>)?;
+    let refresh = MenuItem::with_id(app, "refresh-quota", "刷新数据", true, None::<&str>)?;
     let pin_label = if always_on_top {
         "取消置顶"
     } else {

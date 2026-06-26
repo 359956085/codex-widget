@@ -23,7 +23,7 @@ export function statusLabel(quota, text, locale) {
   if (!quota) return text.noData;
   const fetchedAt = formatTimeOrPlaceholder(quota.fetchedAt, locale);
   const primaryResetAt = formatTimeOrPlaceholder(quota.primary?.resetsAt, locale);
-  const secondaryResetAt = formatTimeOrPlaceholder(quota.secondary?.resetsAt, locale);
+  const secondaryResetAt = formatDateTimeOrPlaceholder(quota.secondary?.resetsAt, locale);
   return `${text.refreshedAt} ${fetchedAt} · ${text.primaryResetLabel} ${primaryResetAt} · ${text.secondaryResetLabel} ${secondaryResetAt}`;
 }
 
@@ -54,6 +54,21 @@ export function formatDate(value, locale) {
 
 export function formatTimeOrPlaceholder(value, locale) {
   return value ? formatDate(value, locale) || "--" : "--";
+}
+
+export function formatDateTimeOrPlaceholder(value, locale) {
+  return value ? formatMonthDayTime(value, locale) || "--" : "--";
+}
+
+function formatMonthDayTime(value, locale) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
+    month: locale === "zh" ? "numeric" : "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 export function waterFillPercent(remaining, theme) {

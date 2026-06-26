@@ -16,7 +16,7 @@ export function createQuotaController({ state, service, render, normalizeError, 
       state.quota = null;
       scheduleResetRefresh(null);
       state.error = normalizeError(error);
-      logger?.error("刷新额度失败", error, "frontend.quota");
+      logger?.error("刷新数据失败", error, "frontend.quota");
     } finally {
       state.loading = false;
       render();
