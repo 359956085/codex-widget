@@ -2,7 +2,7 @@ import { APP_VERSION_LABEL, i18n, WIDGET_MODES } from "./constants.js";
 import {
   formatWindowLabel,
   getVisualState,
-  primaryRemainingPercent,
+  selectedMeterWindow,
   stateLabel,
   statusLabel,
   waterFillPercent
@@ -19,9 +19,9 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     const text = i18n[activeLocale];
     const quota = state.quota;
     const hasQuota = Boolean(quota);
-    const panelRemaining = typeof quota?.remainingPercent === "number" ? quota.remainingPercent : null;
-    const ballRemaining = primaryRemainingPercent(quota);
-    const remaining = state.widgetMode === WIDGET_MODES.BALL ? ballRemaining : panelRemaining;
+    const meterWindow = state.settingsOpen ? state.settingsDraft.meterWindow : state.settings.meterWindow;
+    const meterWindowData = selectedMeterWindow(quota, meterWindow);
+    const remaining = typeof meterWindowData?.remainingPercent === "number" ? meterWindowData.remainingPercent : null;
     const remainingValue = remaining === null ? 0 : clamp(remaining, 0, 100);
     const visualState = getVisualState(remaining);
     const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;

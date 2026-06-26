@@ -43,6 +43,19 @@ impl Default for ThemeMode {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+pub enum MeterWindow {
+    Primary,
+    Secondary,
+}
+
+impl Default for MeterWindow {
+    fn default() -> Self {
+        Self::Primary
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum WidgetMode {
     Panel,
     Ball,
@@ -81,6 +94,8 @@ pub struct AppSettings {
     pub locale: Locale,
     #[serde(default)]
     pub theme: ThemeMode,
+    #[serde(default)]
+    pub meter_window: MeterWindow,
     #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
     #[serde(default = "default_auto_start_enabled")]
@@ -105,6 +120,7 @@ impl Default for AppSettings {
             refresh_interval_minutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
             locale: Locale::default(),
             theme: ThemeMode::default(),
+            meter_window: MeterWindow::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
             log_level: LogLevel::default(),
@@ -292,6 +308,7 @@ mod tests {
             refresh_interval_minutes: 15,
             locale: Locale::En,
             theme: ThemeMode::Basic2,
+            meter_window: MeterWindow::Secondary,
             auto_update_enabled: false,
             auto_start_enabled: true,
             log_level: LogLevel::Debug,
@@ -311,6 +328,7 @@ mod tests {
             Some("http://127.0.0.1:7890".to_string())
         );
         assert_eq!(loaded.theme, ThemeMode::Basic2);
+        assert_eq!(loaded.meter_window, MeterWindow::Secondary);
         assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
@@ -347,6 +365,7 @@ mod tests {
         assert!(settings.auto_update_enabled);
         assert!(!settings.auto_start_enabled);
         assert_eq!(settings.theme, ThemeMode::Default);
+        assert_eq!(settings.meter_window, MeterWindow::Primary);
         assert_eq!(settings.log_level, LogLevel::Off);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);

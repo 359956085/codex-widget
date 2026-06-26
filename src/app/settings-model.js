@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, LOG_LEVELS, THEMES, WIDGET_MODES } from "./constants.js";
+import { DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES, WIDGET_MODES } from "./constants.js";
 
 export function normalizeSettings(settings) {
   const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
@@ -12,6 +12,7 @@ export function normalizeSettings(settings) {
         : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: settings?.locale === "en" ? "en" : "zh",
     theme: normalizeTheme(settings?.theme),
+    meterWindow: normalizeMeterWindow(settings?.meterWindow),
     logLevel: normalizeLogLevel(settings?.logLevel),
     autoUpdateEnabled:
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
@@ -45,6 +46,10 @@ export function normalizeTheme(theme) {
 
 export function normalizeLogLevel(logLevel) {
   return Object.hasOwn(LOG_LEVELS, logLevel) ? logLevel : DEFAULT_SETTINGS.logLevel;
+}
+
+export function normalizeMeterWindow(meterWindow) {
+  return Object.hasOwn(METER_WINDOWS, meterWindow) ? meterWindow : DEFAULT_SETTINGS.meterWindow;
 }
 
 export function normalizeInputValue(value) {

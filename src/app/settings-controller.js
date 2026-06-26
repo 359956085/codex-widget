@@ -1,7 +1,7 @@
-import { DEFAULT_SETTINGS, LOG_LEVELS, THEMES } from "./constants.js";
+import { DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
 import { createCustomSelectController } from "./custom-select.js";
 import { syncSettingsDraftFromSettings } from "./state.js";
-import { normalizeInputValue, normalizeLogLevel, normalizeTheme } from "./settings-model.js";
+import { normalizeInputValue, normalizeLogLevel, normalizeMeterWindow, normalizeTheme } from "./settings-model.js";
 
 export function createSettingsController({
   els,
@@ -58,8 +58,10 @@ export function createSettingsController({
     els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
     els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
     renderThemeOptions(renderLocale());
+    renderMeterWindowOptions(renderLocale());
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
+    els.meterWindowSelect.value = normalizeMeterWindow(state.settingsDraft.meterWindow);
     els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
     customSelects.sync();
   }
@@ -77,6 +79,7 @@ export function createSettingsController({
     els.refreshIntervalLabel.textContent = text.refreshInterval;
     els.themeLabel.textContent = text.theme;
     els.languageLabel.textContent = text.language;
+    els.meterWindowLabel.textContent = text.meterWindow;
     els.logLevelLabel.textContent = text.logLevel;
     els.codexPathInput.placeholder = text.codexPathPlaceholder;
     els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
@@ -86,9 +89,11 @@ export function createSettingsController({
     els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
     els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
     renderThemeOptions(renderLocale());
+    renderMeterWindowOptions(renderLocale());
     renderLogLevelOptions(renderLocale());
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
+    els.meterWindowSelect.value = normalizeMeterWindow(state.settingsDraft.meterWindow);
     els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
     customSelects.sync();
   }
@@ -98,6 +103,8 @@ export function createSettingsController({
       selectSettingsTheme(value);
     } else if (selectId === "localeSelect") {
       selectSettingsLocale(value);
+    } else if (selectId === "meterWindowSelect") {
+      selectMeterWindow(value);
     } else if (selectId === "logLevelSelect") {
       selectLogLevel(value);
     }
@@ -125,6 +132,11 @@ export function createSettingsController({
 
   function selectLogLevel(logLevel) {
     state.settingsDraft.logLevel = normalizeLogLevel(logLevel);
+    render();
+  }
+
+  function selectMeterWindow(meterWindow) {
+    state.settingsDraft.meterWindow = normalizeMeterWindow(meterWindow);
     render();
   }
 
@@ -179,6 +191,7 @@ export function createSettingsController({
       refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
       locale: els.localeSelect.value === "en" ? "en" : "zh",
       theme: normalizeTheme(els.themeSelect.value),
+      meterWindow: normalizeMeterWindow(els.meterWindowSelect.value),
       logLevel: normalizeLogLevel(els.logLevelSelect.value),
       autoUpdateEnabled: els.autoUpdateSwitch.checked,
       autoStartEnabled: els.autoStartSwitch.checked,
@@ -199,6 +212,18 @@ export function createSettingsController({
     });
     els.themeSelect.replaceChildren(...options);
     els.themeSelect.value = currentTheme;
+  }
+
+  function renderMeterWindowOptions(locale) {
+    const currentMeterWindow = normalizeMeterWindow(state.settingsDraft.meterWindow);
+    const options = Object.entries(METER_WINDOWS).map(([value, meterWindow]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = meterWindow.label[locale] || meterWindow.label.zh;
+      return option;
+    });
+    els.meterWindowSelect.replaceChildren(...options);
+    els.meterWindowSelect.value = currentMeterWindow;
   }
 
   function renderLogLevelOptions(locale) {

@@ -1,5 +1,6 @@
-export function primaryRemainingPercent(quota) {
-  return typeof quota?.primary?.remainingPercent === "number" ? quota.primary.remainingPercent : null;
+export function selectedMeterWindow(quota, meterWindow) {
+  if (!quota) return null;
+  return meterWindow === "secondary" ? quota.secondary || null : quota.primary || null;
 }
 
 export function formatWindowLabel(minutes, fallbackLabel, text, locale) {
