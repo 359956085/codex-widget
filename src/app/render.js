@@ -1,5 +1,6 @@
 import { APP_VERSION_LABEL, i18n, WIDGET_MODES } from "./constants.js";
 import {
+  formatResetCredits,
   formatWindowLabel,
   getVisualState,
   selectedMeterWindow,
@@ -111,13 +112,6 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
   }
 
   return { render };
-}
-
-function formatResetCredits(availableCount) {
-  if (typeof availableCount === "number" && Number.isInteger(availableCount) && availableCount >= 0) {
-    return String(availableCount);
-  }
-  return "--";
 }
 
 function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale) {

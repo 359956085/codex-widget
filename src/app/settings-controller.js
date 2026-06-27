@@ -203,39 +203,31 @@ export function createSettingsController({
   }
 
   function renderThemeOptions(locale) {
-    const currentTheme = normalizeTheme(state.settingsDraft.theme);
-    const options = Object.entries(THEMES).map(([value, theme]) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = theme.label[locale] || theme.label.zh;
-      return option;
-    });
-    els.themeSelect.replaceChildren(...options);
-    els.themeSelect.value = currentTheme;
+    renderSelectOptions(els.themeSelect, THEMES, normalizeTheme(state.settingsDraft.theme), locale);
   }
 
   function renderMeterWindowOptions(locale) {
-    const currentMeterWindow = normalizeMeterWindow(state.settingsDraft.meterWindow);
-    const options = Object.entries(METER_WINDOWS).map(([value, meterWindow]) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = meterWindow.label[locale] || meterWindow.label.zh;
-      return option;
-    });
-    els.meterWindowSelect.replaceChildren(...options);
-    els.meterWindowSelect.value = currentMeterWindow;
+    renderSelectOptions(
+      els.meterWindowSelect,
+      METER_WINDOWS,
+      normalizeMeterWindow(state.settingsDraft.meterWindow),
+      locale
+    );
   }
 
   function renderLogLevelOptions(locale) {
-    const currentLogLevel = normalizeLogLevel(state.settingsDraft.logLevel);
-    const options = Object.entries(LOG_LEVELS).map(([value, logLevel]) => {
+    renderSelectOptions(els.logLevelSelect, LOG_LEVELS, normalizeLogLevel(state.settingsDraft.logLevel), locale);
+  }
+
+  function renderSelectOptions(select, registry, currentValue, locale) {
+    const options = Object.entries(registry).map(([value, item]) => {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = logLevel.label[locale] || logLevel.label.zh;
+      option.textContent = item.label[locale] || item.label.zh;
       return option;
     });
-    els.logLevelSelect.replaceChildren(...options);
-    els.logLevelSelect.value = currentLogLevel;
+    select.replaceChildren(...options);
+    select.value = currentValue;
   }
 
   return {

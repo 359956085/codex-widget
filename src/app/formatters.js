@@ -3,6 +3,13 @@ export function selectedMeterWindow(quota, meterWindow) {
   return meterWindow === "secondary" ? quota.secondary || null : quota.primary || null;
 }
 
+export function formatResetCredits(availableCount) {
+  if (typeof availableCount === "number" && Number.isInteger(availableCount) && availableCount >= 0) {
+    return String(availableCount);
+  }
+  return "--";
+}
+
 export function formatWindowLabel(minutes, fallbackLabel, text, locale) {
   if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) return fallbackLabel;
   if (minutes % 10080 === 0) {
