@@ -24,6 +24,7 @@ export function createSettingsController({
     shells: els.customSelectShells,
     onChange: handleCustomSelectChange
   });
+  const selectOptionSignatures = new WeakMap();
 
   function bindEvents() {
     els.settingsBtn.addEventListener("click", openSettingsPanel);
@@ -68,6 +69,8 @@ export function createSettingsController({
 
   function renderSettingsPanel(text) {
     els.settingsPanel.hidden = !state.settingsOpen;
+    if (!state.settingsOpen) return;
+
     els.settingsTitle.textContent = text.settings;
     els.codexPathLabel.textContent = text.codexPath;
     els.autoUpdateLabel.textContent = text.autoUpdate;
@@ -220,13 +223,23 @@ export function createSettingsController({
   }
 
   function renderSelectOptions(select, registry, currentValue, locale) {
-    const options = Object.entries(registry).map(([value, item]) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = item.label[locale] || item.label.zh;
-      return option;
-    });
-    select.replaceChildren(...options);
+    const items = Object.entries(registry).map(([value, item]) => ({
+      value,
+      label: item.label[locale] || item.label.zh
+    }));
+    const signature = items.map((item) => `${item.value}:${item.label}`).join("|");
+
+    if (selectOptionSignatures.get(select) !== signature) {
+      const options = items.map((item) => {
+        const option = document.createElement("option");
+        option.value = item.value;
+        option.textContent = item.label;
+        return option;
+      });
+      select.replaceChildren(...options);
+      selectOptionSignatures.set(select, signature);
+    }
+
     select.value = currentValue;
   }
 

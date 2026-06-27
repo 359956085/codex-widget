@@ -14,6 +14,8 @@ import { formatUpdateStatus } from "./update-status.js";
 import { updateGauge } from "../components/gauge.js";
 
 export function createRenderer({ els, state, getLocale, getTheme, onVersionClick, settingsView }) {
+  const brandView = createBrandView();
+
   function render() {
     const activeLocale = getLocale();
     const activeTheme = getTheme();
@@ -29,15 +31,15 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     const updateStatusText = formatUpdateStatus(text, state.updateStatus);
 
     document.documentElement.lang = activeLocale === "zh" ? "zh-CN" : "en";
-    els.body.dataset.state = mainState;
-    els.body.dataset.widgetMode = state.widgetMode;
-    els.body.dataset.ballDock = state.ballDock || "none";
-    els.body.dataset.theme = activeTheme;
+    setDatasetValue(els.body, "state", mainState);
+    setDatasetValue(els.body, "widgetMode", state.widgetMode);
+    setDatasetValue(els.body, "ballDock", state.ballDock || "none");
+    setDatasetValue(els.body, "theme", activeTheme);
 
     renderBrandName(text);
-    els.remainingLabel.textContent = text.remaining;
+    setText(els.remainingLabel, text.remaining);
     els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
-    els.planLabel.textContent = text.plan;
+    setText(els.planLabel, text.plan);
 
     updateActionButton(els.modeBtn, "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
     updateActionButton(els.settingsBtn, "settings", text.settings);
@@ -53,27 +55,27 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     updateActionButton(els.settingsCloseBtn, "x", text.close);
     updateActionButton(els.chooseCodexBtn, "folder-open", text.chooseCodex);
 
-    els.trafficLight.className = `traffic-light ${mainState}`;
-    els.statusDot.className = `status-dot ${state.error ? "error" : mainState}`;
+    setClassName(els.trafficLight, `traffic-light ${mainState}`);
+    setClassName(els.statusDot, `status-dot ${state.error ? "error" : mainState}`);
 
     if (state.error) {
-      els.stateText.textContent = hasQuota ? stateLabel(visualState, text) : text.error;
-      els.statusText.textContent = state.error;
+      setText(els.stateText, hasQuota ? stateLabel(visualState, text) : text.error);
+      setText(els.statusText, state.error);
     } else if (state.loading) {
-      els.stateText.textContent = text.loading;
-      els.statusText.textContent = text.reading;
+      setText(els.stateText, text.loading);
+      setText(els.statusText, text.reading);
     } else if (updateStatusText) {
-      els.stateText.textContent = stateLabel(visualState, text);
-      els.statusText.textContent = updateStatusText;
+      setText(els.stateText, stateLabel(visualState, text));
+      setText(els.statusText, updateStatusText);
     } else {
-      els.stateText.textContent = stateLabel(visualState, text);
-      els.statusText.textContent = statusLabel(quota, text, activeLocale);
+      setText(els.stateText, stateLabel(visualState, text));
+      setText(els.statusText, statusLabel(quota, text, activeLocale));
     }
 
-    els.remaining.textContent = remaining === null ? "--%" : `${remaining}%`;
-    els.liquidFill.style.height = `${waterFillPercent(remaining, activeTheme)}%`;
+    setText(els.remaining, remaining === null ? "--%" : `${remaining}%`);
+    setStyleValue(els.liquidFill, "height", `${waterFillPercent(remaining, activeTheme)}%`);
     els.liquidMeter.style.setProperty("--remaining-angle", `${remainingValue * 3.6}deg`);
-    els.liquidMeter.dataset.level = visualState;
+    setDatasetValue(els.liquidMeter, "level", visualState);
     updateGauge({
       root: els.gaugeLayer,
       percent: remaining,
@@ -85,40 +87,77 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
 
     renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
     renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
-    els.planText.textContent = formatResetCredits(quota?.resetCredits?.availableCount);
+    setText(els.planText, formatResetCredits(quota?.resetCredits?.availableCount));
     settingsView.renderSettingsPanel(text);
   }
 
   function renderBrandName(text) {
+    setText(brandView.title, text.brandName);
+    setAttribute(els.brandName, "aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
+    if (!brandView.versionButton) return;
+
+    brandView.versionButton.title = text.checkUpdate;
+    setAttribute(brandView.versionButton, "aria-label", `${text.checkUpdate} ${APP_VERSION_LABEL}`);
+  }
+
+  function createBrandView() {
     const title = document.createElement("span");
     title.className = "brand-title";
-    title.textContent = text.brandName;
-    els.brandName.setAttribute("aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
 
     if (!APP_VERSION_LABEL) {
       els.brandName.replaceChildren(title);
-      return;
+      return { title, versionButton: null };
     }
 
     const versionButton = document.createElement("button");
     versionButton.type = "button";
     versionButton.className = "version-badge";
     versionButton.textContent = APP_VERSION_LABEL;
-    versionButton.title = text.checkUpdate;
-    versionButton.setAttribute("aria-label", `${text.checkUpdate} ${APP_VERSION_LABEL}`);
     versionButton.setAttribute("data-no-drag", "");
     versionButton.addEventListener("click", onVersionClick);
     els.brandName.replaceChildren(title, versionButton);
+    return { title, versionButton };
   }
 
   return { render };
 }
 
 function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale) {
-  labelEl.textContent = formatWindowLabel(windowData?.windowDurationMins, fallbackLabel, text, locale);
+  setText(labelEl, formatWindowLabel(windowData?.windowDurationMins, fallbackLabel, text, locale));
   if (!windowData || typeof windowData.remainingPercent !== "number") {
-    valueEl.textContent = "--";
+    setText(valueEl, "--");
     return;
   }
-  valueEl.textContent = `${windowData.remainingPercent}%`;
+  setText(valueEl, `${windowData.remainingPercent}%`);
+}
+
+function setText(element, value) {
+  const nextValue = value ?? "";
+  if (element.textContent !== nextValue) {
+    element.textContent = nextValue;
+  }
+}
+
+function setClassName(element, value) {
+  if (element.className !== value) {
+    element.className = value;
+  }
+}
+
+function setDatasetValue(element, key, value) {
+  if (element.dataset[key] !== value) {
+    element.dataset[key] = value;
+  }
+}
+
+function setStyleValue(element, property, value) {
+  if (element.style[property] !== value) {
+    element.style[property] = value;
+  }
+}
+
+function setAttribute(element, name, value) {
+  if (element.getAttribute(name) !== value) {
+    element.setAttribute(name, value);
+  }
 }

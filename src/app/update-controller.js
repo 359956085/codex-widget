@@ -47,7 +47,6 @@ export function createUpdateController({ state, service, render, logger }) {
       setUpdateStatus({ type: "checkFailed" });
     } finally {
       state.updateChecking = false;
-      render();
     }
   }
 
@@ -81,6 +80,13 @@ export function createUpdateController({ state, service, render, logger }) {
   }
 
   function setUpdateStatus(nextStatus) {
+    if (isSameUpdateStatus(state.updateStatus, nextStatus)) {
+      if (isTransientStatus(nextStatus)) {
+        scheduleTransientStatusClear(nextStatus.type);
+      }
+      return;
+    }
+
     if (!isTransientStatus(nextStatus)) {
       clearTransientStatusTimer();
     }
@@ -93,12 +99,22 @@ export function createUpdateController({ state, service, render, logger }) {
 
   function clearUpdateStatus() {
     clearTransientStatusTimer();
+    if (state.updateStatus === null) return;
     state.updateStatus = null;
     render();
   }
 
   function isTransientStatus(status) {
     return TRANSIENT_STATUS_TYPES.has(status?.type);
+  }
+
+  function isSameUpdateStatus(currentStatus, nextStatus) {
+    if (!currentStatus || !nextStatus) return currentStatus === nextStatus;
+    return (
+      currentStatus.type === nextStatus.type &&
+      currentStatus.version === nextStatus.version &&
+      currentStatus.percent === nextStatus.percent
+    );
   }
 
   function scheduleTransientStatusClear(statusType) {

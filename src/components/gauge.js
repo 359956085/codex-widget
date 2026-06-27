@@ -14,15 +14,15 @@ export function updateGauge({ root, percent, level, label, mode = "panel", dock 
   const gaugeMode = mode === "ball" ? "ball" : "panel";
   const gaugeDock = dock === "left" || dock === "right" ? dock : "none";
 
-  root.dataset.level = level || "unknown";
-  root.dataset.gaugeMode = gaugeMode;
-  root.dataset.gaugeDock = gaugeDock;
-  gauge.outerProgress.style.strokeDashoffset = String(100 - progress);
-  gauge.progress.style.strokeDashoffset = String(100 - progress);
-  gauge.percent.textContent = displayText;
-  gauge.label.textContent = label || "";
-  applyGaugeLayout(gauge, gaugeMode, gaugeDock);
-  gauge.svg.setAttribute("aria-label", `${label || "Quota"} ${displayText}`);
+  setDatasetValue(root, "level", level || "unknown");
+  setDatasetValue(root, "gaugeMode", gaugeMode);
+  setDatasetValue(root, "gaugeDock", gaugeDock);
+  setStyleValue(gauge.outerProgress, "strokeDashoffset", String(100 - progress));
+  setStyleValue(gauge.progress, "strokeDashoffset", String(100 - progress));
+  setText(gauge.percent, displayText);
+  setText(gauge.label, label || "");
+  applyGaugeLayoutIfNeeded(gauge, gaugeMode, gaugeDock);
+  setAttribute(gauge.svg, "aria-label", `${label || "Quota"} ${displayText}`);
 }
 
 function ensureGauge(root) {
@@ -88,30 +88,37 @@ function ensureGauge(root) {
   );
 
   root.replaceChildren(svg);
-  root.__gauge = { svg, inner, outerProgress, progress, mark, percent, label };
+  root.__gauge = { svg, inner, outerProgress, progress, mark, percent, label, layoutKey: "" };
   return root.__gauge;
 }
 
+function applyGaugeLayoutIfNeeded(gauge, mode, dock) {
+  const layoutKey = `${mode}:${dock}`;
+  if (gauge.layoutKey === layoutKey) return;
+  gauge.layoutKey = layoutKey;
+  applyGaugeLayout(gauge, mode, dock);
+}
+
 function applyGaugeLayout(gauge, mode, dock) {
-  gauge.inner.setAttribute("transform", innerTransform(mode, dock));
-  gauge.mark.setAttribute("transform", MARK_TRANSFORM);
-  gauge.percent.setAttribute("x", "65");
-  gauge.percent.setAttribute("text-anchor", "middle");
-  gauge.label.setAttribute("x", "65");
-  gauge.label.setAttribute("text-anchor", "middle");
+  setAttribute(gauge.inner, "transform", innerTransform(mode, dock));
+  setAttribute(gauge.mark, "transform", MARK_TRANSFORM);
+  setAttribute(gauge.percent, "x", "65");
+  setAttribute(gauge.percent, "text-anchor", "middle");
+  setAttribute(gauge.label, "x", "65");
+  setAttribute(gauge.label, "text-anchor", "middle");
 
   if (mode === "panel") {
-    gauge.mark.style.display = "none";
-    gauge.percent.setAttribute("y", "75");
-    gauge.label.setAttribute("y", "96");
-    gauge.label.style.display = "";
+    setStyleValue(gauge.mark, "display", "none");
+    setAttribute(gauge.percent, "y", "75");
+    setAttribute(gauge.label, "y", "96");
+    setStyleValue(gauge.label, "display", "");
     return;
   }
 
-  gauge.mark.style.display = "";
-  gauge.percent.setAttribute("y", "96");
-  gauge.label.setAttribute("y", "111");
-  gauge.label.style.display = "none";
+  setStyleValue(gauge.mark, "display", "");
+  setAttribute(gauge.percent, "y", "96");
+  setAttribute(gauge.label, "y", "111");
+  setStyleValue(gauge.label, "display", "none");
 }
 
 function innerTransform(mode, dock) {
@@ -148,6 +155,30 @@ function svgElement(tagName, attrs = {}) {
     element.setAttribute(name, String(value));
   });
   return element;
+}
+
+function setDatasetValue(element, key, value) {
+  if (element.dataset[key] !== value) {
+    element.dataset[key] = value;
+  }
+}
+
+function setText(element, value) {
+  if (element.textContent !== value) {
+    element.textContent = value;
+  }
+}
+
+function setStyleValue(element, property, value) {
+  if (element.style[property] !== value) {
+    element.style[property] = value;
+  }
+}
+
+function setAttribute(element, name, value) {
+  if (element.getAttribute(name) !== value) {
+    element.setAttribute(name, value);
+  }
 }
 
 function clamp(value, min, max) {
