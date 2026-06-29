@@ -16,8 +16,10 @@
     "tauri:build:nsis": "tauri build --bundles nsis",
     "updater:keygen": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"New-Item -ItemType Directory -Path certs -Force | Out-Null; tauri signer generate --write-keys certs/updater.key\"",
     "tauri:build:nsis:updater": "tauri build --bundles nsis --config src-tauri/tauri.updater.conf.json",
-    "updater:latest": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/create-latest-json.ps1",
-    "release:github": "npm run tauri:build:nsis:updater && npm run updater:latest"
+    "updater:latest": "node scripts/create-latest-json.mjs",
+    "release:github": "npm run tauri:build:nsis:updater && npm run updater:latest",
+    "tauri:build:mac:aarch64:updater": "tauri build --target aarch64-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json",
+    "tauri:build:mac:x64:updater": "tauri build --target x86_64-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

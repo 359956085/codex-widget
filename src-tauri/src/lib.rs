@@ -15,6 +15,7 @@ use commands::{
     close_app, get_always_on_top, get_quota, get_settings, hide_window, open_codex, save_settings,
     set_always_on_top, write_frontend_log,
 };
+use quota::configure_process_path_for_codex;
 use settings::SettingsService;
 use tray::{create_tray, load_app_icon};
 use window_state::apply_startup_window_state;
@@ -31,6 +32,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            configure_process_path_for_codex();
             let window = app
                 .get_webview_window(MAIN_WINDOW_LABEL)
                 .expect("主窗口不存在");

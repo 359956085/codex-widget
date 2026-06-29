@@ -1,4 +1,4 @@
-name: 发布 Windows 安装包
+name: 发布安装包
 
 on:
   push:
@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release:
-    name: 构建并发布 NSIS
+  build-windows:
+    name: 构建 Windows x64
     runs-on: windows-latest
     env:
       CARGO_TERM_COLOR: always
@@ -50,7 +50,7 @@ jobs:
             throw "发布标签必须和 package.json 版本一致：当前标签=$env:GITHUB_REF_NAME，期望标签=$expectedTag。"
           }
           if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
-              throw "缺少 Repository Secret：TAURI_SIGNING_PRIVATE_KEY。请把 certs/updater.key 的完整内容写入该 Secret。"
+            throw "缺少 Repository Secret：TAURI_SIGNING_PRIVATE_KEY。请把 certs/updater.key 的完整内容写入该 Secret。"
           }
 
       - name: 安装前端依赖
@@ -59,41 +59,176 @@ jobs:
       - name: 运行 Rust 测试
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: 生成 Release 产物
-        run: npm run release:github
+      - name: 构建 Windows 安装包
+        run: npm run tauri:build:nsis:updater
 
-      - name: 发布到 GitHub Releases
+      - name: 整理 Windows 产物
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = "Stop"
-
-          $package = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
-          $version = [string] $package.version
-          $tag = $env:GITHUB_REF_NAME
-          $releaseDir = "src-tauri/target/release/github-release"
-          $assets = @(
-            "$releaseDir/codex-widget_${version}_windows_x64-setup.exe",
-            "$releaseDir/codex-widget_${version}_windows_x64-setup.exe.sig",
-            "$releaseDir/latest.json"
-          )
-
-          foreach ($asset in $assets) {
-            if (-not (Test-Path -LiteralPath $asset)) {
-              throw "Release 产物不存在：$asset。"
-            }
+          $version = (Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json).version
+          $releaseDir = "dist-release"
+          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+          $installer = Get-ChildItem -LiteralPath "src-tauri/target/release/bundle/nsis" -Filter "*.exe" |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+          if (-not $installer) {
+            throw "未找到 Windows NSIS 安装包。"
           }
-
-          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag @assets --repo $env:GITHUB_REPOSITORY --clobber
-            if ($LASTEXITCODE -ne 0) {
-              throw "上传 Release 产物失败。"
-            }
-          } else {
-            gh release create $tag @assets --repo $env:GITHUB_REPOSITORY --title $tag --notes "Codex 额度小组件 $version"
-            if ($LASTEXITCODE -ne 0) {
-              throw "创建 GitHub Release 失败。"
-            }
+          $signature = "$($installer.FullName).sig"
+          if (-not (Test-Path -LiteralPath $signature)) {
+            throw "未找到 Windows 安装包签名：$signature"
           }
+          Copy-Item -LiteralPath $installer.FullName -Destination "$releaseDir/codex-widget_${version}_windows_x64-setup.exe" -Force
+          Copy-Item -LiteralPath $signature -Destination "$releaseDir/codex-widget_${version}_windows_x64-setup.exe.sig" -Force
+
+      - name: 上传 Windows 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-x64
+          path: dist-release/*
+          if-no-files-found: error
+
+  build-macos:
+    name: 构建 macOS ${{ matrix.asset_suffix }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            asset_suffix: aarch64
+            npm_script: tauri:build:mac:aarch64:updater
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            asset_suffix: x64
+            npm_script: tauri:build:mac:x64:updater
+    env:
+      CARGO_TERM_COLOR: always
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 缓存 Rust 构建
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - name: 校验标签和密钥
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          expected_tag="v${version}"
+          if [ "${GITHUB_REF_NAME}" != "${expected_tag}" ]; then
+            echo "发布标签必须和 package.json 版本一致：当前标签=${GITHUB_REF_NAME}，期望标签=${expected_tag}"
+            exit 1
+          fi
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "缺少 Repository Secret：TAURI_SIGNING_PRIVATE_KEY。请把 certs/updater.key 的完整内容写入该 Secret。"
+            exit 1
+          fi
+
+      - name: 安装前端依赖
+        run: npm run ci:install
+
+      - name: 运行 Rust 测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: 构建 macOS 安装包
+        run: npm run ${{ matrix.npm_script }}
+
+      - name: 整理 macOS 产物
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          release_dir="dist-release"
+          bundle_dir="src-tauri/target/${{ matrix.target }}/release/bundle"
+          mkdir -p "${release_dir}"
+          dmg=$(find "${bundle_dir}/dmg" -maxdepth 1 -type f -name "*.dmg" -print | sort | tail -n 1)
+          update_tar=$(find "${bundle_dir}/macos" -maxdepth 1 -type f -name "*.app.tar.gz" -print | sort | tail -n 1)
+          if [ -z "${dmg}" ]; then
+            echo "未找到 macOS DMG。"
+            exit 1
+          fi
+          if [ -z "${update_tar}" ]; then
+            echo "未找到 macOS updater tar.gz。"
+            exit 1
+          fi
+          if [ ! -f "${update_tar}.sig" ]; then
+            echo "未找到 macOS updater 签名：${update_tar}.sig"
+            exit 1
+          fi
+          cp "${dmg}" "${release_dir}/codex-widget_${version}_macos_${{ matrix.asset_suffix }}.dmg"
+          cp "${update_tar}" "${release_dir}/codex-widget_${version}_macos_${{ matrix.asset_suffix }}.app.tar.gz"
+          cp "${update_tar}.sig" "${release_dir}/codex-widget_${version}_macos_${{ matrix.asset_suffix }}.app.tar.gz.sig"
+
+      - name: 上传 macOS 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.asset_suffix }}
+          path: dist-release/*
+          if-no-files-found: error
+
+  publish:
+    name: 发布到 GitHub Releases
+    runs-on: ubuntu-latest
+    needs:
+      - build-windows
+      - build-macos
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+
+      - name: 下载所有产物
+        uses: actions/download-artifact@v4
+        with:
+          path: src-tauri/target/release/github-release
+          merge-multiple: true
+
+      - name: 生成 latest.json
+        run: node scripts/create-latest-json.mjs --release-dir src-tauri/target/release/github-release --require-all
+
+      - name: 上传 Release 产物
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          release_dir="src-tauri/target/release/github-release"
+          mapfile -t assets < <(find "${release_dir}" -maxdepth 1 -type f -print | sort)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "Release 产物为空。"
+            exit 1
+          fi
+          if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${tag}" "${assets[@]}" --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            version=$(node -p "require('./package.json').version")
+            gh release create "${tag}" "${assets[@]}" --repo "${GITHUB_REPOSITORY}" --title "${tag}" --notes "Codex 额度小组件 ${version}"
+          fi

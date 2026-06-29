@@ -21,8 +21,7 @@ export function createTauriService() {
       chooseCodexPath: () =>
         openDialog({
           multiple: false,
-          directory: false,
-          filters: [{ name: "Codex CLI", extensions: ["exe"] }]
+          directory: false
         })
     },
     updater: {

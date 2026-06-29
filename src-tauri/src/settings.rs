@@ -251,10 +251,58 @@ fn validate_codex_cli_path(path: &Path) -> Result<()> {
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or_default();
-    if !file_name.eq_ignore_ascii_case("codex.exe") {
-        return Err(anyhow!("Codex CLI 文件名必须为 codex.exe。"));
+    if !is_valid_codex_file_name(file_name) {
+        return Err(anyhow!(
+            "Codex CLI 文件名必须为 {}。",
+            expected_codex_file_name()
+        ));
     }
 
+    validate_codex_cli_executable(path)
+}
+
+#[cfg(windows)]
+fn expected_codex_file_name() -> &'static str {
+    "codex.exe"
+}
+
+#[cfg(not(windows))]
+fn expected_codex_file_name() -> &'static str {
+    "codex"
+}
+
+#[cfg(windows)]
+fn is_valid_codex_file_name(file_name: &str) -> bool {
+    file_name.eq_ignore_ascii_case(expected_codex_file_name())
+}
+
+#[cfg(not(windows))]
+fn is_valid_codex_file_name(file_name: &str) -> bool {
+    file_name == expected_codex_file_name()
+}
+
+#[cfg(windows)]
+fn validate_codex_cli_executable(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn validate_codex_cli_executable(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mode = path
+        .metadata()
+        .with_context(|| format!("无法读取 Codex CLI 文件权限：{}", path.display()))?
+        .permissions()
+        .mode();
+    if mode & 0o111 == 0 {
+        return Err(anyhow!("Codex CLI 文件缺少可执行权限：{}", path.display()));
+    }
+    Ok(())
+}
+
+#[cfg(all(not(windows), not(unix)))]
+fn validate_codex_cli_executable(_path: &Path) -> Result<()> {
     Ok(())
 }
 
@@ -377,12 +425,14 @@ mod tests {
     fn codex_路径必须存在且文件名正确() {
         let dir = temp_test_dir("codex-path");
         let codex = create_fake_codex(&dir);
-        let other = dir.join("other.exe");
+        let other = dir.join("other");
         fs::write(&other, "").unwrap();
 
         assert!(validate_codex_cli_path(&codex).is_ok());
         assert!(validate_codex_cli_path(&other).is_err());
-        assert!(validate_codex_cli_path(&dir.join("missing").join("codex.exe")).is_err());
+        assert!(
+            validate_codex_cli_path(&dir.join("missing").join(expected_codex_file_name())).is_err()
+        );
     }
 
     #[test]
@@ -412,10 +462,23 @@ mod tests {
 
     fn create_fake_codex(dir: &Path) -> PathBuf {
         fs::create_dir_all(dir).unwrap();
-        let codex = dir.join("codex.exe");
+        let codex = dir.join(expected_codex_file_name());
         fs::write(&codex, "").unwrap();
+        make_executable_for_test(&codex);
         codex
     }
+
+    #[cfg(unix)]
+    fn make_executable_for_test(path: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[cfg(not(unix))]
+    fn make_executable_for_test(_path: &Path) {}
 
     fn temp_test_dir(name: &str) -> PathBuf {
         let unique = SystemTime::now()
