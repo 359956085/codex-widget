@@ -1,10 +1,10 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{SecondsFormat, Utc};
+use chrono::{Duration, Local, NaiveDate, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
@@ -33,56 +33,59 @@ impl Default for LogLevel {
 
 struct LoggerState {
     level: LogLevel,
-    path: Option<PathBuf>,
+    dir: Option<PathBuf>,
 }
 
 pub struct AppLogger {
     state: Mutex<LoggerState>,
 }
 
+const LOG_RETENTION_DAYS: i64 = 30;
+const LOG_FILE_PREFIX: &str = "codex-widget-";
+const LOG_FILE_EXTENSION: &str = ".log";
+
 impl AppLogger {
     pub fn new() -> Self {
         Self {
             state: Mutex::new(LoggerState {
                 level: LogLevel::Off,
-                path: None,
+                dir: None,
             }),
         }
     }
 
     pub fn configure(&self, app: &AppHandle, level: LogLevel) -> Result<()> {
-        let path = if level == LogLevel::Off {
+        let log_dir = app
+            .path()
+            .app_config_dir()
+            .context("无法解析应用配置目录。")?
+            .join("logs");
+        prune_old_log_files_best_effort(&log_dir);
+
+        let dir = if level == LogLevel::Off {
             None
         } else {
-            Some(
-                app.path()
-                    .app_config_dir()
-                    .context("无法解析应用配置目录。")?
-                    .join("logs")
-                    .join("codex-widget.log"),
-            )
+            Some(log_dir)
         };
 
         let mut state = self.state.lock().expect("日志状态锁已损坏");
         state.level = level;
-        state.path = path;
+        state.dir = dir;
         Ok(())
     }
 
     pub fn write(&self, level: LogLevel, source: &str, message: &str) -> Result<LogWriteOutcome> {
-        let Some(path) = self.active_path(level)? else {
+        let Some(dir) = self.active_dir(level)? else {
             return Ok(LogWriteOutcome::Filtered);
         };
 
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("无法创建日志目录：{}", parent.display()))?;
-        }
+        fs::create_dir_all(&dir).with_context(|| format!("无法创建日志目录：{}", dir.display()))?;
 
         let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
         let source = sanitize_log_text(source);
         let message = sanitize_log_text(message);
         let line = format!("{timestamp} [{}] {source} {message}\n", level.as_label());
+        let path = dated_log_path(&dir, Local::now().date_naive());
 
         let mut file = OpenOptions::new()
             .create(true)
@@ -103,19 +106,19 @@ impl AppLogger {
         }
     }
 
-    fn active_path(&self, level: LogLevel) -> Result<Option<PathBuf>> {
+    fn active_dir(&self, level: LogLevel) -> Result<Option<PathBuf>> {
         let state = self.state.lock().map_err(|_| anyhow!("日志状态锁已损坏"))?;
         if !should_write(state.level, level) {
             return Ok(None);
         }
-        Ok(state.path.clone())
+        Ok(state.dir.clone())
     }
 
     #[cfg(test)]
-    fn configure_path_for_test(&self, level: LogLevel, path: Option<PathBuf>) {
+    fn configure_dir_for_test(&self, level: LogLevel, dir: Option<PathBuf>) {
         let mut state = self.state.lock().expect("日志状态锁已损坏");
         state.level = level;
-        state.path = path;
+        state.dir = dir;
     }
 }
 
@@ -144,7 +147,67 @@ impl LogLevel {
 }
 
 fn should_write(configured: LogLevel, current: LogLevel) -> bool {
-    configured != LogLevel::Off && current != LogLevel::Off && current.priority() <= configured.priority()
+    configured != LogLevel::Off
+        && current != LogLevel::Off
+        && current.priority() <= configured.priority()
+}
+
+fn dated_log_path(dir: &Path, date: NaiveDate) -> PathBuf {
+    dir.join(dated_log_file_name(date))
+}
+
+fn dated_log_file_name(date: NaiveDate) -> String {
+    format!(
+        "{LOG_FILE_PREFIX}{}{LOG_FILE_EXTENSION}",
+        date.format("%Y-%m-%d")
+    )
+}
+
+fn prune_old_log_files_best_effort(log_dir: &Path) {
+    if let Err(error) = prune_old_log_files(log_dir, Local::now().date_naive()) {
+        #[cfg(debug_assertions)]
+        eprintln!("清理旧日志失败：{error:#}");
+        #[cfg(not(debug_assertions))]
+        let _ = error;
+    }
+}
+
+fn prune_old_log_files(log_dir: &Path, today: NaiveDate) -> Result<()> {
+    if !log_dir.exists() {
+        return Ok(());
+    }
+
+    let cutoff = today - Duration::days(LOG_RETENTION_DAYS - 1);
+    for entry in
+        fs::read_dir(log_dir).with_context(|| format!("无法读取日志目录：{}", log_dir.display()))?
+    {
+        let entry = entry.with_context(|| format!("无法读取日志目录项：{}", log_dir.display()))?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let file_name = entry.file_name();
+        let file_name = file_name.to_string_lossy();
+        let Some(date) = parse_dated_log_file_name(&file_name) else {
+            continue;
+        };
+        if date < cutoff {
+            fs::remove_file(&path)
+                .with_context(|| format!("无法删除旧日志文件：{}", path.display()))?;
+        }
+    }
+    Ok(())
+}
+
+fn parse_dated_log_file_name(file_name: &str) -> Option<NaiveDate> {
+    let date_text = file_name
+        .strip_prefix(LOG_FILE_PREFIX)?
+        .strip_suffix(LOG_FILE_EXTENSION)?;
+    if date_text.len() != 10 {
+        return None;
+    }
+    NaiveDate::parse_from_str(date_text, "%Y-%m-%d").ok()
 }
 
 fn sanitize_log_text(value: &str) -> String {
@@ -182,55 +245,96 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-
     #[test]
     fn off_不创建日志文件() {
         let logger = AppLogger::new();
-        let path = temp_test_dir("off").join("codex-widget.log");
-        logger.configure_path_for_test(LogLevel::Off, Some(path.clone()));
+        let dir = temp_test_dir("off").join("logs");
+        logger.configure_dir_for_test(LogLevel::Off, Some(dir.clone()));
 
         let outcome = logger
             .write(LogLevel::Error, "frontend.update", "获取版本失败")
             .unwrap();
 
         assert_eq!(outcome, LogWriteOutcome::Filtered);
-        assert!(!path.exists());
+        assert!(!dir.exists());
     }
 
     #[test]
-    fn error_等级写入错误日志() {
+    fn error_等级写入当天日志() {
         let logger = AppLogger::new();
-        let path = temp_test_dir("error").join("logs").join("codex-widget.log");
-        logger.configure_path_for_test(LogLevel::Error, Some(path.clone()));
+        let dir = temp_test_dir("error").join("logs");
+        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
 
         let outcome = logger
             .write(LogLevel::Error, "frontend.update", "获取版本失败")
             .unwrap();
 
         assert_eq!(outcome, LogWriteOutcome::Written);
+        let path = dated_log_path(&dir, Local::now().date_naive());
         let text = fs::read_to_string(path).unwrap();
         assert!(text.contains("[ERROR] frontend.update 获取版本失败"));
     }
 
     #[test]
+    fn 同一天日志会追加到同一文件() {
+        let logger = AppLogger::new();
+        let dir = temp_test_dir("append").join("logs");
+        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
+
+        logger
+            .write(LogLevel::Error, "frontend.update", "第一次失败")
+            .unwrap();
+        logger
+            .write(LogLevel::Error, "frontend.update", "第二次失败")
+            .unwrap();
+
+        let path = dated_log_path(&dir, Local::now().date_naive());
+        let text = fs::read_to_string(path).unwrap();
+        assert!(text.contains("第一次失败"));
+        assert!(text.contains("第二次失败"));
+    }
+
+    #[test]
     fn error_等级过滤_debug() {
         let logger = AppLogger::new();
-        let path = temp_test_dir("filter-debug").join("codex-widget.log");
-        logger.configure_path_for_test(LogLevel::Error, Some(path.clone()));
+        let dir = temp_test_dir("filter-debug").join("logs");
+        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
 
         let outcome = logger
             .write(LogLevel::Debug, "backend.settings", "设置已保存")
             .unwrap();
 
         assert_eq!(outcome, LogWriteOutcome::Filtered);
-        assert!(!path.exists());
+        assert!(!dir.exists());
+    }
+
+    #[test]
+    fn 清理会删除保留期外的按天日志() {
+        let dir = temp_test_dir("retention").join("logs");
+        fs::create_dir_all(&dir).unwrap();
+        let today = NaiveDate::from_ymd_opt(2026, 6, 30).unwrap();
+        let expired = dated_log_path(&dir, today - Duration::days(30));
+        let recent = dated_log_path(&dir, today - Duration::days(29));
+        let legacy = dir.join("codex-widget.log");
+        let unrelated = dir.join("other.log");
+        fs::write(&expired, "old").unwrap();
+        fs::write(&recent, "recent").unwrap();
+        fs::write(&legacy, "legacy").unwrap();
+        fs::write(&unrelated, "other").unwrap();
+
+        prune_old_log_files(&dir, today).unwrap();
+
+        assert!(!expired.exists());
+        assert!(recent.exists());
+        assert!(legacy.exists());
+        assert!(unrelated.exists());
     }
 
     #[test]
     fn url_认证信息脱敏() {
         let logger = AppLogger::new();
-        let path = temp_test_dir("redact").join("codex-widget.log");
-        logger.configure_path_for_test(LogLevel::Error, Some(path.clone()));
+        let dir = temp_test_dir("redact").join("logs");
+        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
 
         logger
             .write(
@@ -240,6 +344,7 @@ mod tests {
             )
             .unwrap();
 
+        let path = dated_log_path(&dir, Local::now().date_naive());
         let text = fs::read_to_string(path).unwrap();
         assert!(text.contains("https://***@example.com:443/path"));
         assert!(!text.contains("user:pass"));
