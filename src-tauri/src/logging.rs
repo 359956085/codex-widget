@@ -8,6 +8,10 @@ use chrono::{Duration, Local, NaiveDate, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+const LOG_RETENTION_DAYS: i64 = 30;
+const LOG_FILE_PREFIX: &str = "codex-widget-";
+const LOG_FILE_EXTENSION: &str = ".log";
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
@@ -25,12 +29,6 @@ pub enum LogWriteOutcome {
     Filtered,
 }
 
-impl Default for LogLevel {
-    fn default() -> Self {
-        Self::Off
-    }
-}
-
 struct LoggerState {
     level: LogLevel,
     dir: Option<PathBuf>,
@@ -40,9 +38,35 @@ pub struct AppLogger {
     state: Mutex<LoggerState>,
 }
 
-const LOG_RETENTION_DAYS: i64 = 30;
-const LOG_FILE_PREFIX: &str = "codex-widget-";
-const LOG_FILE_EXTENSION: &str = ".log";
+impl Default for LogLevel {
+    fn default() -> Self {
+        Self::Off
+    }
+}
+
+impl LogLevel {
+    fn as_label(self) -> &'static str {
+        match self {
+            LogLevel::Off => "OFF",
+            LogLevel::Error => "ERROR",
+            LogLevel::Warn => "WARN",
+            LogLevel::Info => "INFO",
+            LogLevel::Debug => "DEBUG",
+            LogLevel::Trace => "TRACE",
+        }
+    }
+
+    fn priority(self) -> u8 {
+        match self {
+            LogLevel::Off => 0,
+            LogLevel::Error => 1,
+            LogLevel::Warn => 2,
+            LogLevel::Info => 3,
+            LogLevel::Debug => 4,
+            LogLevel::Trace => 5,
+        }
+    }
+}
 
 impl AppLogger {
     pub fn new() -> Self {
@@ -122,36 +146,6 @@ impl AppLogger {
     }
 }
 
-impl LogLevel {
-    fn as_label(self) -> &'static str {
-        match self {
-            LogLevel::Off => "OFF",
-            LogLevel::Error => "ERROR",
-            LogLevel::Warn => "WARN",
-            LogLevel::Info => "INFO",
-            LogLevel::Debug => "DEBUG",
-            LogLevel::Trace => "TRACE",
-        }
-    }
-
-    fn priority(self) -> u8 {
-        match self {
-            LogLevel::Off => 0,
-            LogLevel::Error => 1,
-            LogLevel::Warn => 2,
-            LogLevel::Info => 3,
-            LogLevel::Debug => 4,
-            LogLevel::Trace => 5,
-        }
-    }
-}
-
-fn should_write(configured: LogLevel, current: LogLevel) -> bool {
-    configured != LogLevel::Off
-        && current != LogLevel::Off
-        && current.priority() <= configured.priority()
-}
-
 fn dated_log_path(dir: &Path, date: NaiveDate) -> PathBuf {
     dir.join(dated_log_file_name(date))
 }
@@ -210,6 +204,12 @@ fn parse_dated_log_file_name(file_name: &str) -> Option<NaiveDate> {
     NaiveDate::parse_from_str(date_text, "%Y-%m-%d").ok()
 }
 
+fn should_write(configured: LogLevel, current: LogLevel) -> bool {
+    configured != LogLevel::Off
+        && current != LogLevel::Off
+        && current.priority() <= configured.priority()
+}
+
 fn sanitize_log_text(value: &str) -> String {
     redact_url_credentials(value).replace(['\r', '\n'], " ")
 }
@@ -247,9 +247,7 @@ mod tests {
 
     #[test]
     fn off_不创建日志文件() {
-        let logger = AppLogger::new();
-        let dir = temp_test_dir("off").join("logs");
-        logger.configure_dir_for_test(LogLevel::Off, Some(dir.clone()));
+        let (logger, dir) = configured_logger("off", LogLevel::Off);
 
         let outcome = logger
             .write(LogLevel::Error, "frontend.update", "获取版本失败")
@@ -261,25 +259,20 @@ mod tests {
 
     #[test]
     fn error_等级写入当天日志() {
-        let logger = AppLogger::new();
-        let dir = temp_test_dir("error").join("logs");
-        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
+        let (logger, dir) = configured_logger("error", LogLevel::Error);
 
         let outcome = logger
             .write(LogLevel::Error, "frontend.update", "获取版本失败")
             .unwrap();
 
         assert_eq!(outcome, LogWriteOutcome::Written);
-        let path = dated_log_path(&dir, Local::now().date_naive());
-        let text = fs::read_to_string(path).unwrap();
+        let text = read_today_log(&dir);
         assert!(text.contains("[ERROR] frontend.update 获取版本失败"));
     }
 
     #[test]
     fn 同一天日志会追加到同一文件() {
-        let logger = AppLogger::new();
-        let dir = temp_test_dir("append").join("logs");
-        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
+        let (logger, dir) = configured_logger("append", LogLevel::Error);
 
         logger
             .write(LogLevel::Error, "frontend.update", "第一次失败")
@@ -288,17 +281,14 @@ mod tests {
             .write(LogLevel::Error, "frontend.update", "第二次失败")
             .unwrap();
 
-        let path = dated_log_path(&dir, Local::now().date_naive());
-        let text = fs::read_to_string(path).unwrap();
+        let text = read_today_log(&dir);
         assert!(text.contains("第一次失败"));
         assert!(text.contains("第二次失败"));
     }
 
     #[test]
     fn error_等级过滤_debug() {
-        let logger = AppLogger::new();
-        let dir = temp_test_dir("filter-debug").join("logs");
-        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
+        let (logger, dir) = configured_logger("filter-debug", LogLevel::Error);
 
         let outcome = logger
             .write(LogLevel::Debug, "backend.settings", "设置已保存")
@@ -310,17 +300,13 @@ mod tests {
 
     #[test]
     fn 清理会删除保留期外的按天日志() {
-        let dir = temp_test_dir("retention").join("logs");
+        let dir = temp_log_dir("retention");
         fs::create_dir_all(&dir).unwrap();
         let today = NaiveDate::from_ymd_opt(2026, 6, 30).unwrap();
-        let expired = dated_log_path(&dir, today - Duration::days(30));
-        let recent = dated_log_path(&dir, today - Duration::days(29));
-        let legacy = dir.join("codex-widget.log");
-        let unrelated = dir.join("other.log");
-        fs::write(&expired, "old").unwrap();
-        fs::write(&recent, "recent").unwrap();
-        fs::write(&legacy, "legacy").unwrap();
-        fs::write(&unrelated, "other").unwrap();
+        let expired = write_test_log(&dir, today - Duration::days(30), "old");
+        let recent = write_test_log(&dir, today - Duration::days(29), "recent");
+        let legacy = write_named_file(&dir, "codex-widget.log", "legacy");
+        let unrelated = write_named_file(&dir, "other.log", "other");
 
         prune_old_log_files(&dir, today).unwrap();
 
@@ -332,9 +318,7 @@ mod tests {
 
     #[test]
     fn url_认证信息脱敏() {
-        let logger = AppLogger::new();
-        let dir = temp_test_dir("redact").join("logs");
-        logger.configure_dir_for_test(LogLevel::Error, Some(dir.clone()));
+        let (logger, dir) = configured_logger("redact", LogLevel::Error);
 
         logger
             .write(
@@ -344,10 +328,37 @@ mod tests {
             )
             .unwrap();
 
-        let path = dated_log_path(&dir, Local::now().date_naive());
-        let text = fs::read_to_string(path).unwrap();
+        let text = read_today_log(&dir);
         assert!(text.contains("https://***@example.com:443/path"));
         assert!(!text.contains("user:pass"));
+    }
+
+    fn configured_logger(name: &str, level: LogLevel) -> (AppLogger, PathBuf) {
+        let logger = AppLogger::new();
+        let dir = temp_log_dir(name);
+        logger.configure_dir_for_test(level, Some(dir.clone()));
+        (logger, dir)
+    }
+
+    fn read_today_log(dir: &Path) -> String {
+        let path = dated_log_path(dir, Local::now().date_naive());
+        fs::read_to_string(path).unwrap()
+    }
+
+    fn write_test_log(dir: &Path, date: NaiveDate, text: &str) -> PathBuf {
+        let path = dated_log_path(dir, date);
+        fs::write(&path, text).unwrap();
+        path
+    }
+
+    fn write_named_file(dir: &Path, name: &str, text: &str) -> PathBuf {
+        let path = dir.join(name);
+        fs::write(&path, text).unwrap();
+        path
+    }
+
+    fn temp_log_dir(name: &str) -> PathBuf {
+        temp_test_dir(name).join("logs")
     }
 
     fn temp_test_dir(name: &str) -> PathBuf {
