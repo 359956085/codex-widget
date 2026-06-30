@@ -2,6 +2,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const MARK_TRANSFORM = "translate(63 60) scale(0.65) translate(-65 -65)";
 const DOCK_GAUGE_SCALE = 0.82;
 const DOCK_GAUGE_OFFSET = 10;
+const DOCK_GAUGE_TEXT_SAFE_OFFSET = 3;
 const DOCK_GAUGE_CENTER_SHIFT = 5;
 
 export function updateGauge({ root, percent, level, label, mode = "panel", dock = "none" }) {
@@ -124,7 +125,7 @@ function applyGaugeLayout(gauge, mode, dock) {
 function innerTransform(mode, dock) {
   if (mode !== "ball" || dock === "none") return "";
   const direction = dock === "right" ? 1 : -1;
-  const offsetX = -direction * DOCK_GAUGE_OFFSET;
+  const offsetX = -direction * (DOCK_GAUGE_OFFSET + DOCK_GAUGE_TEXT_SAFE_OFFSET);
   const centerX = 65 + direction * DOCK_GAUGE_CENTER_SHIFT;
   return `translate(65 65) translate(${offsetX} 0) scale(${DOCK_GAUGE_SCALE}) translate(-${centerX} -65)`;
 }
