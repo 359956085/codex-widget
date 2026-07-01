@@ -57,6 +57,18 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
   </tr>
 </table>
 
+#### 基础主题 3
+
+<table>
+  <tr>
+    <td rowspan="2" align="center"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="基础主题 3 面板"></td>
+    <td align="center"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="基础主题 3 悬浮球"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="基础主题 3 悬浮球吸附"></td>
+  </tr>
+</table>
+
 ### 使用教程
 
 1. 安装并登录 Codex。
@@ -73,7 +85,7 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 - 自动更新代理：仅用于 GitHub 更新，不影响 Codex 读取额度。支持 `http://`、`https://`、`socks5://`。
 - 开机自启：登录系统后自动启动本应用，仅当前用户生效。
 - 刷新分钟：自动刷新间隔，范围为 `1-1440`。
-- 主题：可选择默认主题、基础主题 1、基础主题 2，保存后重启仍保留。
+- 主题：可选择默认主题、基础主题 1、基础主题 2、基础主题 3，保存后重启仍保留。
 - 语言：可选择中文或 English。
 
 ### 隐私说明

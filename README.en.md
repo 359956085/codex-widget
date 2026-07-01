@@ -54,6 +54,18 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
   </tr>
 </table>
 
+#### Basic theme 3
+
+<table>
+  <tr>
+    <td rowspan="2" align="center"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="Basic theme 3 panel"></td>
+    <td align="center"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="Basic theme 3 floating ball"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="Basic theme 3 docked floating ball"></td>
+  </tr>
+</table>
+
 ### How To Use
 
 1. Install and sign in to Codex.
@@ -70,7 +82,7 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 - Update proxy: used only for GitHub updates, not for Codex quota reads. Supports `http://`, `https://`, and `socks5://`.
 - Start at login: launches the app after signing in. Current user only.
 - Refresh minutes: auto refresh interval, from `1` to `1440`.
-- Theme: choose Default theme, Basic theme 1, and Basic theme 2. The selection persists after restart.
+- Theme: choose Default theme, Basic theme 1, Basic theme 2, and Basic theme 3. The selection persists after restart.
 - Language: choose Chinese or English.
 
 ### Privacy
