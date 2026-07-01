@@ -82,7 +82,7 @@ function formatMonthDayTime(value, locale) {
 export function waterFillPercent(remaining, theme) {
   if (remaining === null) return 0;
   const value = clamp(remaining, 0, 100);
-  if ((theme === "basic1" || theme === "basic2") && value > 0 && value < 20) return 18;
+  if ((theme === "basic1" || theme === "basic2" || theme === "basic3") && value > 0 && value < 20) return 18;
   return value;
 }
 
