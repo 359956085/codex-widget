@@ -107,7 +107,7 @@ export const POSITION_SAVE_DEBOUNCE_MS = 300;
 
 export const i18n = {
   zh: {
-    brandName: "Codex CLI 额度",
+    brandName: "Codex 额度",
     loading: "读取中",
     ready: "额度正常",
     low: "额度偏低",
@@ -166,7 +166,7 @@ export const i18n = {
     updateProxyPlaceholder: "http://127.0.0.1:7890"
   },
   en: {
-    brandName: "Codex CLI Quota",
+    brandName: "Codex Quota",
     loading: "Loading",
     ready: "Quota healthy",
     low: "Quota low",
