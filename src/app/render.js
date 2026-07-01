@@ -36,6 +36,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     setDatasetValue(els.body, "ballDock", state.ballDock || "none");
     setDatasetValue(els.body, "theme", activeTheme);
 
+    renderWidgetHint(text);
     renderBrandName(text);
     setText(els.remainingLabel, text.remaining);
     els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
@@ -100,6 +101,17 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     setAttribute(brandView.versionButton, "aria-label", `${text.checkUpdate} ${APP_VERSION_LABEL}`);
   }
 
+  function renderWidgetHint(text) {
+    if (state.widgetMode === WIDGET_MODES.BALL) {
+      setAttribute(els.widget, "title", text.ballRestoreHint);
+      setAttribute(els.widget, "aria-label", text.ballRestoreHint);
+      return;
+    }
+
+    removeAttribute(els.widget, "title");
+    removeAttribute(els.widget, "aria-label");
+  }
+
   function createBrandView() {
     const title = document.createElement("span");
     title.className = "brand-title";
@@ -159,5 +171,11 @@ function setStyleValue(element, property, value) {
 function setAttribute(element, name, value) {
   if (element.getAttribute(name) !== value) {
     element.setAttribute(name, value);
+  }
+}
+
+function removeAttribute(element, name) {
+  if (element.hasAttribute(name)) {
+    element.removeAttribute(name);
   }
 }
