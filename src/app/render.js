@@ -72,6 +72,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       setText(els.stateText, stateLabel(visualState, text));
       setText(els.statusText, statusLabel(quota, text, activeLocale));
     }
+    setTooltip(els.statusText, els.statusText.textContent);
 
     setText(els.remaining, remaining === null ? "--%" : `${remaining}%`);
     setStyleValue(els.liquidFill, "height", `${waterFillPercent(remaining, activeTheme)}%`);
@@ -97,17 +98,20 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     setAttribute(els.brandName, "aria-label", APP_VERSION_LABEL ? `${text.brandName} ${APP_VERSION_LABEL}` : text.brandName);
     if (!brandView.versionButton) return;
 
-    brandView.versionButton.title = text.checkUpdate;
+    setTooltip(brandView.versionButton, text.checkUpdate);
+    removeAttribute(brandView.versionButton, "title");
     setAttribute(brandView.versionButton, "aria-label", `${text.checkUpdate} ${APP_VERSION_LABEL}`);
   }
 
   function renderWidgetHint(text) {
     if (state.widgetMode === WIDGET_MODES.BALL) {
-      setAttribute(els.widget, "title", text.ballRestoreHint);
+      setTooltip(els.widget, text.ballRestoreHint);
+      removeAttribute(els.widget, "title");
       setAttribute(els.widget, "aria-label", text.ballRestoreHint);
       return;
     }
 
+    removeTooltip(els.widget);
     removeAttribute(els.widget, "title");
     removeAttribute(els.widget, "aria-label");
   }
@@ -177,5 +181,22 @@ function setAttribute(element, name, value) {
 function removeAttribute(element, name) {
   if (element.hasAttribute(name)) {
     element.removeAttribute(name);
+  }
+}
+
+function setTooltip(element, value) {
+  const nextValue = value?.trim() || "";
+  if (!nextValue) {
+    removeTooltip(element);
+    return;
+  }
+  if (element.dataset.tooltip !== nextValue) {
+    element.dataset.tooltip = nextValue;
+  }
+}
+
+function removeTooltip(element) {
+  if (element.dataset.tooltip !== undefined) {
+    delete element.dataset.tooltip;
   }
 }

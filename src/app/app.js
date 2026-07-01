@@ -7,6 +7,7 @@ import { createRenderer } from "./render.js";
 import { createSettingsController } from "./settings-controller.js";
 import { applyNormalizedSettings as applyStateSettings, createAppState, renderLocale, renderTheme } from "./state.js";
 import { createTauriService } from "./tauri-service.js";
+import { createTooltipController } from "./tooltip-controller.js";
 import { createUpdateController } from "./update-controller.js";
 import { createWindowController } from "./window-controller.js";
 
@@ -15,6 +16,7 @@ export function createApp() {
   const state = createAppState();
   const service = createTauriService();
   const logger = createLogger(service);
+  const tooltipController = createTooltipController({ root: els.body });
   let render = () => {};
 
   function applySettings(settings) {
@@ -110,6 +112,7 @@ export function createApp() {
   function bindEvents() {
     windowController.bindEvents();
     settingsController.bindEvents();
+    tooltipController.bindEvents();
     els.pinBtn.addEventListener("click", toggleAlwaysOnTop);
     els.refreshBtn.addEventListener("click", () => quotaController.refreshQuota());
   }

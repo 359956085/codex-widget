@@ -69,7 +69,8 @@ export function initializeActionIcons(els, logger) {
 }
 
 export function updateActionButton(button, iconName, label, active = false) {
-  button.title = label;
+  button.dataset.tooltip = label;
+  button.removeAttribute("title");
   button.setAttribute("aria-label", label);
   button.classList.toggle("active", active);
 

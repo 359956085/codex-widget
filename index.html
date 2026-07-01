@@ -16,22 +16,22 @@
           </div>
         </div>
         <div class="window-actions">
-          <button id="modeBtn" class="icon-button" type="button" title="悬浮球" aria-label="悬浮球">
+          <button id="modeBtn" class="icon-button" type="button" data-tooltip="悬浮球" aria-label="悬浮球">
             <i data-lucide="circle-dot"></i>
           </button>
-          <button id="settingsBtn" class="icon-button" type="button" title="设置" aria-label="设置">
+          <button id="settingsBtn" class="icon-button" type="button" data-tooltip="设置" aria-label="设置">
             <i data-lucide="settings"></i>
           </button>
-          <button id="pinBtn" class="icon-button active" type="button" title="取消置顶" aria-label="取消置顶">
+          <button id="pinBtn" class="icon-button active" type="button" data-tooltip="取消置顶" aria-label="取消置顶">
             <i data-lucide="pin"></i>
           </button>
-          <button id="refreshBtn" class="icon-button" type="button" title="刷新" aria-label="刷新">
+          <button id="refreshBtn" class="icon-button" type="button" data-tooltip="刷新" aria-label="刷新">
             <i data-lucide="refresh-cw"></i>
           </button>
-          <button id="minimizeBtn" class="icon-button" type="button" title="隐藏" aria-label="隐藏">
+          <button id="minimizeBtn" class="icon-button" type="button" data-tooltip="隐藏" aria-label="隐藏">
             <i data-lucide="minus"></i>
           </button>
-          <button id="closeBtn" class="icon-button danger" type="button" title="退出" aria-label="退出">
+          <button id="closeBtn" class="icon-button danger" type="button" data-tooltip="退出" aria-label="退出">
             <i data-lucide="x"></i>
           </button>
         </div>
@@ -88,7 +88,7 @@
       <section id="settingsPanel" class="settings-panel" data-no-drag hidden aria-label="设置">
         <div class="settings-head">
           <strong id="settingsTitle">设置</strong>
-          <button id="settingsCloseBtn" class="icon-button" type="button" title="关闭" aria-label="关闭">
+          <button id="settingsCloseBtn" class="icon-button" type="button" data-tooltip="关闭" aria-label="关闭">
             <i data-lucide="x"></i>
           </button>
         </div>
@@ -182,7 +182,7 @@
             <span id="codexPathLabel">Codex CLI 路径</span>
             <div class="path-control">
               <input id="codexPathInput" class="settings-input" type="text" data-no-drag spellcheck="false" />
-              <button id="chooseCodexBtn" class="icon-button" type="button" title="选择 Codex CLI (codex/codex.exe)" aria-label="选择 Codex CLI (codex/codex.exe)">
+              <button id="chooseCodexBtn" class="icon-button" type="button" data-tooltip="选择 Codex CLI (codex/codex.exe)" aria-label="选择 Codex CLI (codex/codex.exe)">
                 <i data-lucide="folder-open"></i>
               </button>
             </div>
