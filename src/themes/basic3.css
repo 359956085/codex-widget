@@ -18,6 +18,10 @@ body[data-theme="basic3"] {
   --basic3-meter-b: #ff5296;
   --basic3-meter-c: #ee2673;
   --basic3-meter-rgb: 255, 82, 150;
+  --basic3-gauge-a: #fff6fb;
+  --basic3-gauge-b: #ff6faf;
+  --basic3-gauge-c: #e92574;
+  --basic3-gauge-rgb: 255, 82, 150;
   --remaining-angle: 0deg;
   --settings-panel-background:
     radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.82), transparent 36%),
@@ -303,12 +307,12 @@ body[data-theme="basic3"] .liquid-meter::after {
   z-index: 7;
   background:
     radial-gradient(circle at 32% 22%, rgba(255, 255, 255, 0.72) 0 7%, transparent 18%),
-    conic-gradient(from -32deg, rgba(255, 255, 255, 0.36), rgba(var(--basic3-meter-rgb), 0.1) 88deg, rgba(255, 255, 255, 0.26) 176deg, rgba(var(--basic3-meter-rgb), 0.12) 270deg, rgba(255, 255, 255, 0.36));
+    conic-gradient(from -32deg, rgba(255, 255, 255, 0.36), rgba(var(--basic3-gauge-rgb), 0.1) 88deg, rgba(255, 255, 255, 0.26) 176deg, rgba(var(--basic3-gauge-rgb), 0.12) 270deg, rgba(255, 255, 255, 0.36));
   -webkit-mask: radial-gradient(circle, transparent 65%, #000 67% 81%, transparent 83%);
   mask: radial-gradient(circle, transparent 65%, #000 67% 81%, transparent 83%);
   filter:
     drop-shadow(0 0 5px rgba(255, 255, 255, 0.54))
-    drop-shadow(0 0 10px rgba(var(--basic3-meter-rgb), 0.18));
+    drop-shadow(0 0 10px rgba(var(--basic3-gauge-rgb), 0.18));
 }
 
 body[data-theme="basic3"] .gauge-layer {
@@ -331,9 +335,9 @@ body[data-theme="basic3"] .basic-gauge {
   width: 140px;
   height: 140px;
   overflow: visible;
-  color: var(--basic3-meter-a);
+  color: var(--basic3-gauge-a);
   filter:
-    drop-shadow(0 0 14px rgba(var(--basic3-meter-rgb), 0.24))
+    drop-shadow(0 0 14px rgba(var(--basic3-gauge-rgb), 0.24))
     drop-shadow(0 11px 15px rgba(145, 20, 62, 0.17));
 }
 
@@ -350,11 +354,11 @@ body[data-theme="basic3"] .gauge-sphere-stop-c {
 }
 
 body[data-theme="basic3"] .gauge-accent-stop-a {
-  stop-color: var(--basic3-meter-a);
+  stop-color: var(--basic3-gauge-a);
 }
 
 body[data-theme="basic3"] .gauge-accent-stop-b {
-  stop-color: var(--basic3-meter-c);
+  stop-color: var(--basic3-gauge-c);
 }
 
 body[data-theme="basic3"] .gauge-glow {
@@ -362,7 +366,7 @@ body[data-theme="basic3"] .gauge-glow {
   stroke: rgba(255, 82, 150, 0.42);
   stroke-width: 1;
   filter:
-    drop-shadow(0 0 8px rgba(var(--basic3-meter-rgb), 0.34))
+    drop-shadow(0 0 8px rgba(var(--basic3-gauge-rgb), 0.34))
     drop-shadow(0 0 20px rgba(255, 255, 255, 0.42));
 }
 
@@ -396,7 +400,7 @@ body[data-theme="basic3"] .gauge-outer-progress {
   stroke-dashoffset: 100;
   filter:
     drop-shadow(0 0 5px rgba(255, 255, 255, 0.84))
-    drop-shadow(0 0 17px rgba(var(--basic3-meter-rgb), 0.6));
+    drop-shadow(0 0 17px rgba(var(--basic3-gauge-rgb), 0.6));
   transition: stroke-dashoffset 360ms ease;
 }
 
@@ -409,8 +413,8 @@ body[data-theme="basic3"] .gauge-track {
 
 body[data-theme="basic3"] .gauge-progress {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.34);
-  stroke-width: 3;
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 2.6;
   stroke-linecap: round;
   stroke-dasharray: none;
   stroke-dashoffset: 0 !important;
@@ -422,7 +426,7 @@ body[data-theme="basic3"] .gauge-mark {
   fill: url("#basicGaugeAccent");
   filter:
     drop-shadow(0 1px 1px rgba(145, 20, 62, 0.28))
-    drop-shadow(0 0 8px rgba(var(--basic3-meter-rgb), 0.46));
+    drop-shadow(0 0 8px rgba(var(--basic3-gauge-rgb), 0.46));
 }
 
 body[data-theme="basic3"] .gauge-percent {
@@ -496,7 +500,7 @@ body[data-theme="basic3"] .gauge-layer[data-gauge-mode="ball"]:not([data-gauge-d
 }
 
 body[data-theme="basic3"] .quota-panel {
-  gap: 5px;
+  gap: 3px;
 }
 
 body[data-theme="basic3"] .quota-card {
@@ -641,9 +645,9 @@ body[data-theme="basic3"][data-widget-mode="ball"] .widget::before {
   opacity: 0.84;
   background:
     repeating-conic-gradient(from -90deg, rgba(255, 255, 255, 0.32) 0deg 0.32deg, transparent 0.32deg 4.8deg),
-    repeating-conic-gradient(from -88deg, rgba(var(--basic3-meter-rgb), 0.22) 0deg 0.58deg, transparent 0.58deg 8deg),
+    repeating-conic-gradient(from -88deg, rgba(var(--basic3-gauge-rgb), 0.22) 0deg 0.58deg, transparent 0.58deg 8deg),
     radial-gradient(circle, transparent 0 50%, rgba(255, 255, 255, 0.62) 51%, rgba(255, 168, 206, 0.18) 53%, transparent 54%),
-    radial-gradient(circle, transparent 0 65%, rgba(255, 255, 255, 0.58) 66%, rgba(var(--basic3-meter-rgb), 0.2) 68%, transparent 69%),
+    radial-gradient(circle, transparent 0 65%, rgba(255, 255, 255, 0.58) 66%, rgba(var(--basic3-gauge-rgb), 0.2) 68%, transparent 69%),
     radial-gradient(circle, transparent 0 76%, rgba(255, 255, 255, 0.42) 77%, transparent 79%),
     radial-gradient(circle at 32% 18%, rgba(255, 255, 255, 0.42), transparent 32%),
     radial-gradient(circle at 50% 100%, rgba(112, 8, 42, 0.12), transparent 58%);
@@ -655,7 +659,7 @@ body[data-theme="basic3"][data-widget-mode="ball"] .widget::after {
   opacity: 0.76;
   background:
     radial-gradient(ellipse 48px 23px at 30% 16%, rgba(255, 255, 255, 0.72), transparent 70%),
-    radial-gradient(circle, transparent 0 73%, rgba(255, 255, 255, 0.44) 74%, rgba(var(--basic3-meter-rgb), 0.2) 77%, transparent 79%),
+    radial-gradient(circle, transparent 0 73%, rgba(255, 255, 255, 0.44) 74%, rgba(var(--basic3-gauge-rgb), 0.2) 77%, transparent 79%),
     radial-gradient(circle at 76% 86%, rgba(112, 8, 42, 0.15), transparent 45%);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.62),
@@ -686,26 +690,26 @@ body[data-theme="basic3"][data-widget-mode="ball"] .liquid-meter::before {
   opacity: 0.84;
   background:
     repeating-conic-gradient(from -90deg, rgba(255, 255, 255, 0.5) 0deg 0.28deg, transparent 0.28deg 3.1deg),
-    repeating-conic-gradient(from -88deg, rgba(var(--basic3-meter-rgb), 0.28) 0deg 0.55deg, transparent 0.55deg 8deg),
-    radial-gradient(circle, transparent 0 61%, rgba(255, 255, 255, 0.56) 62%, rgba(var(--basic3-meter-rgb), 0.12) 65%, transparent 68%),
+    repeating-conic-gradient(from -88deg, rgba(var(--basic3-gauge-rgb), 0.28) 0deg 0.55deg, transparent 0.55deg 8deg),
+    radial-gradient(circle, transparent 0 61%, rgba(255, 255, 255, 0.56) 62%, rgba(var(--basic3-gauge-rgb), 0.12) 65%, transparent 68%),
     radial-gradient(circle, transparent 0 76%, rgba(255, 255, 255, 0.48) 77%, transparent 79%);
   -webkit-mask: radial-gradient(circle, transparent 0 55%, #000 56% 82%, transparent 83%);
   mask: radial-gradient(circle, transparent 0 55%, #000 56% 82%, transparent 83%);
   filter:
     drop-shadow(0 0 4px rgba(255, 255, 255, 0.5))
-    drop-shadow(0 0 7px rgba(var(--basic3-meter-rgb), 0.18));
+    drop-shadow(0 0 7px rgba(var(--basic3-gauge-rgb), 0.18));
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .liquid-meter::after {
   inset: 6.5px;
   background:
     radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.78) 0 7%, transparent 18%),
-    conic-gradient(from -36deg, rgba(255, 255, 255, 0.42), rgba(var(--basic3-meter-rgb), 0.11) 92deg, rgba(255, 255, 255, 0.28) 184deg, rgba(var(--basic3-meter-rgb), 0.13) 276deg, rgba(255, 255, 255, 0.42));
+    conic-gradient(from -36deg, rgba(255, 255, 255, 0.42), rgba(var(--basic3-gauge-rgb), 0.11) 92deg, rgba(255, 255, 255, 0.28) 184deg, rgba(var(--basic3-gauge-rgb), 0.13) 276deg, rgba(255, 255, 255, 0.42));
   -webkit-mask: radial-gradient(circle, transparent 0 61%, #000 63% 82%, transparent 84%);
   mask: radial-gradient(circle, transparent 0 61%, #000 63% 82%, transparent 84%);
   filter:
     drop-shadow(0 0 5px rgba(255, 255, 255, 0.58))
-    drop-shadow(0 0 8px rgba(var(--basic3-meter-rgb), 0.18));
+    drop-shadow(0 0 8px rgba(var(--basic3-gauge-rgb), 0.18));
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-glow {
@@ -714,19 +718,19 @@ body[data-theme="basic3"][data-widget-mode="ball"] .gauge-glow {
   stroke-width: 1.2;
   filter:
     drop-shadow(0 0 8px rgba(255, 255, 255, 0.46))
-    drop-shadow(0 0 13px rgba(var(--basic3-meter-rgb), 0.28));
+    drop-shadow(0 0 13px rgba(var(--basic3-gauge-rgb), 0.28));
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-sphere-stop-a {
-  stop-color: var(--basic3-meter-a);
+  stop-color: var(--basic3-gauge-a);
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-sphere-stop-b {
-  stop-color: var(--basic3-meter-b);
+  stop-color: var(--basic3-gauge-b);
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-sphere-stop-c {
-  stop-color: var(--basic3-meter-c);
+  stop-color: var(--basic3-gauge-c);
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-sphere {
@@ -751,7 +755,7 @@ body[data-theme="basic3"][data-widget-mode="ball"] .gauge-outer-progress {
   stroke-width: 10.8;
   filter:
     drop-shadow(0 0 5px rgba(255, 255, 255, 0.84))
-    drop-shadow(0 0 12px rgba(var(--basic3-meter-rgb), 0.52));
+    drop-shadow(0 0 12px rgba(var(--basic3-gauge-rgb), 0.52));
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-track {
@@ -760,8 +764,8 @@ body[data-theme="basic3"][data-widget-mode="ball"] .gauge-track {
 }
 
 body[data-theme="basic3"][data-widget-mode="ball"] .gauge-progress {
-  stroke: rgba(255, 255, 255, 0.38);
-  stroke-width: 3.2;
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 2.4;
   stroke-dasharray: none;
   stroke-dashoffset: 0 !important;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.28));
