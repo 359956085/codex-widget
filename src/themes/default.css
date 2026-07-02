@@ -479,13 +479,19 @@ body[data-theme="default"][data-widget-mode="ball"] .widget {
   box-shadow: none;
   backdrop-filter: none;
   overflow: hidden;
-  -webkit-clip-path: circle(50% at 50% 50%);
-  clip-path: circle(50% at 50% 50%);
+  -webkit-clip-path: none;
+  clip-path: none;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0 97.8%, rgba(0, 0, 0, 0.72) 98.7%, transparent 100%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0 97.8%, rgba(0, 0, 0, 0.72) 98.7%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
 body[data-theme="default"][data-widget-mode="ball"] .widget::before {
   display: block;
-  inset: 0;
+  inset: 1px;
   border-radius: 50%;
   background:
     radial-gradient(ellipse 52px 24px at 28% 13%, rgba(255, 255, 255, 0.42), transparent 70%),
@@ -503,10 +509,10 @@ body[data-theme="default"][data-widget-mode="ball"] .content {
 }
 
 body[data-theme="default"][data-widget-mode="ball"] .liquid-meter {
-  top: 0;
-  left: 0;
+  top: 1px;
+  left: 1px;
   margin-left: 0;
-  transform: scale(0.676923);
+  transform: scale(0.661538);
   transform-origin: top left;
 }
 
