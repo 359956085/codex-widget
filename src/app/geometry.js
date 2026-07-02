@@ -37,6 +37,24 @@ export function positionBelongsToWorkArea(position, size, area) {
   return centerX >= bounds.left && centerX <= bounds.right && centerY >= bounds.top && centerY <= bounds.bottom;
 }
 
+export function workAreaForBallPosition(position, size, monitors) {
+  if (!position || !Array.isArray(monitors) || monitors.length === 0) return null;
+
+  const center = {
+    x: position.x + size.width / 2,
+    y: position.y + size.height / 2
+  };
+  const matched = monitors.find((monitor) => pointBelongsToWorkArea(center, monitor.workArea));
+  if (matched) return matched.workArea;
+
+  return monitors
+    .map((monitor) => ({
+      area: monitor.workArea,
+      distance: distanceToWorkArea(center, monitor.workArea)
+    }))
+    .sort((first, second) => first.distance - second.distance)[0]?.area || null;
+}
+
 export function clampBallPositionToWorkArea(position, size, area, dock = null) {
   const bounds = workAreaBounds(area);
   const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
@@ -69,4 +87,56 @@ export function resolveBallDock(position, size, bounds) {
   if (hitsLeftDock) return "left";
   if (hitsRightDock) return "right";
   return null;
+}
+
+export function resolveSafeBallDock(position, size, area, monitors) {
+  const bounds = workAreaBounds(area);
+  const dock = resolveBallDock(position, size, bounds);
+  if (!dock) return null;
+
+  const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
+  return edgeHasAdjacentWorkArea(area, dock, monitors, size, y) ? null : dock;
+}
+
+export function edgeHasAdjacentWorkArea(area, dock, monitors, size, y) {
+  if (!Array.isArray(monitors) || monitors.length <= 1) return false;
+  const bounds = workAreaBounds(area);
+  const hiddenWidth = Math.round(size.width / 2);
+  const hiddenRect =
+    dock === "left"
+      ? { left: bounds.left - hiddenWidth, top: y, right: bounds.left, bottom: y + size.height }
+      : { left: bounds.right, top: y, right: bounds.right + hiddenWidth, bottom: y + size.height };
+
+  return monitors.some((monitor) => {
+    if (!monitor.workArea || sameWorkArea(area, monitor.workArea)) return false;
+    return rectsIntersect(hiddenRect, workAreaBounds(monitor.workArea));
+  });
+}
+
+function pointBelongsToWorkArea(point, area) {
+  if (!area) return false;
+  const bounds = workAreaBounds(area);
+  return point.x >= bounds.left && point.x <= bounds.right && point.y >= bounds.top && point.y <= bounds.bottom;
+}
+
+function distanceToWorkArea(point, area) {
+  const bounds = workAreaBounds(area);
+  const dx = Math.max(bounds.left - point.x, 0, point.x - bounds.right);
+  const dy = Math.max(bounds.top - point.y, 0, point.y - bounds.bottom);
+  return Math.hypot(dx, dy);
+}
+
+function sameWorkArea(first, second) {
+  const firstBounds = workAreaBounds(first);
+  const secondBounds = workAreaBounds(second);
+  return (
+    firstBounds.left === secondBounds.left &&
+    firstBounds.top === secondBounds.top &&
+    firstBounds.right === secondBounds.right &&
+    firstBounds.bottom === secondBounds.bottom
+  );
+}
+
+function rectsIntersect(first, second) {
+  return first.left < second.right && first.right > second.left && first.top < second.bottom && first.bottom > second.top;
 }

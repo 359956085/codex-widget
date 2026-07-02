@@ -3,7 +3,9 @@ import {
   clampBallPositionToWorkArea,
   clampPositionToWorkArea,
   defaultTopRightPosition,
-  positionBelongsToWorkArea
+  positionBelongsToWorkArea,
+  resolveSafeBallDock,
+  workAreaForBallPosition
 } from "./geometry.js";
 import { createBallController } from "./window/ball-controller.js";
 import { createPanelController } from "./window/panel-controller.js";
@@ -111,12 +113,23 @@ export function createWindowController({
     await service.window.setSize({ width: BALL_SIZE, height: BALL_SIZE });
 
     const size = await service.window.outerSize();
-    const area = await workAreaForTargetPosition(targetPosition, size);
+    const monitors = await service.window.availableMonitors();
+    const area = targetPosition
+      ? workAreaForBallPosition(targetPosition, size, monitors)
+        || await workAreaForTargetPosition(targetPosition, size)
+      : await workAreaForTargetPosition(targetPosition, size);
     if (!area) return;
 
     if (targetPosition) {
-      const nextPosition = clampBallPositionToWorkArea(targetPosition, size, area, state.settings.ballDock);
-      state.ballDock = state.settings.ballDock;
+      const dock = state.settings.ballDock
+        ? resolveSafeBallDock(targetPosition, size, area, monitors)
+        : null;
+      const nextPosition = clampBallPositionToWorkArea(targetPosition, size, area, dock);
+      state.ballDock = dock;
+      if (dock !== state.settings.ballDock || !sameWindowPosition(nextPosition, targetPosition)) {
+        applyNormalizedSettings({ ...state.settings, ballPosition: nextPosition, ballDock: dock }, { syncDraft: !state.settingsOpen });
+        await saveCurrentSettings({ silent: true });
+      }
       await service.window.setPosition(nextPosition);
       render();
       return;
@@ -144,6 +157,10 @@ export function createWindowController({
 
   function savedPositionForCurrentMode() {
     return state.widgetMode === WIDGET_MODES.BALL ? state.settings.ballPosition : state.settings.panelPosition;
+  }
+
+  function sameWindowPosition(first, second) {
+    return first?.x === second?.x && first?.y === second?.y;
   }
 
   async function workAreaForTargetPosition(position, size) {

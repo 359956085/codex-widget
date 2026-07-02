@@ -2,8 +2,9 @@ import { CLICK_DELAY_MS, WIDGET_MODES } from "../constants.js";
 import {
   clamp,
   clampBallPositionToWorkArea,
-  resolveBallDock,
-  workAreaBounds
+  resolveSafeBallDock,
+  workAreaBounds,
+  workAreaForBallPosition
 } from "../geometry.js";
 
 export function createBallController({
@@ -154,17 +155,16 @@ export function createBallController({
     if (!service.isAvailable()) return;
 
     try {
-      const [monitor, position, size] = await Promise.all([
-        service.window.currentMonitor(),
+      const [monitors, position, size] = await Promise.all([
+        service.window.availableMonitors(),
         service.window.outerPosition(),
         service.window.outerSize()
       ]);
-      const area = monitor?.workArea;
+      const dragPosition = targetPosition || position;
+      const area = workAreaForBallPosition(dragPosition, size, monitors);
       if (!area) return;
 
-      const bounds = workAreaBounds(area);
-      const dragPosition = targetPosition || position;
-      const dock = resolveBallDock(dragPosition, size, bounds);
+      const dock = resolveSafeBallDock(dragPosition, size, area, monitors);
       const nextPosition = clampBallPositionToWorkArea(dragPosition, size, area, dock);
       state.ballDock = dock;
       await service.window.setPosition(nextPosition);

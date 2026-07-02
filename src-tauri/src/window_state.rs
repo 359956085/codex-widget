@@ -7,6 +7,14 @@ const PANEL_HEIGHT: f64 = 236.0;
 const BALL_SIZE: f64 = 88.0;
 const SNAP_DISTANCE: i32 = 24;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct WorkAreaBounds {
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+}
+
 pub(crate) fn apply_startup_window_state(
     window: &WebviewWindow,
     settings: &AppSettings,
@@ -43,21 +51,12 @@ fn restore_saved_window_position(
     let window_width = size.width as i32;
     let window_height = size.height as i32;
     let monitors = window.available_monitors()?;
-    for monitor in monitors {
-        let work_area = monitor.work_area();
-        let left = work_area.position.x;
-        let top = work_area.position.y;
-        let right = left + work_area.size.width as i32;
-        let bottom = top + work_area.size.height as i32;
-        if !position_belongs_to_area(
-            position,
-            window_width,
-            window_height,
-            left,
-            top,
-            right,
-            bottom,
-        ) {
+    let mut work_areas: Vec<WorkAreaBounds> = monitors
+        .iter()
+        .map(|monitor| work_area_bounds(monitor.work_area()))
+        .collect();
+    for area in &work_areas {
+        if !position_belongs_to_area(position, window_width, window_height, *area) {
             continue;
         }
         set_position_in_work_area(
@@ -65,31 +64,38 @@ fn restore_saved_window_position(
             position,
             window_width,
             window_height,
-            left,
-            top,
-            right,
-            bottom,
-            startup_ball_dock(settings),
+            *area,
+            safe_startup_ball_dock(
+                settings,
+                *area,
+                &work_areas,
+                window_width,
+                window_height,
+                position,
+            ),
         )?;
         return Ok(true);
     }
 
     if let Some(monitor) = window.primary_monitor()? {
-        let work_area = monitor.work_area();
-        let left = work_area.position.x;
-        let top = work_area.position.y;
-        let right = left + work_area.size.width as i32;
-        let bottom = top + work_area.size.height as i32;
+        let area = work_area_bounds(monitor.work_area());
+        if !work_areas.contains(&area) {
+            work_areas.push(area);
+        }
         set_position_in_work_area(
             window,
             position,
             window_width,
             window_height,
-            left,
-            top,
-            right,
-            bottom,
-            startup_ball_dock(settings),
+            area,
+            safe_startup_ball_dock(
+                settings,
+                area,
+                &work_areas,
+                window_width,
+                window_height,
+                position,
+            ),
         )?;
         return Ok(true);
     }
@@ -116,43 +122,110 @@ fn position_belongs_to_area(
     position: WindowPosition,
     window_width: i32,
     window_height: i32,
-    left: i32,
-    top: i32,
-    right: i32,
-    bottom: i32,
+    area: WorkAreaBounds,
 ) -> bool {
     let center_x = position.x + window_width / 2;
     let center_y = position.y + window_height / 2;
-    center_x >= left && center_x <= right && center_y >= top && center_y <= bottom
+    center_x >= area.left
+        && center_x <= area.right
+        && center_y >= area.top
+        && center_y <= area.bottom
 }
 
-#[allow(clippy::too_many_arguments)]
 fn set_position_in_work_area(
     window: &WebviewWindow,
     position: WindowPosition,
     window_width: i32,
     window_height: i32,
-    left: i32,
-    top: i32,
-    right: i32,
-    bottom: i32,
+    area: WorkAreaBounds,
     ball_dock: Option<BallDock>,
 ) -> tauri::Result<()> {
-    let mut x = position
-        .x
-        .clamp(left, left.max(right.saturating_sub(window_width)));
-    let y = position
-        .y
-        .clamp(top, top.max(bottom.saturating_sub(window_height)));
+    let mut x = position.x.clamp(
+        area.left,
+        area.left.max(area.right.saturating_sub(window_width)),
+    );
+    let y = position.y.clamp(
+        area.top,
+        area.top.max(area.bottom.saturating_sub(window_height)),
+    );
 
     if let Some(dock) = ball_dock {
         x = match dock {
-            BallDock::Left => left - window_width / 2,
-            BallDock::Right => right - window_width / 2,
+            BallDock::Left => area.left - window_width / 2,
+            BallDock::Right => area.right - window_width / 2,
         };
     }
 
     window.set_position(Position::Physical(PhysicalPosition { x, y }))
+}
+
+fn safe_startup_ball_dock(
+    settings: &AppSettings,
+    area: WorkAreaBounds,
+    work_areas: &[WorkAreaBounds],
+    window_width: i32,
+    window_height: i32,
+    position: WindowPosition,
+) -> Option<BallDock> {
+    let dock = startup_ball_dock(settings)?;
+    let y = position.y.clamp(
+        area.top,
+        area.top.max(area.bottom.saturating_sub(window_height)),
+    );
+
+    // 多屏内部边界不能半隐藏，否则隐藏半边会显示到相邻屏幕。
+    if edge_has_adjacent_work_area(area, dock, work_areas, window_width, window_height, y) {
+        None
+    } else {
+        Some(dock)
+    }
+}
+
+fn edge_has_adjacent_work_area(
+    area: WorkAreaBounds,
+    dock: BallDock,
+    work_areas: &[WorkAreaBounds],
+    window_width: i32,
+    window_height: i32,
+    y: i32,
+) -> bool {
+    let hidden_width = window_width / 2;
+    let hidden_rect = match dock {
+        BallDock::Left => WorkAreaBounds {
+            left: area.left - hidden_width,
+            top: y,
+            right: area.left,
+            bottom: y + window_height,
+        },
+        BallDock::Right => WorkAreaBounds {
+            left: area.right,
+            top: y,
+            right: area.right + hidden_width,
+            bottom: y + window_height,
+        },
+    };
+
+    work_areas
+        .iter()
+        .any(|other| *other != area && rects_intersect(hidden_rect, *other))
+}
+
+fn rects_intersect(first: WorkAreaBounds, second: WorkAreaBounds) -> bool {
+    first.left < second.right
+        && first.right > second.left
+        && first.top < second.bottom
+        && first.bottom > second.top
+}
+
+fn work_area_bounds(work_area: &tauri::PhysicalRect<i32, u32>) -> WorkAreaBounds {
+    let left = work_area.position.x;
+    let top = work_area.position.y;
+    WorkAreaBounds {
+        left,
+        top,
+        right: left + work_area.size.width as i32,
+        bottom: top + work_area.size.height as i32,
+    }
 }
 
 fn place_window_top_right(window: &WebviewWindow) -> tauri::Result<()> {
