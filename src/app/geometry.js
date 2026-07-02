@@ -98,6 +98,32 @@ export function resolveSafeBallDock(position, size, area, monitors) {
   return edgeHasAdjacentWorkArea(area, dock, monitors, size, y) ? null : dock;
 }
 
+export function isBallAtInternalWorkAreaEdge(position, size, area, monitors) {
+  if (!position || !area || !Array.isArray(monitors) || monitors.length <= 1) return false;
+
+  const bounds = workAreaBounds(area);
+  const dock = resolveBallDock(position, size, bounds);
+  if (!dock) return false;
+
+  const maxY = Math.max(bounds.top, bounds.bottom - size.height);
+  if (position.y < bounds.top || position.y > maxY) return false;
+
+  const windowRect = {
+    left: position.x,
+    top: position.y,
+    right: position.x + size.width,
+    bottom: position.y + size.height
+  };
+
+  return (
+    edgeHasAdjacentWorkArea(area, dock, monitors, size, position.y) &&
+    monitors.some((monitor) => {
+      if (!monitor.workArea || sameWorkArea(area, monitor.workArea)) return false;
+      return rectsIntersect(windowRect, workAreaBounds(monitor.workArea));
+    })
+  );
+}
+
 export function edgeHasAdjacentWorkArea(area, dock, monitors, size, y) {
   if (!Array.isArray(monitors) || monitors.length <= 1) return false;
   const bounds = workAreaBounds(area);

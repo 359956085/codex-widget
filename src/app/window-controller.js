@@ -3,6 +3,7 @@ import {
   clampBallPositionToWorkArea,
   clampPositionToWorkArea,
   defaultTopRightPosition,
+  isBallAtInternalWorkAreaEdge,
   positionBelongsToWorkArea,
   resolveSafeBallDock,
   workAreaForBallPosition
@@ -121,6 +122,17 @@ export function createWindowController({
     if (!area) return;
 
     if (targetPosition) {
+      if (isBallAtInternalWorkAreaEdge(targetPosition, size, area, monitors)) {
+        state.ballDock = null;
+        if (state.settings.ballDock) {
+          applyNormalizedSettings({ ...state.settings, ballPosition: targetPosition, ballDock: null }, { syncDraft: !state.settingsOpen });
+          await saveCurrentSettings({ silent: true });
+        }
+        await service.window.setPosition(targetPosition);
+        render();
+        return;
+      }
+
       const dock = state.settings.ballDock
         ? resolveSafeBallDock(targetPosition, size, area, monitors)
         : null;

@@ -2,6 +2,7 @@ import { CLICK_DELAY_MS, WIDGET_MODES } from "../constants.js";
 import {
   clamp,
   clampBallPositionToWorkArea,
+  isBallAtInternalWorkAreaEdge,
   resolveSafeBallDock,
   workAreaBounds,
   workAreaForBallPosition
@@ -163,6 +164,14 @@ export function createBallController({
       const dragPosition = targetPosition || position;
       const area = workAreaForBallPosition(dragPosition, size, monitors);
       if (!area) return;
+
+      if (isBallAtInternalWorkAreaEdge(dragPosition, size, area, monitors)) {
+        state.ballDock = null;
+        await service.window.setPosition(dragPosition);
+        await positionController.persistWindowPosition(dragPosition, WIDGET_MODES.BALL, null);
+        render();
+        return;
+      }
 
       const dock = resolveSafeBallDock(dragPosition, size, area, monitors);
       const nextPosition = clampBallPositionToWorkArea(dragPosition, size, area, dock);

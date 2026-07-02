@@ -59,21 +59,32 @@ fn restore_saved_window_position(
         if !position_belongs_to_area(position, window_width, window_height, *area) {
             continue;
         }
-        set_position_in_work_area(
-            window,
+        if is_ball_at_internal_work_area_edge(
+            settings,
             position,
             window_width,
             window_height,
             *area,
-            safe_startup_ball_dock(
-                settings,
-                *area,
-                &work_areas,
+            &work_areas,
+        ) {
+            set_exact_position(window, position)?;
+        } else {
+            set_position_in_work_area(
+                window,
+                position,
                 window_width,
                 window_height,
-                position,
-            ),
-        )?;
+                *area,
+                safe_startup_ball_dock(
+                    settings,
+                    *area,
+                    &work_areas,
+                    window_width,
+                    window_height,
+                    position,
+                ),
+            )?;
+        }
         return Ok(true);
     }
 
@@ -82,25 +93,43 @@ fn restore_saved_window_position(
         if !work_areas.contains(&area) {
             work_areas.push(area);
         }
-        set_position_in_work_area(
-            window,
+        if is_ball_at_internal_work_area_edge(
+            settings,
             position,
             window_width,
             window_height,
             area,
-            safe_startup_ball_dock(
-                settings,
-                area,
-                &work_areas,
+            &work_areas,
+        ) {
+            set_exact_position(window, position)?;
+        } else {
+            set_position_in_work_area(
+                window,
+                position,
                 window_width,
                 window_height,
-                position,
-            ),
-        )?;
+                area,
+                safe_startup_ball_dock(
+                    settings,
+                    area,
+                    &work_areas,
+                    window_width,
+                    window_height,
+                    position,
+                ),
+            )?;
+        }
         return Ok(true);
     }
 
     Ok(false)
+}
+
+fn set_exact_position(window: &WebviewWindow, position: WindowPosition) -> tauri::Result<()> {
+    window.set_position(Position::Physical(PhysicalPosition {
+        x: position.x,
+        y: position.y,
+    }))
 }
 
 fn saved_position_for_mode(settings: &AppSettings) -> Option<WindowPosition> {
@@ -179,6 +208,68 @@ fn safe_startup_ball_dock(
     } else {
         Some(dock)
     }
+}
+
+fn is_ball_at_internal_work_area_edge(
+    settings: &AppSettings,
+    position: WindowPosition,
+    window_width: i32,
+    window_height: i32,
+    area: WorkAreaBounds,
+    work_areas: &[WorkAreaBounds],
+) -> bool {
+    if settings.widget_mode != WidgetMode::Ball || work_areas.len() <= 1 {
+        return false;
+    }
+
+    let Some(dock) = resolve_ball_dock(position, window_width, area) else {
+        return false;
+    };
+
+    let max_y = area.top.max(area.bottom.saturating_sub(window_height));
+    if position.y < area.top || position.y > max_y {
+        return false;
+    }
+
+    let window_rect = WorkAreaBounds {
+        left: position.x,
+        top: position.y,
+        right: position.x + window_width,
+        bottom: position.y + window_height,
+    };
+
+    edge_has_adjacent_work_area(area, dock, work_areas, window_width, window_height, position.y)
+        && work_areas
+            .iter()
+            .any(|other| *other != area && rects_intersect(window_rect, *other))
+}
+
+fn resolve_ball_dock(
+    position: WindowPosition,
+    window_width: i32,
+    area: WorkAreaBounds,
+) -> Option<BallDock> {
+    let left_edge = position.x;
+    let right_edge = position.x + window_width;
+    let center_x = position.x + window_width / 2;
+    let hits_left_dock = left_edge <= area.left + SNAP_DISTANCE;
+    let hits_right_dock = right_edge >= area.right - SNAP_DISTANCE;
+
+    if hits_left_dock && hits_right_dock {
+        let area_center_x = area.left + (area.right - area.left) / 2;
+        return if center_x <= area_center_x {
+            Some(BallDock::Left)
+        } else {
+            Some(BallDock::Right)
+        };
+    }
+    if hits_left_dock {
+        return Some(BallDock::Left);
+    }
+    if hits_right_dock {
+        return Some(BallDock::Right);
+    }
+    None
 }
 
 fn edge_has_adjacent_work_area(
