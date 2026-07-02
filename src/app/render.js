@@ -39,7 +39,9 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     renderWidgetHint(text);
     renderBrandName(text);
     setText(els.remainingLabel, text.remaining);
-    els.remainingLabel.hidden = state.widgetMode === WIDGET_MODES.BALL;
+    els.remainingLabel.hidden =
+      state.widgetMode === WIDGET_MODES.BALL &&
+      (activeTheme !== "default" || (state.ballDock || "none") !== "none");
     setText(els.planLabel, text.plan);
 
     updateActionButton(els.modeBtn, "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
