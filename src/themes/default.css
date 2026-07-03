@@ -237,7 +237,7 @@ body[data-theme="default"] .liquid-meter::after {
 
 body[data-theme="default"] .liquid-meter::before {
   background:
-    radial-gradient(ellipse 124px 70px at 50% -2%, rgba(1, 9, 20, 0.78), rgba(8, 26, 40, 0.46) 48%, transparent 72%),
+    radial-gradient(ellipse 126px 82px at 50% 0%, rgba(1, 9, 20, 0.82), rgba(8, 26, 40, 0.5) 51%, transparent 76%),
     linear-gradient(132deg, transparent 0 6%, rgba(255, 255, 255, 0.58) 7% 14%, rgba(255, 255, 255, 0.22) 15% 27%, transparent 39%),
     linear-gradient(45deg, transparent 0 29%, rgba(255, 255, 255, 0.09) 30% 42%, transparent 53%),
     radial-gradient(ellipse 30px 9px at 24% 35%, rgba(255, 255, 255, 0.24), transparent 76%),
@@ -264,11 +264,18 @@ body[data-theme="default"] .liquid-fill {
   right: 5px;
   bottom: 5px;
   left: 5px;
+  max-height: calc(100% - 18px);
   z-index: 1;
-  overflow: visible;
+  overflow: hidden;
   border-radius: 0 0 999px 999px / 0 0 58px 58px;
-  -webkit-clip-path: inset(-14px 0 0 0 round 0 0 999px 999px);
-  clip-path: inset(-14px 0 0 0 round 0 0 999px 999px);
+  -webkit-clip-path: inset(0 0 0 0 round 0 0 999px 999px);
+  clip-path: inset(0 0 0 0 round 0 0 999px 999px);
+  -webkit-mask-image: radial-gradient(circle 60px at 50% calc(100% - 60px), #000 0 98%, transparent 100%);
+  mask-image: radial-gradient(circle 60px at 50% calc(100% - 60px), #000 0 98%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
   background:
     radial-gradient(ellipse 112px 52px at 50% 0%, rgba(185, 255, 228, 0.46), transparent 72%),
     radial-gradient(ellipse 96px 74px at 50% 88%, rgba(0, 112, 82, 0.44), transparent 72%),
@@ -288,14 +295,14 @@ body[data-theme="default"] .liquid-fill::after {
 }
 
 body[data-theme="default"] .liquid-fill::before {
-  top: -7px;
-  right: -1px;
-  left: -1px;
+  top: 1px;
+  right: 0;
+  left: 0;
   z-index: 2;
-  height: 14px;
+  height: 12px;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse 84px 8px at 50% 50%, rgba(240, 255, 249, 0.34), transparent 70%),
+    radial-gradient(ellipse 96px 8px at 50% 50%, rgba(240, 255, 249, 0.34), transparent 76%),
     linear-gradient(180deg, rgba(3, 29, 31, 0.32), transparent 34%),
     linear-gradient(180deg, rgba(204, 255, 235, 0.46), rgba(var(--default-accent-rgb), 0.2) 50%, rgba(var(--default-accent-rgb), 0.02) 82%),
     rgba(var(--default-accent-rgb), 0.06);
@@ -553,7 +560,7 @@ body[data-theme="default"][data-widget-mode="ball"]:not([data-ball-dock="none"])
   32% {
     opacity: 0.86;
     filter: brightness(0.94);
-    transform: translate3d(1px, -1px, 0) scaleX(0.99) scaleY(1.04);
+    transform: translate3d(1px, 0, 0) scaleX(0.99) scaleY(1.04);
   }
 
   66% {
