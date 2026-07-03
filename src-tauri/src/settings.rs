@@ -102,6 +102,8 @@ pub struct AppSettings {
     #[serde(default = "default_auto_start_enabled")]
     pub auto_start_enabled: bool,
     #[serde(default)]
+    pub onboarding_seen: bool,
+    #[serde(default)]
     pub log_level: LogLevel,
     #[serde(default)]
     pub widget_mode: WidgetMode,
@@ -124,6 +126,7 @@ impl Default for AppSettings {
             meter_window: MeterWindow::default(),
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
+            onboarding_seen: false,
             log_level: LogLevel::default(),
             widget_mode: WidgetMode::default(),
             panel_position: None,
@@ -360,6 +363,7 @@ mod tests {
             meter_window: MeterWindow::Secondary,
             auto_update_enabled: false,
             auto_start_enabled: true,
+            onboarding_seen: true,
             log_level: LogLevel::Debug,
             widget_mode: WidgetMode::Ball,
             panel_position: Some(WindowPosition { x: 120, y: 80 }),
@@ -381,6 +385,7 @@ mod tests {
         assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
+        assert!(loaded.onboarding_seen);
         assert_eq!(loaded.widget_mode, WidgetMode::Ball);
         assert_eq!(
             loaded.panel_position,
@@ -413,6 +418,7 @@ mod tests {
 
         assert!(settings.auto_update_enabled);
         assert!(!settings.auto_start_enabled);
+        assert!(!settings.onboarding_seen);
         assert_eq!(settings.theme, ThemeMode::Default);
         assert_eq!(settings.meter_window, MeterWindow::Primary);
         assert_eq!(settings.log_level, LogLevel::Off);

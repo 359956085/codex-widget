@@ -18,6 +18,8 @@ export function normalizeSettings(settings) {
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
     autoStartEnabled:
       typeof settings?.autoStartEnabled === "boolean" ? settings.autoStartEnabled : DEFAULT_SETTINGS.autoStartEnabled,
+    onboardingSeen:
+      typeof settings?.onboardingSeen === "boolean" ? settings.onboardingSeen : DEFAULT_SETTINGS.onboardingSeen,
     widgetMode,
     panelPosition: normalizeWindowPosition(settings?.panelPosition),
     ballPosition: normalizeWindowPosition(settings?.ballPosition),

@@ -383,7 +383,7 @@ body[data-theme="default"] .meter-copy span {
 }
 
 body[data-theme="default"] .quota-panel {
-  gap: 9px;
+  gap: 5px;
 }
 
 body[data-theme="default"] .quota-card {

@@ -85,6 +85,30 @@
         <span id="statusText">正在通过 Codex CLI 读取额度...</span>
       </footer>
 
+      <section id="onboardingOverlay" class="onboarding-overlay" data-no-drag hidden aria-label="功能引导">
+        <span class="onboarding-target-ring" aria-hidden="true"></span>
+        <span class="onboarding-node" aria-hidden="true"></span>
+        <span class="onboarding-connector" aria-hidden="true"></span>
+        <article class="onboarding-card" aria-live="polite">
+          <span class="onboarding-card-icon" aria-hidden="true">✦</span>
+          <div class="onboarding-copy">
+            <strong id="onboardingTitle">切换悬浮球</strong>
+            <p id="onboardingDescription">在完整面板和悬浮球之间切换，按使用场景选择显示方式。</p>
+          </div>
+        </article>
+        <div class="onboarding-controls" data-no-drag>
+          <div class="onboarding-steps" aria-hidden="true">
+            <span data-onboarding-step-dot>1</span>
+            <span data-onboarding-step-dot>2</span>
+            <span data-onboarding-step-dot>3</span>
+            <span data-onboarding-step-dot>4</span>
+          </div>
+          <button id="onboardingPrevBtn" class="onboarding-prev" type="button" data-no-drag disabled>上一步</button>
+          <button id="onboardingNextBtn" class="onboarding-next" type="button" data-no-drag>下一步</button>
+          <button id="onboardingCloseBtn" class="onboarding-close" type="button" data-no-drag data-tooltip="关闭引导" aria-label="关闭引导">关闭</button>
+        </div>
+      </section>
+
       <section id="settingsPanel" class="settings-panel" data-no-drag hidden aria-label="设置">
         <div class="settings-head">
           <strong id="settingsTitle">设置</strong>

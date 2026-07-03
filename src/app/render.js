@@ -128,6 +128,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     }
 
     const versionButton = document.createElement("button");
+    versionButton.id = "versionBtn";
     versionButton.type = "button";
     versionButton.className = "version-badge";
     versionButton.textContent = APP_VERSION_LABEL;

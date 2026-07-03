@@ -198,6 +198,7 @@ export function createSettingsController({
       logLevel: normalizeLogLevel(els.logLevelSelect.value),
       autoUpdateEnabled: els.autoUpdateSwitch.checked,
       autoStartEnabled: els.autoStartSwitch.checked,
+      onboardingSeen: state.settings.onboardingSeen,
       widgetMode: state.widgetMode,
       panelPosition: state.settings.panelPosition,
       ballPosition: state.settings.ballPosition,

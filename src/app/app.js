@@ -1,7 +1,8 @@
-import { DEFAULT_SETTINGS } from "./constants.js";
+import { DEFAULT_SETTINGS, i18n } from "./constants.js";
 import { createElements } from "./dom.js";
 import { initializeActionIcons } from "./icons.js";
 import { createLogger } from "./logger.js";
+import { createOnboardingController } from "./onboarding-controller.js";
 import { createQuotaController } from "./quota-controller.js";
 import { createRenderer } from "./render.js";
 import { createSettingsController } from "./settings-controller.js";
@@ -81,6 +82,16 @@ export function createApp() {
     logger
   });
 
+  const onboardingController = createOnboardingController({
+    els,
+    state,
+    renderLocale: () => renderLocale(state),
+    renderTheme: () => renderTheme(state),
+    applyNormalizedSettings,
+    saveCurrentSettings,
+    i18n
+  });
+
   const settingsController = createSettingsController({
     els,
     state,
@@ -112,6 +123,7 @@ export function createApp() {
   function bindEvents() {
     windowController.bindEvents();
     settingsController.bindEvents();
+    onboardingController.bindEvents();
     tooltipController.bindEvents();
     els.pinBtn.addEventListener("click", toggleAlwaysOnTop);
     els.refreshBtn.addEventListener("click", () => quotaController.refreshQuota());
@@ -137,6 +149,7 @@ export function createApp() {
     render();
     await loadSettings();
     await windowController.applyWidgetModeWindow();
+    await onboardingController.runInitialOnboarding();
     await windowController.registerWindowMoveSave();
 
     try {
