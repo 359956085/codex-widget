@@ -79,7 +79,7 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 - Codex path: leave empty for auto detection, or choose a specific `codex` or `codex.exe`.
 - Auto update: when disabled, the app does not check, download, or install GitHub Releases updates. A local proxy may be required.
-- Update proxy: used only for GitHub updates, not for Codex quota reads. Supports `http://`, `https://`, and `socks5://`.
+- Update proxy: used for GitHub updates and the ChatGPT quota expiry API. It does not affect the main Codex CLI quota read. Supports `http://`, `https://`, and `socks5://`.
 - Start at login: launches the app after signing in. Current user only.
 - Refresh minutes: auto refresh interval, from `1` to `1440`.
 - Theme: choose Default theme, Basic theme 1, Basic theme 2, and Basic theme 3. The selection persists after restart.

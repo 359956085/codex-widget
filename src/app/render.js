@@ -1,6 +1,9 @@
 import { APP_VERSION_LABEL, i18n, WIDGET_MODES } from "./constants.js";
 import {
+  formatResetCreditExpiries,
   formatResetCredits,
+  formatDateTimeOrPlaceholder,
+  formatTimeOrPlaceholder,
   formatWindowLabel,
   getVisualState,
   selectedMeterWindow,
@@ -43,6 +46,9 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       state.widgetMode === WIDGET_MODES.BALL &&
       (activeTheme !== "default" || (state.ballDock || "none") !== "none");
     setText(els.planLabel, text.plan);
+    setText(els.primaryResetLabel, text.primaryResetInlineLabel);
+    setText(els.secondaryResetLabel, text.secondaryResetLabel);
+    setText(els.planExpiryLabel, text.resetCreditExpiryPrefix);
 
     updateActionButton(els.modeBtn, "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
     updateActionButton(els.settingsBtn, "settings", text.settings);
@@ -91,7 +97,13 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
 
     renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
     renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
+    setText(els.primaryResetValue, formatTimeOrPlaceholder(quota?.primary?.resetsAt, activeLocale));
+    setText(els.secondaryResetValue, formatDateTimeOrPlaceholder(quota?.secondary?.resetsAt, activeLocale));
     setText(els.planText, formatResetCredits(quota?.resetCredits?.availableCount));
+    setText(
+      els.planExpiryValue,
+      formatResetCreditExpiries(state.resetCreditExpiries, state.resetCreditExpiriesStatus)
+    );
     settingsView.renderSettingsPanel(text);
   }
 

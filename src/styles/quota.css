@@ -30,6 +30,46 @@
   white-space: nowrap;
 }
 
+.quota-copy {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  gap: 0;
+}
+
+.quota-copy > span,
+.quota-subtext,
+.quota-sub-label,
+.quota-sub-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quota-subtext {
+  display: grid;
+  grid-template-columns: var(--quota-sub-label-width, 50px) minmax(0, 1fr);
+  align-items: baseline;
+  color: rgba(225, 237, 248, 0.52);
+  font-size: 9px;
+  font-weight: 620;
+  line-height: 10px;
+}
+
+.quota-subtext .quota-sub-label {
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
+.quota-subtext .quota-sub-value {
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
 .quota-card strong {
   overflow: hidden;
   max-width: 74px;

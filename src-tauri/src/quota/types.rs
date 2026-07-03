@@ -16,6 +16,12 @@ pub struct ResetCredits {
     pub available_count: Option<u64>,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResetCreditExpiries {
+    pub expiries: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaSnapshot {

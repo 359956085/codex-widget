@@ -10,6 +10,20 @@ export function formatResetCredits(availableCount) {
   return "--";
 }
 
+export function formatResetCreditExpiries(expiries, status) {
+  if (status !== "success" || !Array.isArray(expiries) || expiries.length === 0) {
+    return "--";
+  }
+
+  const values = expiries
+    .map((value) => ({ value, time: new Date(value).getTime() }))
+    .filter((item) => Number.isFinite(item.time))
+    .sort((left, right) => left.time - right.time)
+    .slice(0, 5)
+    .map((item) => formatRemainingDuration(item.time));
+  return values.length ? values.join("/") : "--";
+}
+
 export function formatWindowLabel(minutes, fallbackLabel, text, locale) {
   if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) return fallbackLabel;
   if (minutes % 10080 === 0) {
@@ -30,9 +44,7 @@ export function formatWindowLabel(minutes, fallbackLabel, text, locale) {
 export function statusLabel(quota, text, locale) {
   if (!quota) return text.noData;
   const fetchedAt = formatTimeOrPlaceholder(quota.fetchedAt, locale);
-  const primaryResetAt = formatTimeOrPlaceholder(quota.primary?.resetsAt, locale);
-  const secondaryResetAt = formatDateTimeOrPlaceholder(quota.secondary?.resetsAt, locale);
-  return `${text.refreshedAt} ${fetchedAt} · ${text.primaryResetLabel} ${primaryResetAt} · ${text.secondaryResetLabel} ${secondaryResetAt}`;
+  return `${text.refreshedAt} ${fetchedAt}`;
 }
 
 export function getVisualState(remaining) {
@@ -77,6 +89,20 @@ function formatMonthDayTime(value, locale) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
+}
+
+function formatRemainingDuration(time) {
+  const diff = time - Date.now();
+  if (!Number.isFinite(diff) || diff <= 0) return "0m";
+
+  const totalMinutes = Math.max(1, Math.ceil(diff / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  if (days >= 1) return `${days}d`;
+
+  const hours = Math.floor(totalMinutes / 60);
+  if (hours >= 1) return `${hours}h`;
+
+  return `${totalMinutes}m`;
 }
 
 export function waterFillPercent(remaining, theme) {

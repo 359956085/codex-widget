@@ -57,21 +57,39 @@
             <span class="quota-icon" data-quota-icon="primary" aria-hidden="true">
               <i data-lucide="clock-3"></i>
             </span>
-            <span id="primaryLabel">5小时窗口</span>
+            <span class="quota-copy">
+              <span id="primaryLabel">5小时窗口</span>
+              <small class="quota-subtext">
+                <span id="primaryResetLabel" class="quota-sub-label">重置时间：</span>
+                <span id="primaryResetValue" class="quota-sub-value">--</span>
+              </small>
+            </span>
             <strong id="primaryText">--</strong>
           </div>
           <div class="quota-card">
             <span class="quota-icon" data-quota-icon="secondary" aria-hidden="true">
               <i data-lucide="calendar-days"></i>
             </span>
-            <span id="secondaryLabel">7天窗口</span>
+            <span class="quota-copy">
+              <span id="secondaryLabel">7天窗口</span>
+              <small class="quota-subtext">
+                <span id="secondaryResetLabel" class="quota-sub-label">重置时间：</span>
+                <span id="secondaryResetValue" class="quota-sub-value">--</span>
+              </small>
+            </span>
             <strong id="secondaryText">--</strong>
           </div>
           <div class="quota-card slim">
             <span class="quota-icon" data-quota-icon="plan" aria-hidden="true">
               <i data-lucide="sparkles"></i>
             </span>
-            <span id="planLabel">剩余重置次数</span>
+            <span class="quota-copy">
+              <span id="planLabel">重置次数</span>
+              <small class="quota-subtext">
+                <span id="planExpiryLabel" class="quota-sub-label">过期时间：</span>
+                <span id="planExpiryValue" class="quota-sub-value">--</span>
+              </small>
+            </span>
             <strong id="planText">--</strong>
           </div>
         </div>

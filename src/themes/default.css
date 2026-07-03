@@ -437,12 +437,26 @@ body[data-theme="default"] .quota-icon {
   display: none;
 }
 
-body[data-theme="default"] .quota-card > span:not(.quota-icon) {
+body[data-theme="default"] .quota-card > span:not(.quota-icon),
+body[data-theme="default"] .quota-card .quota-copy > span {
   color: rgba(236, 244, 250, 0.88);
   font-size: 13px;
   font-weight: 720;
   line-height: 16px;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="default"] .quota-card .quota-subtext {
+  --quota-sub-label-width: 50px;
+  color: rgba(var(--default-accent-rgb), 0.72);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 10px;
+  text-shadow: 0 0 9px rgba(var(--default-accent-rgb), 0.18);
+}
+
+body[data-theme="default"] .quota-card .quota-sub-value {
+  color: rgba(var(--default-accent-rgb), 0.88);
 }
 
 body[data-theme="default"] .quota-card strong {

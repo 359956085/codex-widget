@@ -7,7 +7,7 @@ use tauri::{AppHandle, Emitter, State, WebviewWindow};
 use crate::app_state::AppState;
 use crate::autostart::sync_auto_start;
 use crate::logging::LogLevel;
-use crate::quota::{self, QuotaSnapshot};
+use crate::quota::{self, QuotaSnapshot, ResetCreditExpiries};
 use crate::settings::{AppSettings, SettingsService};
 use crate::tray::rebuild_tray_menu;
 
@@ -36,6 +36,23 @@ pub(crate) async fn get_quota(
 }
 
 #[tauri::command]
+pub(crate) async fn get_reset_credit_expiries(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ResetCreditExpiries, String> {
+    let settings = SettingsService::load(&app).map_err(|error| error.to_string())?;
+    quota::fetch_reset_credit_expiries(settings.update_proxy.as_deref())
+        .await
+        .map_err(|error| {
+            let message = error.to_string();
+            state
+                .logger
+                .write_best_effort(LogLevel::Error, "backend.quota.resetCredits", &message);
+            message
+        })
+}
+
+#[tauri::command]
 pub(crate) fn hide_window(window: WebviewWindow) -> Result<(), String> {
     window.hide().map_err(|error| error.to_string())
 }
@@ -57,15 +74,13 @@ pub(crate) fn set_always_on_top(
     state: State<'_, AppState>,
     value: bool,
 ) -> Result<bool, String> {
-    window
-        .set_always_on_top(value)
-        .map_err(|error| {
-            let message = error.to_string();
-            state
-                .logger
-                .write_best_effort(LogLevel::Error, "backend.window", &message);
-            message
-        })?;
+    window.set_always_on_top(value).map_err(|error| {
+        let message = error.to_string();
+        state
+            .logger
+            .write_best_effort(LogLevel::Error, "backend.window", &message);
+        message
+    })?;
     state.always_on_top.store(value, Ordering::SeqCst);
     rebuild_tray_menu(&app, value).map_err(|error| error.to_string())?;
     app.emit("window:always-on-top-changed", value)

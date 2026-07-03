@@ -392,11 +392,25 @@ body[data-theme="basic1"] .quota-icon svg {
   stroke-width: 2.35;
 }
 
-body[data-theme="basic1"] .quota-card > span:not(.quota-icon) {
+body[data-theme="basic1"] .quota-card > span:not(.quota-icon),
+body[data-theme="basic1"] .quota-card .quota-copy > span {
   color: var(--basic1-muted);
   font-size: 11px;
   font-weight: 660;
   line-height: 14px;
+}
+
+body[data-theme="basic1"] .quota-card .quota-subtext {
+  --quota-sub-label-width: 50px;
+  color: rgba(103, 232, 249, 0.66);
+  font-size: 9px;
+  font-weight: 620;
+  line-height: 10px;
+  text-shadow: 0 0 8px rgba(103, 232, 249, 0.12);
+}
+
+body[data-theme="basic1"] .quota-card .quota-sub-value {
+  color: rgba(103, 232, 249, 0.82);
 }
 
 body[data-theme="basic1"] .quota-card strong {

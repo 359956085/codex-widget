@@ -6,21 +6,58 @@ export function createQuotaController({ state, service, render, normalizeError, 
 
     state.loading = true;
     state.error = "";
+    clearResetCreditExpiries("idle");
     render();
 
     try {
       state.quota = await service.commands.getQuota();
       state.error = "";
       scheduleResetRefresh(state.quota?.resetsAt);
+      state.loading = false;
+      render();
+      refreshResetCreditExpiries();
     } catch (error) {
       state.quota = null;
       scheduleResetRefresh(null);
       state.error = normalizeError(error);
-      logger?.error("刷新数据失败", error, "frontend.quota");
-    } finally {
       state.loading = false;
+      clearResetCreditExpiries("error");
+      logger?.error("刷新数据失败", error, "frontend.quota");
       render();
     }
+  }
+
+  async function refreshResetCreditExpiries() {
+    const requestId = state.resetCreditExpiriesRequestId + 1;
+    state.resetCreditExpiriesRequestId = requestId;
+    state.resetCreditExpiries = [];
+    state.resetCreditExpiriesStatus = "loading";
+    render();
+
+    try {
+      const result = await service.commands.getResetCreditExpiries();
+      if (state.resetCreditExpiriesRequestId !== requestId) return;
+
+      const expiries = Array.isArray(result?.expiries) ? result.expiries.slice(0, 5) : [];
+      state.resetCreditExpiries = expiries;
+      state.resetCreditExpiriesStatus = expiries.length ? "success" : "empty";
+    } catch (error) {
+      if (state.resetCreditExpiriesRequestId !== requestId) return;
+
+      state.resetCreditExpiries = [];
+      state.resetCreditExpiriesStatus = "error";
+      logger?.error("读取重置次数过期时间失败", error, "frontend.quota.resetCredits");
+    } finally {
+      if (state.resetCreditExpiriesRequestId === requestId) {
+        render();
+      }
+    }
+  }
+
+  function clearResetCreditExpiries(status) {
+    state.resetCreditExpiriesRequestId += 1;
+    state.resetCreditExpiries = [];
+    state.resetCreditExpiriesStatus = status;
   }
 
   function scheduleResetRefresh(resetsAt) {

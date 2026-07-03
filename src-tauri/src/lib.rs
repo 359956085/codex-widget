@@ -12,8 +12,8 @@ use tauri_plugin_autostart::MacosLauncher;
 
 use app_state::AppState;
 use commands::{
-    close_app, get_always_on_top, get_quota, get_settings, hide_window, open_codex, save_settings,
-    set_always_on_top, write_frontend_log,
+    close_app, get_always_on_top, get_quota, get_reset_credit_expiries, get_settings, hide_window,
+    open_codex, save_settings, set_always_on_top, write_frontend_log,
 };
 use quota::configure_process_path_for_codex;
 use settings::SettingsService;
@@ -50,6 +50,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_quota,
+            get_reset_credit_expiries,
             hide_window,
             close_app,
             get_always_on_top,

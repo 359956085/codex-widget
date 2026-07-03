@@ -353,6 +353,7 @@ version = "1.4.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "reqwest",
  "serde",
  "serde_json",
  "tauri",

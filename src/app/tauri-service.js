@@ -11,6 +11,7 @@ export function createTauriService() {
       closeApp: () => invoke("close_app"),
       getAlwaysOnTop: () => invoke("get_always_on_top"),
       getQuota: () => invoke("get_quota"),
+      getResetCreditExpiries: () => invoke("get_reset_credit_expiries"),
       getSettings: () => invoke("get_settings"),
       hideWindow: () => invoke("hide_window"),
       saveSettings: (settings) => invoke("save_settings", { settings }),
