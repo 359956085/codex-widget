@@ -564,7 +564,6 @@ body[data-theme="basic3"] .quota-card .quota-copy > span {
 }
 
 body[data-theme="basic3"] .quota-card .quota-subtext {
-  --quota-sub-label-width: 50px;
   color: rgba(159, 12, 62, 0.76);
   font-size: 9px;
   font-weight: 720;

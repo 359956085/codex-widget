@@ -47,9 +47,10 @@
 }
 
 .quota-subtext {
-  display: grid;
-  grid-template-columns: var(--quota-sub-label-width, 50px) minmax(0, 1fr);
+  display: inline-flex;
   align-items: baseline;
+  width: 100%;
+  gap: 4px;
   color: rgba(225, 237, 248, 0.52);
   font-size: 9px;
   font-weight: 620;
@@ -57,13 +58,14 @@
 }
 
 .quota-subtext .quota-sub-label {
-  min-width: 0;
+  flex: 0 0 auto;
   color: inherit;
   font: inherit;
   line-height: inherit;
 }
 
 .quota-subtext .quota-sub-value {
+  flex: 1 1 auto;
   min-width: 0;
   color: inherit;
   font: inherit;
