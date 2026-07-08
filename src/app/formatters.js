@@ -1,3 +1,5 @@
+import { RESET_CREDIT_EXPIRY_DISPLAY_LIMIT } from "./constants.js";
+
 export function selectedMeterWindow(quota, meterWindow) {
   if (!quota) return null;
   return meterWindow === "secondary" ? quota.secondary || null : quota.primary || null;
@@ -19,7 +21,7 @@ export function formatResetCreditExpiries(expiries, status) {
     .map((value) => ({ value, time: new Date(value).getTime() }))
     .filter((item) => Number.isFinite(item.time))
     .sort((left, right) => left.time - right.time)
-    .slice(0, 5)
+    .slice(0, RESET_CREDIT_EXPIRY_DISPLAY_LIMIT)
     .map((item) => formatRemainingDuration(item.time));
   return values.length ? values.join("/") : "--";
 }

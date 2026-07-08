@@ -20,6 +20,18 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
   const brandView = createBrandView();
 
   function render() {
+    const context = createRenderContext();
+
+    renderDocumentState(context);
+    renderHeader(context);
+    renderActions(context);
+    renderStatus(context);
+    renderMeter(context);
+    renderQuotaCards(context);
+    settingsView.renderSettingsPanel(context.text);
+  }
+
+  function createRenderContext() {
     const activeLocale = getLocale();
     const activeTheme = getTheme();
     const text = i18n[activeLocale];
@@ -33,23 +45,38 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
     const updateStatusText = formatUpdateStatus(text, state.updateStatus);
 
+    return {
+      activeLocale,
+      activeTheme,
+      text,
+      quota,
+      hasQuota,
+      remaining,
+      remainingValue,
+      visualState,
+      mainState,
+      updateStatusText
+    };
+  }
+
+  function renderDocumentState({ activeLocale, activeTheme, mainState }) {
     document.documentElement.lang = activeLocale === "zh" ? "zh-CN" : "en";
     setDatasetValue(els.body, "state", mainState);
     setDatasetValue(els.body, "widgetMode", state.widgetMode);
     setDatasetValue(els.body, "ballDock", state.ballDock || "none");
     setDatasetValue(els.body, "theme", activeTheme);
+  }
 
+  function renderHeader({ activeTheme, text }) {
     renderWidgetHint(text);
     renderBrandName(text);
     setText(els.remainingLabel, text.remaining);
     els.remainingLabel.hidden =
       state.widgetMode === WIDGET_MODES.BALL &&
       (activeTheme !== "default" || (state.ballDock || "none") !== "none");
-    setText(els.planLabel, text.plan);
-    setText(els.primaryResetLabel, text.primaryResetInlineLabel);
-    setText(els.secondaryResetLabel, text.secondaryResetLabel);
-    setText(els.planExpiryLabel, text.resetCreditExpiryPrefix);
+  }
 
+  function renderActions({ text }) {
     updateActionButton(els.modeBtn, "circle-dot", text.ballMode, state.widgetMode === WIDGET_MODES.BALL);
     updateActionButton(els.settingsBtn, "settings", text.settings);
     updateActionButton(
@@ -63,7 +90,9 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     updateActionButton(els.closeBtn, "x", text.exit);
     updateActionButton(els.settingsCloseBtn, "x", text.close);
     updateActionButton(els.chooseCodexBtn, "folder-open", text.chooseCodex);
+  }
 
+  function renderStatus({ activeLocale, hasQuota, mainState, quota, text, updateStatusText, visualState }) {
     setClassName(els.trafficLight, `traffic-light ${mainState}`);
     setClassName(els.statusDot, `status-dot ${state.error ? "error" : mainState}`);
 
@@ -81,7 +110,9 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       setText(els.statusText, statusLabel(quota, text, activeLocale));
     }
     setTooltip(els.statusText, els.statusText.textContent);
+  }
 
+  function renderMeter({ activeTheme, remaining, remainingValue, text, visualState }) {
     setText(els.remaining, remaining === null ? "--%" : `${remaining}%`);
     setStyleValue(els.liquidFill, "height", `${waterFillPercent(remaining, activeTheme)}%`);
     els.liquidMeter.style.setProperty("--remaining-angle", `${remainingValue * 3.6}deg`);
@@ -94,7 +125,13 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       mode: state.widgetMode,
       dock: state.ballDock || "none"
     });
+  }
 
+  function renderQuotaCards({ activeLocale, quota, text }) {
+    setText(els.planLabel, text.plan);
+    setText(els.primaryResetLabel, text.primaryResetInlineLabel);
+    setText(els.secondaryResetLabel, text.secondaryResetLabel);
+    setText(els.planExpiryLabel, text.resetCreditExpiryPrefix);
     renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
     renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
     setText(els.primaryResetValue, formatTimeOrPlaceholder(quota?.primary?.resetsAt, activeLocale));
@@ -104,7 +141,6 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       els.planExpiryValue,
       formatResetCreditExpiries(state.resetCreditExpiries, state.resetCreditExpiriesStatus)
     );
-    settingsView.renderSettingsPanel(text);
   }
 
   function renderBrandName(text) {

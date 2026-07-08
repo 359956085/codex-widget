@@ -111,6 +111,7 @@ export const CLICK_DELAY_MS = 220;
 export const PANEL_DOUBLE_CLICK_MS = 320;
 export const PANEL_DOUBLE_CLICK_DISTANCE = 8;
 export const POSITION_SAVE_DEBOUNCE_MS = 300;
+export const RESET_CREDIT_EXPIRY_DISPLAY_LIMIT = 5;
 
 export const i18n = {
   zh: {

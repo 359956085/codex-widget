@@ -56,21 +56,19 @@ export function createSettingsController({
     els.codexPathInput.value = state.settingsDraft.codexCliPath || "";
     els.updateProxyInput.value = state.settingsDraft.updateProxy || "";
     els.refreshIntervalInput.value = String(state.settingsDraft.refreshIntervalMinutes || DEFAULT_SETTINGS.refreshIntervalMinutes);
-    els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
-    els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
-    renderThemeOptions(renderLocale());
-    renderMeterWindowOptions(renderLocale());
-    els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
-    els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
-    els.meterWindowSelect.value = normalizeMeterWindow(state.settingsDraft.meterWindow);
-    els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
-    customSelects.sync();
+    syncSettingsControls(renderLocale());
   }
 
   function renderSettingsPanel(text) {
     els.settingsPanel.hidden = !state.settingsOpen;
     if (!state.settingsOpen) return;
 
+    renderSettingsLabels(text);
+    renderSettingsSaveState(text);
+    syncSettingsControls(renderLocale());
+  }
+
+  function renderSettingsLabels(text) {
     els.settingsTitle.textContent = text.settings;
     els.codexPathLabel.textContent = text.codexPath;
     els.autoUpdateLabel.textContent = text.autoUpdate;
@@ -87,13 +85,19 @@ export function createSettingsController({
     els.codexPathInput.placeholder = text.codexPathPlaceholder;
     els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
     els.cancelSettingsBtn.textContent = text.cancel;
+  }
+
+  function renderSettingsSaveState(text) {
     els.saveSettingsText.textContent = state.savingSettings ? text.loading : text.save;
     els.saveSettingsBtn.disabled = state.savingSettings;
+  }
+
+  function syncSettingsControls(locale) {
     els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
     els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
-    renderThemeOptions(renderLocale());
-    renderMeterWindowOptions(renderLocale());
-    renderLogLevelOptions(renderLocale());
+    renderThemeOptions(locale);
+    renderMeterWindowOptions(locale);
+    renderLogLevelOptions(locale);
     els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
     els.meterWindowSelect.value = normalizeMeterWindow(state.settingsDraft.meterWindow);

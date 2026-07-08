@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "./constants.js";
+import { DEFAULT_SETTINGS, RESET_CREDIT_EXPIRY_DISPLAY_LIMIT } from "./constants.js";
 
 export function createQuotaController({ state, service, render, normalizeError, logger }) {
   async function refreshQuota() {
@@ -28,30 +28,47 @@ export function createQuotaController({ state, service, render, normalizeError, 
   }
 
   async function refreshResetCreditExpiries() {
-    const requestId = state.resetCreditExpiriesRequestId + 1;
-    state.resetCreditExpiriesRequestId = requestId;
-    state.resetCreditExpiries = [];
-    state.resetCreditExpiriesStatus = "loading";
+    const requestId = startResetCreditExpiriesRequest();
     render();
 
     try {
       const result = await service.commands.getResetCreditExpiries();
-      if (state.resetCreditExpiriesRequestId !== requestId) return;
+      if (!isCurrentResetCreditExpiriesRequest(requestId)) return;
 
-      const expiries = Array.isArray(result?.expiries) ? result.expiries.slice(0, 5) : [];
-      state.resetCreditExpiries = expiries;
-      state.resetCreditExpiriesStatus = expiries.length ? "success" : "empty";
+      applyResetCreditExpiriesResult(result);
     } catch (error) {
-      if (state.resetCreditExpiriesRequestId !== requestId) return;
+      if (!isCurrentResetCreditExpiriesRequest(requestId)) return;
 
-      state.resetCreditExpiries = [];
-      state.resetCreditExpiriesStatus = "error";
-      logger?.error("读取重置次数过期时间失败", error, "frontend.quota.resetCredits");
+      applyResetCreditExpiriesError(error);
     } finally {
-      if (state.resetCreditExpiriesRequestId === requestId) {
+      if (isCurrentResetCreditExpiriesRequest(requestId)) {
         render();
       }
     }
+  }
+
+  function startResetCreditExpiriesRequest() {
+    const requestId = state.resetCreditExpiriesRequestId + 1;
+    state.resetCreditExpiriesRequestId = requestId;
+    state.resetCreditExpiries = [];
+    state.resetCreditExpiriesStatus = "loading";
+    return requestId;
+  }
+
+  function isCurrentResetCreditExpiriesRequest(requestId) {
+    return state.resetCreditExpiriesRequestId === requestId;
+  }
+
+  function applyResetCreditExpiriesResult(result) {
+    const expiries = Array.isArray(result?.expiries) ? result.expiries.slice(0, RESET_CREDIT_EXPIRY_DISPLAY_LIMIT) : [];
+    state.resetCreditExpiries = expiries;
+    state.resetCreditExpiriesStatus = expiries.length ? "success" : "empty";
+  }
+
+  function applyResetCreditExpiriesError(error) {
+    state.resetCreditExpiries = [];
+    state.resetCreditExpiriesStatus = "error";
+    logger?.error("读取重置次数过期时间失败", error, "frontend.quota.resetCredits");
   }
 
   function clearResetCreditExpiries(status) {
