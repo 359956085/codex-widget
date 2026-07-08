@@ -25,6 +25,29 @@ export function createSettingsController({
     onChange: handleCustomSelectChange
   });
   const selectOptionSignatures = new WeakMap();
+  const customSelectHandlers = {
+    themeSelect: selectSettingsTheme,
+    localeSelect: selectSettingsLocale,
+    meterWindowSelect: selectMeterWindow,
+    logLevelSelect: selectLogLevel
+  };
+  const selectOptionConfigs = [
+    {
+      select: els.themeSelect,
+      registry: THEMES,
+      currentValue: () => normalizeTheme(state.settingsDraft.theme)
+    },
+    {
+      select: els.meterWindowSelect,
+      registry: METER_WINDOWS,
+      currentValue: () => normalizeMeterWindow(state.settingsDraft.meterWindow)
+    },
+    {
+      select: els.logLevelSelect,
+      registry: LOG_LEVELS,
+      currentValue: () => normalizeLogLevel(state.settingsDraft.logLevel)
+    }
+  ];
 
   function bindEvents() {
     els.settingsBtn.addEventListener("click", openSettingsPanel);
@@ -95,26 +118,13 @@ export function createSettingsController({
   function syncSettingsControls(locale) {
     els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
     els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
-    renderThemeOptions(locale);
-    renderMeterWindowOptions(locale);
-    renderLogLevelOptions(locale);
-    els.themeSelect.value = normalizeTheme(state.settingsDraft.theme);
+    renderSelectOptionGroups(locale);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
-    els.meterWindowSelect.value = normalizeMeterWindow(state.settingsDraft.meterWindow);
-    els.logLevelSelect.value = normalizeLogLevel(state.settingsDraft.logLevel);
     customSelects.sync();
   }
 
   function handleCustomSelectChange(selectId, value) {
-    if (selectId === "themeSelect") {
-      selectSettingsTheme(value);
-    } else if (selectId === "localeSelect") {
-      selectSettingsLocale(value);
-    } else if (selectId === "meterWindowSelect") {
-      selectMeterWindow(value);
-    } else if (selectId === "logLevelSelect") {
-      selectLogLevel(value);
-    }
+    customSelectHandlers[selectId]?.(value);
   }
 
   function syncAutoUpdateDraft() {
@@ -210,21 +220,10 @@ export function createSettingsController({
     };
   }
 
-  function renderThemeOptions(locale) {
-    renderSelectOptions(els.themeSelect, THEMES, normalizeTheme(state.settingsDraft.theme), locale);
-  }
-
-  function renderMeterWindowOptions(locale) {
-    renderSelectOptions(
-      els.meterWindowSelect,
-      METER_WINDOWS,
-      normalizeMeterWindow(state.settingsDraft.meterWindow),
-      locale
-    );
-  }
-
-  function renderLogLevelOptions(locale) {
-    renderSelectOptions(els.logLevelSelect, LOG_LEVELS, normalizeLogLevel(state.settingsDraft.logLevel), locale);
+  function renderSelectOptionGroups(locale) {
+    selectOptionConfigs.forEach(({ select, registry, currentValue }) => {
+      renderSelectOptions(select, registry, currentValue(), locale);
+    });
   }
 
   function renderSelectOptions(select, registry, currentValue, locale) {

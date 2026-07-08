@@ -4,27 +4,40 @@ export function createQuotaController({ state, service, render, normalizeError, 
   async function refreshQuota() {
     if (state.loading) return;
 
-    state.loading = true;
-    state.error = "";
-    clearResetCreditExpiries("idle");
+    startQuotaRefresh();
     render();
 
     try {
-      state.quota = await service.commands.getQuota();
-      state.error = "";
-      scheduleResetRefresh(state.quota?.resetsAt);
-      state.loading = false;
+      const quota = await service.commands.getQuota();
+      applyQuotaSuccess(quota);
       render();
       refreshResetCreditExpiries();
     } catch (error) {
-      state.quota = null;
-      scheduleResetRefresh(null);
-      state.error = normalizeError(error);
-      state.loading = false;
-      clearResetCreditExpiries("error");
-      logger?.error("刷新数据失败", error, "frontend.quota");
+      applyQuotaError(error);
       render();
     }
+  }
+
+  function startQuotaRefresh() {
+    state.loading = true;
+    state.error = "";
+    clearResetCreditExpiries("idle");
+  }
+
+  function applyQuotaSuccess(quota) {
+    state.quota = quota;
+    state.error = "";
+    scheduleResetRefresh(state.quota?.resetsAt);
+    state.loading = false;
+  }
+
+  function applyQuotaError(error) {
+    state.quota = null;
+    scheduleResetRefresh(null);
+    state.error = normalizeError(error);
+    state.loading = false;
+    clearResetCreditExpiries("error");
+    logger?.error("刷新数据失败", error, "frontend.quota");
   }
 
   async function refreshResetCreditExpiries() {

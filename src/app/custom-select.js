@@ -1,3 +1,5 @@
+import { setAttribute, setText } from "./dom-utils.js";
+
 export function createCustomSelectController({ shells = [], onChange } = {}) {
   const records = Array.from(shells).map(createRecord).filter(Boolean);
 
@@ -132,16 +134,4 @@ function optionsSignature(select) {
   return Array.from(select.options)
     .map((option) => `${option.value}:${option.textContent}`)
     .join("|");
-}
-
-function setText(element, value) {
-  if (element.textContent !== value) {
-    element.textContent = value;
-  }
-}
-
-function setAttribute(element, name, value) {
-  if (element.getAttribute(name) !== value) {
-    element.setAttribute(name, value);
-  }
 }

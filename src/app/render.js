@@ -11,6 +11,7 @@ import {
   statusLabel,
   waterFillPercent
 } from "./formatters.js";
+import { removeAttribute, setAttribute, setDatasetValue, setStyleValue, setText } from "./dom-utils.js";
 import { clamp } from "./geometry.js";
 import { updateActionButton } from "./icons.js";
 import { formatUpdateStatus } from "./update-status.js";
@@ -198,40 +199,9 @@ function renderWindow(windowData, labelEl, valueEl, fallbackLabel, text, locale)
   setText(valueEl, `${windowData.remainingPercent}%`);
 }
 
-function setText(element, value) {
-  const nextValue = value ?? "";
-  if (element.textContent !== nextValue) {
-    element.textContent = nextValue;
-  }
-}
-
 function setClassName(element, value) {
   if (element.className !== value) {
     element.className = value;
-  }
-}
-
-function setDatasetValue(element, key, value) {
-  if (element.dataset[key] !== value) {
-    element.dataset[key] = value;
-  }
-}
-
-function setStyleValue(element, property, value) {
-  if (element.style[property] !== value) {
-    element.style[property] = value;
-  }
-}
-
-function setAttribute(element, name, value) {
-  if (element.getAttribute(name) !== value) {
-    element.setAttribute(name, value);
-  }
-}
-
-function removeAttribute(element, name) {
-  if (element.hasAttribute(name)) {
-    element.removeAttribute(name);
   }
 }
 
