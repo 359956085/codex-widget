@@ -22,11 +22,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" align="center"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_default.png" alt="Default theme panel"></td>
-    <td align="center"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_default.png" alt="Default theme floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_default.png" alt="Default theme panel"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_default.png" alt="Default theme floating ball"></td>
   </tr>
   <tr>
-    <td align="center"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_default.png" alt="Default theme docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_default.png" alt="Default theme docked floating ball"></td>
   </tr>
 </table>
 
@@ -34,11 +34,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" align="center"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics1.png" alt="Basic theme 1 panel"></td>
-    <td align="center"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics1.png" alt="Basic theme 1 floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics1.png" alt="Basic theme 1 panel"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics1.png" alt="Basic theme 1 floating ball"></td>
   </tr>
   <tr>
-    <td align="center"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics1.png" alt="Basic theme 1 docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics1.png" alt="Basic theme 1 docked floating ball"></td>
   </tr>
 </table>
 
@@ -46,11 +46,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" align="center"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics2.png" alt="Basic theme 2 panel"></td>
-    <td align="center"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics2.png" alt="Basic theme 2 floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics2.png" alt="Basic theme 2 panel"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics2.png" alt="Basic theme 2 floating ball"></td>
   </tr>
   <tr>
-    <td align="center"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics2.png" alt="Basic theme 2 docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics2.png" alt="Basic theme 2 docked floating ball"></td>
   </tr>
 </table>
 
@@ -58,11 +58,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" align="center"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="Basic theme 3 panel"></td>
-    <td align="center"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="Basic theme 3 floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="Basic theme 3 panel"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="Basic theme 3 floating ball"></td>
   </tr>
   <tr>
-    <td align="center"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="Basic theme 3 docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="Basic theme 3 docked floating ball"></td>
   </tr>
 </table>
 
