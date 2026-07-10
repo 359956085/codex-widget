@@ -14,4 +14,3 @@ pnpm-debug.log*
 *.p12
 certs/
 %SystemDrive%/*
-.codegraph/*
