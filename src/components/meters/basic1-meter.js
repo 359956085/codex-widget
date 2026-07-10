@@ -11,10 +11,6 @@ export function mount(root) {
   const glow = svgElement("circle", { class: "basic1-gauge-glow", cx: 65, cy: 65, r: 60 });
   const sphere = svgElement("circle", { class: "basic1-gauge-sphere", cx: 65, cy: 65, r: 58.5 });
   const refraction = svgElement("circle", { class: "basic1-gauge-refraction", cx: 65, cy: 65, r: 57.2 });
-  const sheen = svgElement("path", {
-    class: "basic1-gauge-sheen",
-    d: "M12 68C14 34 35 10 68 6c22-3 42 4 55 20-22-6-45-2-66 8-20 10-35 21-45 34Z"
-  });
   const inner = svgElement("g", { class: "basic1-gauge-inner" });
   const track = svgElement("circle", { class: "basic1-gauge-track", cx: 65, cy: 65, r: 47, pathLength: 100 });
   const progress = svgElement("circle", {
@@ -29,7 +25,7 @@ export function mount(root) {
   const percent = svgElement("text", { class: "basic1-gauge-percent", x: 65, y: 78, "text-anchor": "middle" });
   const label = svgElement("text", { class: "basic1-gauge-label", x: 65, y: 98, "text-anchor": "middle" });
   inner.append(track, progress, mark, percent, label);
-  svg.append(defs, glow, sphere, refraction, sheen, inner);
+  svg.append(defs, glow, sphere, refraction, inner);
   meter.append(svg);
   root.replaceChildren(meter);
   let layoutKey = "";
@@ -89,17 +85,17 @@ function createDefs() {
   const sphere = svgElement("radialGradient", {
     id: "basic1GaugeSphere",
     gradientUnits: "userSpaceOnUse",
-    cx: 38,
-    cy: 28,
-    r: 78,
-    fx: 30,
-    fy: 18
+    cx: 34,
+    cy: 4,
+    r: 128,
+    fx: -24,
+    fy: -22
   });
   sphere.append(
     svgElement("stop", { offset: "0%", class: "basic1-gauge-sphere-stop-a" }),
-    svgElement("stop", { offset: "34%", class: "basic1-gauge-sphere-stop-b" }),
-    svgElement("stop", { offset: "68%", class: "basic1-gauge-sphere-stop-c" }),
-    svgElement("stop", { offset: "100%", class: "basic1-gauge-sphere-stop-d" })
+    svgElement("stop", { offset: "25%", class: "basic1-gauge-sphere-stop-b" }),
+    svgElement("stop", { offset: "60%", class: "basic1-gauge-sphere-stop-c" }),
+    svgElement("stop", { offset: "90%", class: "basic1-gauge-sphere-stop-d" })
   );
   const refraction = svgElement("radialGradient", {
     id: "basic1GaugeRefraction",
@@ -115,19 +111,6 @@ function createDefs() {
     svgElement("stop", { offset: "48%", class: "basic1-gauge-refraction-stop-b" }),
     svgElement("stop", { offset: "100%", class: "basic1-gauge-refraction-stop-c" })
   );
-  const sheen = svgElement("linearGradient", {
-    id: "basic1GaugeSheen",
-    gradientUnits: "userSpaceOnUse",
-    x1: 26,
-    y1: 14,
-    x2: 82,
-    y2: 68
-  });
-  // sheen.append(
-  //   svgElement("stop", { offset: "0%", class: "basic1-gauge-sheen-stop-a" }),
-  //   svgElement("stop", { offset: "48%", class: "basic1-gauge-sheen-stop-b" }),
-  //   svgElement("stop", { offset: "100%", class: "basic1-gauge-sheen-stop-c" })
-  // );
   const accent = svgElement("linearGradient", {
     id: "basic1GaugeAccent",
     gradientUnits: "userSpaceOnUse",
@@ -149,7 +132,7 @@ function createDefs() {
     height: 150
   });
   outerGlow.append(svgElement("feGaussianBlur", { stdDeviation: 5.2 }));
-  defs.append(sphere, refraction, sheen, accent, outerGlow);
+  defs.append(sphere, refraction, accent, outerGlow);
   return defs;
 }
 

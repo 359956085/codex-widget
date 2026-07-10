@@ -247,21 +247,6 @@ body[data-theme="basic1"] .basic1-gauge-refraction-stop-c {
   stop-opacity: 0;
 }
 
-body[data-theme="basic1"] .basic1-gauge-sheen-stop-a {
-  stop-color: #f1fbff;
-  stop-opacity: 0.56;
-}
-
-body[data-theme="basic1"] .basic1-gauge-sheen-stop-b {
-  stop-color: #bcecf5;
-  stop-opacity: 0.2;
-}
-
-body[data-theme="basic1"] .basic1-gauge-sheen-stop-c {
-  stop-color: #9de6ed;
-  stop-opacity: 0;
-}
-
 body[data-theme="basic1"] .basic1-gauge-accent-stop-a {
   stop-color: var(--basic1-meter-a);
 }
@@ -289,12 +274,6 @@ body[data-theme="basic1"] .basic1-gauge-refraction {
   fill: url("#basic1GaugeRefraction");
   opacity: 0.82;
   mix-blend-mode: screen;
-}
-
-body[data-theme="basic1"] .basic1-gauge-sheen {
-  fill: url("#basic1GaugeSheen");
-  opacity: 0.8;
-  filter: blur(2.2px);
 }
 
 body[data-theme="basic1"] .basic1-gauge-track {
