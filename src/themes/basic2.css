@@ -46,8 +46,7 @@ body[data-theme="basic2"] {
 }
 
 body[data-theme="basic2"][data-state="low"],
-body[data-theme="basic2"] .gauge-layer[data-level="low"],
-body[data-theme="basic2"] .liquid-meter[data-level="low"] {
+body[data-theme="basic2"] .basic2-meter[data-level="low"] {
   --basic2-meter-a: #fff0a4;
   --basic2-meter-b: #ffc247;
   --basic2-meter-c: #ff9a3d;
@@ -57,12 +56,9 @@ body[data-theme="basic2"] .liquid-meter[data-level="low"] {
 body[data-theme="basic2"][data-state="critical"],
 body[data-theme="basic2"][data-state="empty"],
 body[data-theme="basic2"][data-state="error"],
-body[data-theme="basic2"] .gauge-layer[data-level="critical"],
-body[data-theme="basic2"] .gauge-layer[data-level="empty"],
-body[data-theme="basic2"] .gauge-layer[data-level="error"],
-body[data-theme="basic2"] .liquid-meter[data-level="critical"],
-body[data-theme="basic2"] .liquid-meter[data-level="empty"],
-body[data-theme="basic2"] .liquid-meter[data-level="error"] {
+body[data-theme="basic2"] .basic2-meter[data-level="critical"],
+body[data-theme="basic2"] .basic2-meter[data-level="empty"],
+body[data-theme="basic2"] .basic2-meter[data-level="error"] {
   --basic2-meter-a: #ffd1a3;
   --basic2-meter-b: #ff8a3d;
   --basic2-meter-c: #ff4d4f;
@@ -71,10 +67,8 @@ body[data-theme="basic2"] .liquid-meter[data-level="error"] {
 
 body[data-theme="basic2"][data-state="loading"],
 body[data-theme="basic2"][data-state="unknown"],
-body[data-theme="basic2"] .gauge-layer[data-level="loading"],
-body[data-theme="basic2"] .gauge-layer[data-level="unknown"],
-body[data-theme="basic2"] .liquid-meter[data-level="loading"],
-body[data-theme="basic2"] .liquid-meter[data-level="unknown"] {
+body[data-theme="basic2"] .basic2-meter[data-level="loading"],
+body[data-theme="basic2"] .basic2-meter[data-level="unknown"] {
   --basic2-meter-a: #f3d6a3;
   --basic2-meter-b: #d1a45d;
   --basic2-meter-c: #8d6735;
@@ -264,7 +258,8 @@ body[data-theme="basic2"] .content {
   gap: 8px;
 }
 
-body[data-theme="basic2"] .liquid-meter {
+body[data-theme="basic2"] .basic2-meter {
+  position: relative;
   isolation: isolate;
   width: 136px;
   height: 136px;
@@ -272,17 +267,19 @@ body[data-theme="basic2"] .liquid-meter {
   border-radius: 50%;
   background: transparent;
   box-shadow: none;
+  z-index: 5;
+  display: block;
 }
 
-body[data-theme="basic2"] .liquid-meter::before,
-body[data-theme="basic2"] .liquid-meter::after {
+body[data-theme="basic2"] .basic2-meter::before,
+body[data-theme="basic2"] .basic2-meter::after {
   position: absolute;
   pointer-events: none;
   border-radius: 50%;
   content: "";
 }
 
-body[data-theme="basic2"] .liquid-meter::before {
+body[data-theme="basic2"] .basic2-meter::before {
   inset: 0;
   z-index: 4;
   opacity: 0.52;
@@ -294,7 +291,7 @@ body[data-theme="basic2"] .liquid-meter::before {
   filter: drop-shadow(0 0 3px rgba(238, 178, 88, 0.1));
 }
 
-body[data-theme="basic2"] .liquid-meter::after {
+body[data-theme="basic2"] .basic2-meter::after {
   inset: 10px;
   z-index: 7;
   background:
@@ -306,22 +303,7 @@ body[data-theme="basic2"] .liquid-meter::after {
     drop-shadow(0 0 9px rgba(var(--basic2-meter-rgb), 0.24));
 }
 
-body[data-theme="basic2"] .gauge-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: block;
-  border-radius: 50%;
-}
-
-body[data-theme="basic2"] .glass-rim,
-body[data-theme="basic2"] .liquid-fill,
-body[data-theme="basic2"] .shine,
-body[data-theme="basic2"] .meter-copy {
-  display: none;
-}
-
-body[data-theme="basic2"] .basic-gauge {
+body[data-theme="basic2"] .basic2-gauge {
   display: block;
   width: 136px;
   height: 136px;
@@ -332,12 +314,12 @@ body[data-theme="basic2"] .basic-gauge {
     drop-shadow(0 9px 10px rgba(0, 0, 0, 0.42));
 }
 
-body[data-theme="basic2"] .gauge-sphere-stop-a {
+body[data-theme="basic2"] .basic2-gauge-sphere-stop-a {
   stop-color: rgba(255, 220, 150, 0.16);
 }
 
-body[data-theme="basic2"] .gauge-sphere {
-  fill: url("#basicGaugeSphere");
+body[data-theme="basic2"] .basic2-gauge-sphere {
+  fill: url("#basic2GaugeSphere");
   stroke: rgba(238, 178, 88, 0.24);
   stroke-width: 1;
   filter:
@@ -345,23 +327,23 @@ body[data-theme="basic2"] .gauge-sphere {
     drop-shadow(0 7px 9px rgba(0, 0, 0, 0.58));
 }
 
-body[data-theme="basic2"] .gauge-sphere-stop-b {
+body[data-theme="basic2"] .basic2-gauge-sphere-stop-b {
   stop-color: rgba(17, 15, 12, 0.98);
 }
 
-body[data-theme="basic2"] .gauge-sphere-stop-c {
+body[data-theme="basic2"] .basic2-gauge-sphere-stop-c {
   stop-color: rgba(4, 4, 3, 1);
 }
 
-body[data-theme="basic2"] .gauge-accent-stop-a {
+body[data-theme="basic2"] .basic2-gauge-accent-stop-a {
   stop-color: var(--basic2-meter-a);
 }
 
-body[data-theme="basic2"] .gauge-accent-stop-b {
+body[data-theme="basic2"] .basic2-gauge-accent-stop-b {
   stop-color: var(--basic2-meter-c);
 }
 
-body[data-theme="basic2"] .gauge-glow {
+body[data-theme="basic2"] .basic2-gauge-glow {
   fill: rgba(238, 178, 88, 0.026);
   stroke: rgba(238, 178, 88, 0.28);
   stroke-width: 1;
@@ -370,21 +352,21 @@ body[data-theme="basic2"] .gauge-glow {
     drop-shadow(0 0 12px rgba(230, 123, 49, 0.14));
 }
 
-body[data-theme="basic2"] .gauge-glass-sheen {
+body[data-theme="basic2"] .basic2-gauge-sheen {
   fill: rgba(255, 222, 156, 0.13);
   opacity: 0.5;
 }
 
-body[data-theme="basic2"] .gauge-outer-track {
+body[data-theme="basic2"] .basic2-gauge-outer-track {
   fill: none;
   stroke: rgba(238, 178, 88, 0.08);
   stroke-width: 7.8;
   stroke-linecap: round;
 }
 
-body[data-theme="basic2"] .gauge-outer-progress {
+body[data-theme="basic2"] .basic2-gauge-outer-progress {
   fill: none;
-  stroke: url("#basicGaugeAccent");
+  stroke: url("#basic2GaugeAccent");
   stroke-width: 7.8;
   stroke-linecap: round;
   stroke-dasharray: 100;
@@ -395,14 +377,14 @@ body[data-theme="basic2"] .gauge-outer-progress {
   transition: stroke-dashoffset 360ms ease;
 }
 
-body[data-theme="basic2"] .gauge-track {
+body[data-theme="basic2"] .basic2-gauge-track {
   fill: none;
   stroke: rgba(238, 178, 88, 0.1);
   stroke-width: 2.8;
   stroke-linecap: round;
 }
 
-body[data-theme="basic2"] .gauge-progress {
+body[data-theme="basic2"] .basic2-gauge-progress {
   fill: none;
   stroke: rgba(255, 216, 145, 0.22);
   stroke-width: 2.8;
@@ -413,14 +395,14 @@ body[data-theme="basic2"] .gauge-progress {
   transition: stroke-dashoffset 360ms ease;
 }
 
-body[data-theme="basic2"] .gauge-mark {
-  fill: url("#basicGaugeAccent");
+body[data-theme="basic2"] .basic2-gauge-mark {
+  fill: url("#basic2GaugeAccent");
   filter:
     drop-shadow(0 1px 1px rgba(0, 0, 0, 0.72))
     drop-shadow(0 0 8px rgba(var(--basic2-meter-rgb), 0.54));
 }
 
-body[data-theme="basic2"] .gauge-percent {
+body[data-theme="basic2"] .basic2-gauge-percent {
   fill: rgba(255, 255, 255, 0.99);
   font-size: 20px;
   font-weight: 820;
@@ -430,7 +412,7 @@ body[data-theme="basic2"] .gauge-percent {
     0 0 12px rgba(255, 198, 109, 0.18);
 }
 
-body[data-theme="basic2"] .gauge-label {
+body[data-theme="basic2"] .basic2-gauge-label {
   fill: rgba(255, 255, 255, 0.98);
   font-size: 10px;
   font-weight: 820;
@@ -438,26 +420,26 @@ body[data-theme="basic2"] .gauge-label {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.74);
 }
 
-body[data-theme="basic2"] .gauge-layer[data-gauge-mode="panel"] .gauge-percent {
+body[data-theme="basic2"] .basic2-meter[data-mode="panel"] .basic2-gauge-percent {
   font-size: 33px;
   font-weight: 900;
 }
 
-body[data-theme="basic2"] .gauge-layer[data-gauge-mode="panel"] .gauge-label {
+body[data-theme="basic2"] .basic2-meter[data-mode="panel"] .basic2-gauge-label {
   font-size: 14px;
   font-weight: 850;
 }
 
-body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"] .gauge-percent {
+body[data-theme="basic2"] .basic2-meter[data-mode="ball"] .basic2-gauge-percent {
   font-size: 18px;
   font-weight: 820;
 }
 
-body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"] .gauge-label {
+body[data-theme="basic2"] .basic2-meter[data-mode="ball"] .basic2-gauge-label {
   display: none;
 }
 
-body[data-theme="basic2"] .gauge-layer[data-gauge-mode="ball"]:not([data-gauge-dock="none"]) .gauge-percent {
+body[data-theme="basic2"] .basic2-meter[data-mode="ball"]:not([data-dock="none"]) .basic2-gauge-percent {
   font-size: 20px;
 }
 
@@ -639,25 +621,28 @@ body[data-theme="basic2"][data-widget-mode="ball"] .content {
   height: 88px;
 }
 
-body[data-theme="basic2"][data-widget-mode="ball"] .liquid-meter {
+body[data-theme="basic2"][data-widget-mode="ball"] .basic2-meter {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 136px;
   height: 136px;
   transform: scale(0.647059);
   transform-origin: top left;
 }
 
-body[data-theme="basic2"][data-widget-mode="ball"] .basic-gauge {
+body[data-theme="basic2"][data-widget-mode="ball"] .basic2-gauge {
   width: 136px;
   height: 136px;
   filter: none;
 }
 
-body[data-theme="basic2"][data-widget-mode="ball"] .gauge-outer-track,
-body[data-theme="basic2"][data-widget-mode="ball"] .gauge-outer-progress {
+body[data-theme="basic2"][data-widget-mode="ball"] .basic2-gauge-outer-track,
+body[data-theme="basic2"][data-widget-mode="ball"] .basic2-gauge-outer-progress {
   stroke-width: 9.2;
 }
 
-body[data-theme="basic2"][data-widget-mode="ball"] .liquid-meter::before {
+body[data-theme="basic2"][data-widget-mode="ball"] .basic2-meter::before {
   opacity: 0.55;
 }
 

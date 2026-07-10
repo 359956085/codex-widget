@@ -120,14 +120,12 @@
 }
 
 .traffic-light.ready,
-.status-dot.ready,
-.liquid-meter[data-level="ready"] .liquid-fill {
+.status-dot.ready {
   background: #2ee885;
 }
 
 .traffic-light.low,
-.status-dot.low,
-.liquid-meter[data-level="low"] .liquid-fill {
+.status-dot.low {
   background: #ffcc3d;
 }
 
@@ -136,10 +134,7 @@
 .traffic-light.error,
 .status-dot.empty,
 .status-dot.critical,
-.status-dot.error,
-.liquid-meter[data-level="empty"] .liquid-fill,
-.liquid-meter[data-level="critical"] .liquid-fill,
-.liquid-meter[data-level="error"] .liquid-fill {
+.status-dot.error {
   background: #ff5a67;
 }
 
@@ -260,28 +255,4 @@ body[data-widget-mode="ball"] .content {
   width: 88px;
   height: 88px;
   cursor: grab;
-}
-
-body[data-widget-mode="ball"] .liquid-meter {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 130px;
-  height: 130px;
-  cursor: grab;
-  transform: scale(0.676923);
-  transform-origin: top left;
-}
-
-body[data-widget-mode="ball"] .meter-copy {
-  gap: 0;
-}
-
-body[data-widget-mode="ball"] .meter-copy span {
-  display: none;
-}
-
-/* 半圆吸附时只保留液位视觉，避免文字挤在半圆可视区域内。 */
-body[data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
-  display: none;
 }
