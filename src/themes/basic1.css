@@ -39,8 +39,7 @@ body[data-theme="basic1"] {
 }
 
 body[data-theme="basic1"][data-state="low"],
-body[data-theme="basic1"] .gauge-layer[data-level="low"],
-body[data-theme="basic1"] .liquid-meter[data-level="low"] {
+body[data-theme="basic1"] .basic1-meter[data-level="low"] {
   --basic1-meter-a: #facc15;
   --basic1-meter-b: #f59e0b;
   --basic1-meter-rgb: 250, 204, 21;
@@ -49,12 +48,9 @@ body[data-theme="basic1"] .liquid-meter[data-level="low"] {
 body[data-theme="basic1"][data-state="critical"],
 body[data-theme="basic1"][data-state="empty"],
 body[data-theme="basic1"][data-state="error"],
-body[data-theme="basic1"] .gauge-layer[data-level="critical"],
-body[data-theme="basic1"] .gauge-layer[data-level="empty"],
-body[data-theme="basic1"] .gauge-layer[data-level="error"],
-body[data-theme="basic1"] .liquid-meter[data-level="critical"],
-body[data-theme="basic1"] .liquid-meter[data-level="empty"],
-body[data-theme="basic1"] .liquid-meter[data-level="error"] {
+body[data-theme="basic1"] .basic1-meter[data-level="critical"],
+body[data-theme="basic1"] .basic1-meter[data-level="empty"],
+body[data-theme="basic1"] .basic1-meter[data-level="error"] {
   --basic1-meter-a: #fb7185;
   --basic1-meter-b: #f43f5e;
   --basic1-meter-rgb: 251, 113, 133;
@@ -62,41 +58,29 @@ body[data-theme="basic1"] .liquid-meter[data-level="error"] {
 
 body[data-theme="basic1"][data-state="loading"],
 body[data-theme="basic1"][data-state="unknown"],
-body[data-theme="basic1"] .gauge-layer[data-level="loading"],
-body[data-theme="basic1"] .gauge-layer[data-level="unknown"],
-body[data-theme="basic1"] .liquid-meter[data-level="loading"],
-body[data-theme="basic1"] .liquid-meter[data-level="unknown"] {
+body[data-theme="basic1"] .basic1-meter[data-level="loading"],
+body[data-theme="basic1"] .basic1-meter[data-level="unknown"] {
   --basic1-meter-a: #93c5fd;
   --basic1-meter-b: #67e8f9;
   --basic1-meter-rgb: 147, 197, 253;
 }
 
 body[data-theme="basic1"] .widget {
-  padding: 12px;
-  border: 1px solid rgba(201, 235, 255, 0.14);
-  border-radius: 16px;
+  padding: 12px 20px;
+  border: 1px solid rgba(174, 211, 231, 0.2);
+  border-radius: 18px;
   background: var(--widget-surface-background);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -28px 54px rgba(0, 0, 0, 0.3),
+    inset 0 0 34px rgba(113, 193, 229, 0.06);
 }
 
 body[data-theme="basic1"] .widget::before {
   background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.08), transparent 24%),
-    radial-gradient(circle at 50% -18%, rgba(103, 232, 249, 0.18), transparent 38%),
-    radial-gradient(circle at 8% 95%, rgba(52, 242, 176, 0.12), transparent 36%);
-}
-
-body[data-theme="basic1"] .widget::after {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  content: "";
-  opacity: 0.16;
-  background-image:
-    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.8) 0 0.6px, transparent 0.8px),
-    radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.55) 0 0.5px, transparent 0.8px);
-  background-size: 18px 18px, 22px 22px;
-  mix-blend-mode: screen;
+    radial-gradient(ellipse 210px 92px at 8% -10%, rgba(211, 240, 255, 0.17), transparent 66%),
+    radial-gradient(ellipse 180px 94px at 96% 108%, rgba(52, 242, 176, 0.1), transparent 68%),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.07), transparent 27%);
 }
 
 body[data-theme="basic1"] .titlebar,
@@ -116,8 +100,8 @@ body[data-theme="basic1"] .brand {
 }
 
 body[data-theme="basic1"] .traffic-light {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   background: var(--basic1-meter-b);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.16),
@@ -206,12 +190,13 @@ body[data-theme="basic1"] .icon-button.danger:hover {
 }
 
 body[data-theme="basic1"] .content {
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 130px minmax(0, 1fr);
   height: 144px;
-  gap: 12px;
+  gap: 18px;
 }
 
-body[data-theme="basic1"] .liquid-meter {
+body[data-theme="basic1"] .basic1-meter {
+  position: relative;
   isolation: isolate;
   width: 130px;
   height: 130px;
@@ -219,93 +204,101 @@ body[data-theme="basic1"] .liquid-meter {
   border-radius: 50%;
   background: transparent;
   box-shadow: none;
-}
-
-body[data-theme="basic1"] .gauge-layer {
-  position: absolute;
-  inset: 0;
   z-index: 5;
   display: block;
-  border-radius: 50%;
 }
 
-body[data-theme="basic1"] .glass-rim,
-body[data-theme="basic1"] .liquid-fill,
-body[data-theme="basic1"] .shine,
-body[data-theme="basic1"] .meter-copy {
-  display: none;
-}
-
-body[data-theme="basic1"] .basic-gauge {
+body[data-theme="basic1"] .basic1-gauge {
   display: block;
   width: 130px;
   height: 130px;
   overflow: visible;
   color: var(--basic1-meter-a);
-  filter: drop-shadow(0 0 18px rgba(var(--basic1-meter-rgb), 0.2));
 }
 
-body[data-theme="basic1"] .gauge-sphere-stop-a {
-  stop-color: rgba(255, 255, 255, 0.34);
+body[data-theme="basic1"] .basic1-gauge-sphere-stop-a {
+  stop-color: rgba(232, 248, 255, 0.78);
 }
 
-body[data-theme="basic1"] .gauge-sphere-stop-b {
-  stop-color: rgba(16, 31, 40, 0.76);
+body[data-theme="basic1"] .basic1-gauge-sphere-stop-b {
+  stop-color: rgba(133, 169, 188, 0.52);
 }
 
-body[data-theme="basic1"] .gauge-sphere-stop-c {
-  stop-color: rgba(5, 13, 18, 0.96);
+body[data-theme="basic1"] .basic1-gauge-sphere-stop-c {
+  stop-color: rgba(12, 31, 41, 0.88);
 }
 
-body[data-theme="basic1"] .gauge-accent-stop-a {
+body[data-theme="basic1"] .basic1-gauge-sphere-stop-d {
+  stop-color: rgba(2, 9, 14, 0.99);
+}
+
+body[data-theme="basic1"] .basic1-gauge-refraction-stop-a {
+  stop-color: var(--basic1-meter-b);
+  stop-opacity: 0.44;
+}
+
+body[data-theme="basic1"] .basic1-gauge-refraction-stop-b {
+  stop-color: var(--basic1-meter-b);
+  stop-opacity: 0.18;
+}
+
+body[data-theme="basic1"] .basic1-gauge-refraction-stop-c {
+  stop-color: var(--basic1-meter-b);
+  stop-opacity: 0;
+}
+
+body[data-theme="basic1"] .basic1-gauge-accent-stop-a {
   stop-color: var(--basic1-meter-a);
 }
 
-body[data-theme="basic1"] .gauge-accent-stop-b {
+body[data-theme="basic1"] .basic1-gauge-accent-stop-b {
   stop-color: var(--basic1-meter-b);
 }
 
-body[data-theme="basic1"] .gauge-glow {
-  fill: rgba(var(--basic1-meter-rgb), 0.1);
-  stroke: rgba(var(--basic1-meter-rgb), 0.58);
-  stroke-width: 1;
-  filter: drop-shadow(0 0 13px rgba(var(--basic1-meter-rgb), 0.46));
+body[data-theme="basic1"] .basic1-gauge-glow {
+  fill: none;
+  stroke: url("#basic1GaugeAccent");
+  stroke-width: 1.8;
+  opacity: 0.62;
+  filter: url("#basic1GaugeOuterGlow");
 }
 
-body[data-theme="basic1"] .gauge-sphere {
-  fill: url("#basicGaugeSphere");
-  stroke: rgba(187, 244, 255, 0.35);
-  stroke-width: 1.2;
+body[data-theme="basic1"] .basic1-gauge-sphere {
+  fill: url("#basic1GaugeSphere");
+  stroke: url("#basic1GaugeAccent");
+  stroke-width: 1.1;
+  filter: drop-shadow(0 8px 11px rgba(0, 0, 0, 0.38));
 }
 
-body[data-theme="basic1"] .gauge-glass-sheen {
-  fill: rgba(255, 255, 255, 0.2);
-  opacity: 0.68;
+body[data-theme="basic1"] .basic1-gauge-refraction {
+  fill: url("#basic1GaugeRefraction");
+  opacity: 0.82;
+  mix-blend-mode: screen;
 }
 
-body[data-theme="basic1"] .gauge-track {
+body[data-theme="basic1"] .basic1-gauge-track {
   fill: none;
   stroke: rgba(111, 146, 160, 0.34);
-  stroke-width: 5.5;
+  stroke-width: 3.6;
 }
 
-body[data-theme="basic1"] .gauge-progress {
+body[data-theme="basic1"] .basic1-gauge-progress {
   fill: none;
-  stroke: url("#basicGaugeAccent");
-  stroke-width: 7;
+  stroke: url("#basic1GaugeAccent");
+  stroke-width: 4.2;
   stroke-linecap: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
-  filter: drop-shadow(0 0 7px rgba(var(--basic1-meter-rgb), 0.72));
+  filter: drop-shadow(0 0 3px rgba(var(--basic1-meter-rgb), 0.38));
   transition: stroke-dashoffset 360ms ease;
 }
 
-body[data-theme="basic1"] .gauge-mark {
-  fill: url("#basicGaugeAccent");
+body[data-theme="basic1"] .basic1-gauge-mark {
+  fill: url("#basic1GaugeAccent");
   filter: drop-shadow(0 0 7px rgba(var(--basic1-meter-rgb), 0.45));
 }
 
-body[data-theme="basic1"] .gauge-percent {
+body[data-theme="basic1"] .basic1-gauge-percent {
   fill: rgba(219, 253, 255, 0.96);
   font-size: 20px;
   font-weight: 560;
@@ -313,57 +306,69 @@ body[data-theme="basic1"] .gauge-percent {
   text-shadow: 0 0 14px rgba(var(--basic1-meter-rgb), 0.28);
 }
 
-body[data-theme="basic1"] .gauge-label {
+body[data-theme="basic1"] .basic1-gauge-label {
   fill: rgba(200, 224, 234, 0.62);
   font-size: 9px;
   font-weight: 650;
   letter-spacing: 0;
 }
 
-body[data-theme="basic1"] .gauge-layer[data-gauge-mode="panel"] .gauge-percent {
+body[data-theme="basic1"] .basic1-meter[data-mode="panel"] .basic1-gauge-percent {
   fill: var(--basic1-panel-gauge-text);
-  font-size: 28px;
-  font-weight: 860;
+  font-size: 38px;
+  font-weight: 880;
+  letter-spacing: -1.4px;
 }
 
-body[data-theme="basic1"] .gauge-layer[data-gauge-mode="panel"] .gauge-label {
+body[data-theme="basic1"] .basic1-meter[data-mode="panel"] .basic1-gauge-label {
   fill: var(--basic1-panel-gauge-text);
   font-size: 13px;
   font-weight: 760;
   filter: drop-shadow(0 0 8px rgba(246, 251, 255, 0.22));
 }
 
-body[data-theme="basic1"] .gauge-layer[data-gauge-mode="ball"] .gauge-percent {
+body[data-theme="basic1"] .basic1-meter[data-mode="ball"] .basic1-gauge-percent {
   font-size: 18px;
   font-weight: 620;
 }
 
-body[data-theme="basic1"] .gauge-layer[data-gauge-mode="ball"] .gauge-label {
+body[data-theme="basic1"] .basic1-meter[data-mode="ball"] .basic1-gauge-label {
   display: none;
 }
 
-body[data-theme="basic1"] .gauge-layer[data-gauge-mode="ball"]:not([data-gauge-dock="none"]) .gauge-percent {
+body[data-theme="basic1"] .basic1-meter[data-mode="ball"]:not([data-dock="none"]) .basic1-gauge-percent {
   font-size: 19px;
 }
 
 body[data-theme="basic1"] .quota-panel {
-  gap: 2px;
+  gap: 4px;
 }
 
 body[data-theme="basic1"] .quota-card {
+  position: relative;
   grid-template-columns: 30px minmax(0, 1fr) auto;
-  height: 42px;
+  height: 40px;
   padding: 0 10px 0 7px;
   border: 1px solid rgba(201, 235, 255, 0.12);
-  border-radius: 16px;
+  border-radius: 12px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 42%),
-    var(--basic1-card);
+    radial-gradient(circle at 0% 0%, rgba(103, 232, 249, 0.11), transparent 44%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), transparent 46%),
+    rgba(15, 28, 37, 0.64);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -12px 20px rgba(0, 0, 0, 0.14),
     0 0 18px rgba(103, 232, 249, 0.04);
   backdrop-filter: blur(16px) saturate(1.18);
+}
+
+body[data-theme="basic1"] .quota-card::after {
+  position: absolute;
+  top: 8px;
+  right: 64px;
+  bottom: 8px;
+  border-left: 1px dashed rgba(159, 206, 229, 0.15);
+  content: "";
 }
 
 body[data-theme="basic1"] .quota-card.primary,
@@ -424,10 +429,15 @@ body[data-theme="basic1"] .quota-card strong {
 
 body[data-theme="basic1"] .status {
   grid-template-columns: 17px minmax(0, 1fr);
-  height: 32px;
+  height: 26px;
   gap: 8px;
-  padding: 7px 0 0;
-  border-top: 1px solid rgba(201, 235, 255, 0.1);
+  padding: 0 10px;
+  border: 1px solid rgba(150, 204, 229, 0.14);
+  border-radius: 11px;
+  background:
+    linear-gradient(135deg, rgba(103, 232, 249, 0.06), transparent 42%),
+    rgba(10, 22, 30, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
   color: var(--basic1-faint);
   font-size: 11px;
   font-weight: 560;
@@ -463,12 +473,12 @@ body[data-theme="basic1"][data-widget-mode="ball"] .widget {
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 38% 25%, rgba(255, 255, 255, 0.12), transparent 34%),
-    rgba(7, 14, 19, 0.92);
-  box-shadow:
-    inset 0 0 0 1px rgba(103, 232, 249, 0.18),
-    inset 0 -18px 30px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-mask-image: radial-gradient(circle, #000 0 97.5%, transparent 100%);
+  mask-image: radial-gradient(circle, #000 0 97.5%, transparent 100%);
 }
 
 body[data-theme="basic1"][data-widget-mode="ball"] .content {
@@ -476,18 +486,21 @@ body[data-theme="basic1"][data-widget-mode="ball"] .content {
   height: 88px;
 }
 
-body[data-theme="basic1"][data-widget-mode="ball"] .liquid-meter {
+body[data-theme="basic1"][data-widget-mode="ball"] .basic1-meter {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 130px;
   height: 130px;
   transform: scale(0.676923);
   transform-origin: top left;
 }
 
-body[data-theme="basic1"][data-widget-mode="ball"] .basic-gauge {
+body[data-theme="basic1"][data-widget-mode="ball"] .basic1-gauge {
   width: 130px;
   height: 130px;
 }
 
-body[data-theme="basic1"][data-widget-mode="ball"] .gauge-percent {
+body[data-theme="basic1"][data-widget-mode="ball"] .basic1-gauge-percent {
   font-size: 18px;
 }

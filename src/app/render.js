@@ -8,17 +8,17 @@ import {
   getVisualState,
   selectedMeterWindow,
   stateLabel,
-  statusLabel,
-  waterFillPercent
+  statusLabel
 } from "./formatters.js";
-import { removeAttribute, setAttribute, setDatasetValue, setStyleValue, setText } from "./dom-utils.js";
+import { removeAttribute, setAttribute, setDatasetValue, setText } from "./dom-utils.js";
 import { clamp } from "./geometry.js";
 import { updateActionButton } from "./icons.js";
 import { formatUpdateStatus } from "./update-status.js";
-import { updateGauge } from "../components/gauge.js";
+import { createMeterController } from "../components/meters/meter-controller.js";
 
 export function createRenderer({ els, state, getLocale, getTheme, onVersionClick, settingsView }) {
   const brandView = createBrandView();
+  const meterController = createMeterController(els.meterHost);
 
   function render() {
     const context = createRenderContext();
@@ -68,13 +68,9 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     setDatasetValue(els.body, "theme", activeTheme);
   }
 
-  function renderHeader({ activeTheme, text }) {
+  function renderHeader({ text }) {
     renderWidgetHint(text);
     renderBrandName(text);
-    setText(els.remainingLabel, text.remaining);
-    els.remainingLabel.hidden =
-      state.widgetMode === WIDGET_MODES.BALL &&
-      (activeTheme !== "default" || (state.ballDock || "none") !== "none");
   }
 
   function renderActions({ text }) {
@@ -114,13 +110,10 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
   }
 
   function renderMeter({ activeTheme, remaining, remainingValue, text, visualState }) {
-    setText(els.remaining, remaining === null ? "--%" : `${remaining}%`);
-    setStyleValue(els.liquidFill, "height", `${waterFillPercent(remaining, activeTheme)}%`);
-    els.liquidMeter.style.setProperty("--remaining-angle", `${remainingValue * 3.6}deg`);
-    setDatasetValue(els.liquidMeter, "level", visualState);
-    updateGauge({
-      root: els.gaugeLayer,
+    meterController.update({
+      theme: activeTheme,
       percent: remaining,
+      angle: remainingValue * 3.6,
       level: visualState,
       label: text.remaining,
       mode: state.widgetMode,

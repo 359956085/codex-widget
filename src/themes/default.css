@@ -23,7 +23,7 @@ body[data-theme="default"] {
 }
 
 body[data-theme="default"][data-state="low"],
-body[data-theme="default"] .liquid-meter[data-level="low"] {
+body[data-theme="default"] .default-meter[data-level="low"] {
   --default-accent: #ffd257;
   --default-accent-deep: #f59f26;
   --default-accent-rgb: 255, 210, 87;
@@ -32,9 +32,9 @@ body[data-theme="default"] .liquid-meter[data-level="low"] {
 body[data-theme="default"][data-state="critical"],
 body[data-theme="default"][data-state="empty"],
 body[data-theme="default"][data-state="error"],
-body[data-theme="default"] .liquid-meter[data-level="critical"],
-body[data-theme="default"] .liquid-meter[data-level="empty"],
-body[data-theme="default"] .liquid-meter[data-level="error"] {
+body[data-theme="default"] .default-meter[data-level="critical"],
+body[data-theme="default"] .default-meter[data-level="empty"],
+body[data-theme="default"] .default-meter[data-level="error"] {
   --default-accent: #ff6b78;
   --default-accent-deep: #ee3652;
   --default-accent-rgb: 255, 107, 120;
@@ -42,8 +42,8 @@ body[data-theme="default"] .liquid-meter[data-level="error"] {
 
 body[data-theme="default"][data-state="loading"],
 body[data-theme="default"][data-state="unknown"],
-body[data-theme="default"] .liquid-meter[data-level="loading"],
-body[data-theme="default"] .liquid-meter[data-level="unknown"] {
+body[data-theme="default"] .default-meter[data-level="loading"],
+body[data-theme="default"] .default-meter[data-level="unknown"] {
   --default-accent: #70c7ff;
   --default-accent-deep: #3b8ef3;
   --default-accent-rgb: 112, 199, 255;
@@ -55,6 +55,57 @@ body[data-theme="default"] .widget {
   border-radius: 18px;
   background: var(--widget-surface-background);
   box-shadow: var(--widget-surface-shadow);
+}
+
+body[data-theme="default"] .default-meter {
+  position: relative;
+}
+
+body[data-theme="default"] .default-meter-rim,
+body[data-theme="default"] .default-meter-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+body[data-theme="default"] .default-meter-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 0;
+  transition: height 420ms ease;
+}
+
+body[data-theme="default"] .default-meter-wave {
+  position: absolute;
+  top: -16px;
+  left: -18px;
+  width: 160px;
+  height: 32px;
+  border-radius: 45%;
+  background: rgba(255, 255, 255, 0.24);
+  animation: wave 3.6s linear infinite;
+}
+
+body[data-theme="default"] .default-meter-wave-two {
+  top: -11px;
+  left: -28px;
+  opacity: 0.6;
+  animation-duration: 5.2s;
+  animation-direction: reverse;
+}
+
+body[data-theme="default"] .default-meter-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
 }
 
 body[data-theme="default"] .widget::before {
@@ -202,7 +253,7 @@ body[data-theme="default"] .content {
   gap: 8px;
 }
 
-body[data-theme="default"] .liquid-meter {
+body[data-theme="default"] .default-meter {
   isolation: isolate;
   width: 130px;
   height: 130px;
@@ -226,8 +277,8 @@ body[data-theme="default"] .liquid-meter {
     0 16px 34px rgba(var(--default-accent-rgb), 0.2);
 }
 
-body[data-theme="default"] .liquid-meter::before,
-body[data-theme="default"] .liquid-meter::after {
+body[data-theme="default"] .default-meter::before,
+body[data-theme="default"] .default-meter::after {
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -236,7 +287,7 @@ body[data-theme="default"] .liquid-meter::after {
   content: "";
 }
 
-body[data-theme="default"] .liquid-meter::before {
+body[data-theme="default"] .default-meter::before {
   background:
     radial-gradient(ellipse 126px 82px at 50% 0%, rgba(1, 9, 20, 0.82), rgba(8, 26, 40, 0.5) 51%, transparent 76%),
     linear-gradient(132deg, transparent 0 6%, rgba(255, 255, 255, 0.58) 7% 14%, rgba(255, 255, 255, 0.22) 15% 27%, transparent 39%),
@@ -248,7 +299,7 @@ body[data-theme="default"] .liquid-meter::before {
   opacity: 0.98;
 }
 
-body[data-theme="default"] .liquid-meter::after {
+body[data-theme="default"] .default-meter::after {
   background:
     radial-gradient(ellipse 42px 16px at 27% 13%, rgba(255, 255, 255, 0.22), transparent 72%),
     radial-gradient(ellipse 92px 24px at 52% 97%, rgba(255, 255, 255, 0.18), transparent 72%),
@@ -261,7 +312,7 @@ body[data-theme="default"] .liquid-meter::after {
     inset 0 0 20px rgba(220, 250, 255, 0.12);
 }
 
-body[data-theme="default"] .liquid-fill {
+body[data-theme="default"] .default-meter-fill {
   right: 5px;
   bottom: 5px;
   left: 5px;
@@ -288,14 +339,14 @@ body[data-theme="default"] .liquid-fill {
     0 -2px 12px rgba(var(--default-accent-rgb), 0.26);
 }
 
-body[data-theme="default"] .liquid-fill::before,
-body[data-theme="default"] .liquid-fill::after {
+body[data-theme="default"] .default-meter-fill::before,
+body[data-theme="default"] .default-meter-fill::after {
   position: absolute;
   pointer-events: none;
   content: "";
 }
 
-body[data-theme="default"] .liquid-fill::before {
+body[data-theme="default"] .default-meter-fill::before {
   top: 1px;
   right: 0;
   left: 0;
@@ -317,7 +368,7 @@ body[data-theme="default"] .liquid-fill::before {
   will-change: transform, opacity, filter;
 }
 
-body[data-theme="default"] .liquid-fill::after {
+body[data-theme="default"] .default-meter-fill::after {
   inset: 0;
   z-index: 1;
   background:
@@ -326,17 +377,17 @@ body[data-theme="default"] .liquid-fill::after {
     radial-gradient(ellipse 90px 34px at 50% 96%, rgba(91, 255, 190, 0.24), transparent 74%);
 }
 
-body[data-theme="default"] .wave {
+body[data-theme="default"] .default-meter-wave {
   display: none;
   animation: none;
 }
 
-body[data-theme="default"] .wave-two {
+body[data-theme="default"] .default-meter-wave-two {
   display: none;
   animation: none;
 }
 
-body[data-theme="default"] .glass-rim {
+body[data-theme="default"] .default-meter-rim {
   z-index: 4;
   background:
     radial-gradient(ellipse 70px 30px at 27% 16%, rgba(255, 255, 255, 0.46), transparent 72%),
@@ -350,7 +401,7 @@ body[data-theme="default"] .glass-rim {
     inset 0 -15px 21px rgba(255, 255, 255, 0.1);
 }
 
-body[data-theme="default"] .shine {
+body[data-theme="default"] .default-meter-shine {
   z-index: 5;
   background:
     radial-gradient(ellipse 58px 18px at 28% 14%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.46) 34%, rgba(255, 255, 255, 0.1) 56%, transparent 76%),
@@ -361,7 +412,7 @@ body[data-theme="default"] .shine {
   mix-blend-mode: screen;
 }
 
-body[data-theme="default"] .meter-copy {
+body[data-theme="default"] .default-meter-copy {
   z-index: 6;
   gap: 4px;
   text-shadow:
@@ -369,14 +420,14 @@ body[data-theme="default"] .meter-copy {
     0 0 18px rgba(255, 255, 255, 0.2);
 }
 
-body[data-theme="default"] .meter-copy strong {
+body[data-theme="default"] .default-meter-copy strong {
   color: #ffffff;
   font-size: 39px;
   font-weight: 900;
   line-height: 41px;
 }
 
-body[data-theme="default"] .meter-copy span {
+body[data-theme="default"] .default-meter-copy span {
   color: rgba(248, 252, 255, 0.92);
   font-size: 13px;
   font-weight: 720;
@@ -529,7 +580,7 @@ body[data-theme="default"][data-widget-mode="ball"] .content {
   height: 88px;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .liquid-meter {
+body[data-theme="default"][data-widget-mode="ball"] .default-meter {
   top: 1px;
   left: 1px;
   margin-left: 0;
@@ -537,29 +588,29 @@ body[data-theme="default"][data-widget-mode="ball"] .liquid-meter {
   transform-origin: top left;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .meter-copy {
+body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy {
   gap: 1px;
 }
 
-body[data-theme="default"][data-widget-mode="ball"][data-ball-dock="none"] .meter-copy span {
+body[data-theme="default"][data-widget-mode="ball"][data-ball-dock="none"] .default-meter-copy span {
   display: block;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .meter-copy strong {
+body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy strong {
   font-size: 35px;
   line-height: 36px;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .meter-copy span {
+body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy span {
   font-size: 12px;
   line-height: 14px;
 }
 
-body[data-theme="default"][data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy {
+body[data-theme="default"][data-widget-mode="ball"]:not([data-ball-dock="none"]) .default-meter-copy {
   display: none;
 }
 
-body[data-theme="default"][data-widget-mode="ball"]:not([data-ball-dock="none"]) .meter-copy span {
+body[data-theme="default"][data-widget-mode="ball"]:not([data-ball-dock="none"]) .default-meter-copy span {
   display: none;
 }
 
@@ -585,7 +636,7 @@ body[data-theme="default"][data-widget-mode="ball"]:not([data-ball-dock="none"])
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body[data-theme="default"] .liquid-fill::before {
+  body[data-theme="default"] .default-meter-fill::before {
     animation: none;
   }
 }
