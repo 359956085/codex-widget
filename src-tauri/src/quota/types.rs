@@ -14,6 +14,7 @@ pub struct QuotaWindow {
 #[serde(rename_all = "camelCase")]
 pub struct ResetCredits {
     pub available_count: Option<u64>,
+    pub expiries: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]

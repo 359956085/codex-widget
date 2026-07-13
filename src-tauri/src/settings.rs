@@ -51,7 +51,7 @@ pub enum MeterWindow {
 
 impl Default for MeterWindow {
     fn default() -> Self {
-        Self::Primary
+        Self::Secondary
     }
 }
 
@@ -97,6 +97,8 @@ pub struct AppSettings {
     pub theme: ThemeMode,
     #[serde(default)]
     pub meter_window: MeterWindow,
+    #[serde(default)]
+    pub meter_window_migrated: bool,
     #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
     #[serde(default = "default_auto_start_enabled")]
@@ -124,6 +126,7 @@ impl Default for AppSettings {
             locale: Locale::default(),
             theme: ThemeMode::default(),
             meter_window: MeterWindow::default(),
+            meter_window_migrated: true,
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
             onboarding_seen: false,
@@ -170,25 +173,36 @@ fn load_from_path(path: &Path) -> Result<AppSettings> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("无法读取设置文件：{}", path.display()))?;
     let settings = serde_json::from_str::<AppSettings>(&text).unwrap_or_default();
-    Ok(normalize_loaded_settings(settings))
+    let should_persist_migration = !settings.meter_window_migrated;
+    let settings = normalize_loaded_settings(settings);
+    if should_persist_migration {
+        write_settings_file(path, &settings)?;
+    }
+    Ok(settings)
 }
 
 fn save_to_path(path: &Path, settings: AppSettings) -> Result<AppSettings> {
     let settings = validate_and_normalize(settings)?;
+    write_settings_file(path, &settings)?;
+    Ok(settings)
+}
+
+fn write_settings_file(path: &Path, settings: &AppSettings) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("无法创建设置目录：{}", parent.display()))?;
     }
 
-    let text = serde_json::to_string_pretty(&settings).context("设置序列化失败。")?;
+    let text = serde_json::to_string_pretty(settings).context("设置序列化失败。")?;
     fs::write(path, format!("{text}\n"))
-        .with_context(|| format!("无法写入设置文件：{}", path.display()))?;
-    Ok(settings)
+        .with_context(|| format!("无法写入设置文件：{}", path.display()))
 }
 
 fn validate_and_normalize(mut settings: AppSettings) -> Result<AppSettings> {
     settings.codex_cli_path = normalize_optional_text(settings.codex_cli_path);
     settings.update_proxy = normalize_optional_text(settings.update_proxy);
+    // 正常保存只标记迁移已处理，不能覆盖用户之后手动选择的 5 小时窗口。
+    settings.meter_window_migrated = true;
 
     if let Some(path) = &settings.codex_cli_path {
         validate_codex_cli_path(Path::new(path))?;
@@ -210,6 +224,12 @@ fn validate_and_normalize(mut settings: AppSettings) -> Result<AppSettings> {
 fn normalize_loaded_settings(mut settings: AppSettings) -> AppSettings {
     settings.codex_cli_path = normalize_optional_text(settings.codex_cli_path);
     settings.update_proxy = normalize_optional_text(settings.update_proxy);
+    if !settings.meter_window_migrated {
+        if settings.meter_window == MeterWindow::Primary {
+            settings.meter_window = MeterWindow::Secondary;
+        }
+        settings.meter_window_migrated = true;
+    }
     if !is_valid_refresh_interval(settings.refresh_interval_minutes) {
         settings.refresh_interval_minutes = DEFAULT_REFRESH_INTERVAL_MINUTES;
     }
@@ -361,6 +381,7 @@ mod tests {
             locale: Locale::En,
             theme: ThemeMode::Basic3,
             meter_window: MeterWindow::Secondary,
+            meter_window_migrated: false,
             auto_update_enabled: false,
             auto_start_enabled: true,
             onboarding_seen: true,
@@ -382,6 +403,7 @@ mod tests {
         );
         assert_eq!(loaded.theme, ThemeMode::Basic3);
         assert_eq!(loaded.meter_window, MeterWindow::Secondary);
+        assert!(loaded.meter_window_migrated);
         assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
@@ -420,12 +442,60 @@ mod tests {
         assert!(!settings.auto_start_enabled);
         assert!(!settings.onboarding_seen);
         assert_eq!(settings.theme, ThemeMode::Default);
-        assert_eq!(settings.meter_window, MeterWindow::Primary);
+        assert_eq!(settings.meter_window, MeterWindow::Secondary);
+        assert!(settings.meter_window_migrated);
         assert_eq!(settings.log_level, LogLevel::Off);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);
         assert_eq!(settings.ball_position, None);
         assert_eq!(settings.ball_dock, None);
+    }
+
+    #[test]
+    fn 旧五小时配置首次读取会迁移并写回() {
+        let dir = temp_test_dir("migrate-meter-window");
+        let path = dir.join("settings.json");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            &path,
+            r#"{
+  "meterWindow": "primary"
+}"#,
+        )
+        .unwrap();
+
+        let migrated = load_from_path(&path).unwrap();
+        let persisted = fs::read_to_string(&path).unwrap();
+        let persisted = serde_json::from_str::<serde_json::Value>(&persisted).unwrap();
+
+        assert_eq!(migrated.meter_window, MeterWindow::Secondary);
+        assert!(migrated.meter_window_migrated);
+        assert_eq!(persisted["meterWindow"], "secondary");
+        assert_eq!(persisted["meterWindowMigrated"], true);
+    }
+
+    #[test]
+    fn 迁移后手动选择五小时不会再次纠正() {
+        let dir = temp_test_dir("manual-primary-after-migration");
+        let path = dir.join("settings.json");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            &path,
+            r#"{
+  "meterWindow": "primary"
+}"#,
+        )
+        .unwrap();
+
+        let mut settings = load_from_path(&path).unwrap();
+        settings.meter_window = MeterWindow::Primary;
+        let saved = save_to_path(&path, settings).unwrap();
+        let loaded = load_from_path(&path).unwrap();
+
+        assert_eq!(saved.meter_window, MeterWindow::Primary);
+        assert!(saved.meter_window_migrated);
+        assert_eq!(loaded.meter_window, MeterWindow::Primary);
+        assert!(loaded.meter_window_migrated);
     }
 
     #[test]

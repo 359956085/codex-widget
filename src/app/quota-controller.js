@@ -10,8 +10,11 @@ export function createQuotaController({ state, service, render, normalizeError, 
     try {
       const quota = await service.commands.getQuota();
       applyQuotaSuccess(quota);
+      const hasAppServerExpiries = applyAppServerResetCreditExpiries(quota);
       render();
-      refreshResetCreditExpiries();
+      if (!hasAppServerExpiries) {
+        refreshResetCreditExpiriesFromHttp();
+      }
     } catch (error) {
       applyQuotaError(error);
       render();
@@ -40,7 +43,15 @@ export function createQuotaController({ state, service, render, normalizeError, 
     logger?.error("刷新数据失败", error, "frontend.quota");
   }
 
-  async function refreshResetCreditExpiries() {
+  function applyAppServerResetCreditExpiries(quota) {
+    const expiries = quota?.resetCredits?.expiries;
+    if (!Array.isArray(expiries)) return false;
+
+    applyResetCreditExpiriesResult({ expiries });
+    return true;
+  }
+
+  async function refreshResetCreditExpiriesFromHttp() {
     const requestId = startResetCreditExpiriesRequest();
     render();
 

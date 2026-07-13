@@ -6,7 +6,7 @@ export const DEFAULT_SETTINGS = {
   refreshIntervalMinutes: 5,
   locale: "zh",
   theme: "default",
-  meterWindow: "primary",
+  meterWindow: "secondary",
   logLevel: "off",
   autoUpdateEnabled: true,
   autoStartEnabled: false,
