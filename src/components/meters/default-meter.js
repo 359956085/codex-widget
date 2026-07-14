@@ -33,8 +33,8 @@ export function mount(root) {
     fill.style.height = `${value === null ? 0 : value}%`;
     setText(percent, displayText);
     setText(label, nextLabel || "");
-    // 吸附后窗口只露出半圆，隐藏说明文字可以避免内容被屏幕边缘裁切。
-    label.hidden = meter.dataset.mode === "ball" && meter.dataset.dock !== "none";
+    // 设计稿的吸附态仍显示文字，由屏幕边缘自然裁切，保持球体与悬浮态视觉一致。
+    label.hidden = false;
     meter.setAttribute("role", "img");
     meter.setAttribute("aria-label", `${nextLabel || "Quota"} ${displayText}`);
   }
