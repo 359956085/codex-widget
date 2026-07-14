@@ -1,12 +1,11 @@
 body[data-theme="default"] {
-  --default-accent: #22f0a6;
+  --default-accent: #22F37DFF;
   --default-accent-deep: #00bd78;
   --default-accent-rgb: 34, 240, 166;
   --default-panel-text: rgba(250, 253, 255, 0.98);
   --default-muted-text: rgba(221, 234, 244, 0.76);
   --default-faint-text: rgba(190, 211, 226, 0.58);
   --widget-surface-background:
-    radial-gradient(ellipse 250px 148px at -4% -8%, rgba(190, 216, 236, 0.23), transparent 62%),
     radial-gradient(ellipse 220px 140px at 102% 4%, rgba(43, 103, 151, 0.14), transparent 64%),
     linear-gradient(145deg, rgba(37, 54, 70, 0.985), rgba(7, 24, 41, 0.995) 47%, rgba(1, 10, 20, 1));
   --widget-surface-shadow:
@@ -112,7 +111,7 @@ body[data-theme="default"] .widget::before {
   z-index: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.11), transparent 25%, rgba(0, 0, 0, 0.1) 88%),
-    linear-gradient(116deg, rgba(255, 255, 255, 0.11), transparent 27%),
+    /*linear-gradient(116deg, rgba(255, 255, 255, 0.11), transparent 27%),*/
     radial-gradient(ellipse 76px 86px at 24% 59%, rgba(var(--default-accent-rgb), 0.25), transparent 72%),
     radial-gradient(ellipse 172px 92px at 75% -6%, rgba(137, 191, 229, 0.17), transparent 70%);
 }
@@ -125,7 +124,6 @@ body[data-theme="default"] .widget::after {
   border-radius: 15px;
   content: "";
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.105), transparent 22%),
     linear-gradient(135deg, transparent 58%, rgba(0, 0, 0, 0.19) 100%),
     linear-gradient(90deg, rgba(255, 255, 255, 0.065), transparent 18%, transparent 78%, rgba(123, 178, 211, 0.1));
   box-shadow:
@@ -155,9 +153,7 @@ body[data-theme="default"] .traffic-light {
   height: 12px;
   background: var(--default-accent);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 0 20px rgba(var(--default-accent-rgb), 0.82),
-    0 6px 16px rgba(var(--default-accent-rgb), 0.32);
+    0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 body[data-theme="default"] .brand-copy {
@@ -293,7 +289,7 @@ body[data-theme="default"] .default-meter::after {
 
 body[data-theme="default"] .default-meter::before {
   background:
-    radial-gradient(ellipse 112px 78px at 52% -5%, rgba(1, 8, 18, 0.8), rgba(8, 28, 43, 0.5) 55%, transparent 78%),
+    radial-gradient(ellipse 112px 78px at 52% -5%, rgba(1, 8, 18, 0.8), rgba(8, 28, 43, 0.5) 15%, transparent 78%),
     radial-gradient(ellipse 70px 48px at 24% 9%, rgba(191, 220, 240, 0.12), transparent 71%),
     radial-gradient(circle at 72% 34%, rgba(91, 226, 225, 0.2) 0 0.8px, transparent 1.4px),
     radial-gradient(circle at 77% 29%, rgba(176, 250, 246, 0.17) 0 0.7px, transparent 1.3px),
@@ -335,13 +331,13 @@ body[data-theme="default"] .default-meter-fill {
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   background:
-    radial-gradient(ellipse 112px 48px at 50% 0%, rgba(235, 255, 247, 0.5), transparent 70%),
-    radial-gradient(ellipse 44px 72px at 18% 45%, rgba(255, 255, 255, 0.12), transparent 72%),
-    radial-gradient(ellipse 82px 70px at 48% 58%, rgba(255, 255, 255, 0.13), transparent 70%),
+    /*radial-gradient(ellipse 112px 48px at 50% 0%, rgba(235, 255, 247, 0.5), transparent 70%),*/
+    /*radial-gradient(ellipse 44px 72px at 18% 45%, rgba(255, 255, 255, 0.12), transparent 72%),*/
+    /*radial-gradient(ellipse 82px 70px at 48% 58%, rgba(255, 255, 255, 0.13), transparent 70%),*/
     linear-gradient(90deg, rgba(0, 15, 21, 0.2), transparent 23%, transparent 77%, rgba(0, 15, 21, 0.18)),
     radial-gradient(ellipse 98px 76px at 50% 88%, rgba(0, 24, 30, 0.13), transparent 72%),
     radial-gradient(ellipse 82px 34px at 50% 98%, rgba(var(--default-accent-rgb), 0.5), transparent 74%),
-    linear-gradient(180deg, var(--default-accent) 0%, var(--default-accent) 32%, var(--default-accent-deep) 100%);
+    linear-gradient(180deg, var(--default-accent) 10%, var(--default-accent) 32%, var(--default-accent-deep) 100%);
   box-shadow:
     inset 0 15px 22px rgba(255, 255, 255, 0.17),
     inset 0 -22px 32px rgba(0, 20, 27, 0.15),
@@ -446,7 +442,8 @@ body[data-theme="default"] .default-meter-shine::before {
   inset: 0;
   content: "";
   background: linear-gradient(126deg, rgba(252, 254, 255, 0.48), rgba(223, 240, 251, 0.17) 48%, rgba(181, 215, 236, 0.04) 80%, transparent);
-  clip-path: polygon(1% 17%, 28% 2%, 72% 39%, 59% 53%, 21% 27%, 6% 41%);
+  /* 增加中间控制点，让玻璃高光右缘形成轻微弧度。 */
+  clip-path: polygon(1% 17%, 28% 2%, 40% 9%, 52% 18%, 63% 29%, 72% 39%, 59% 53%, 21% 27%, 6% 41%);
   filter: blur(1.2px);
   opacity: 0.82;
 }
@@ -486,9 +483,9 @@ body[data-theme="default"] .quota-card {
   border: 1px solid rgba(185, 216, 239, 0.18);
   border-radius: 10px;
   background:
-    radial-gradient(ellipse 74px 54px at -5% 105%, rgba(var(--default-accent-rgb), 0.14), transparent 70%),
+    radial-gradient(ellipse 14px 54px at -5% 105%, rgba(var(--default-accent-rgb), 0.14), transparent 70%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.065), transparent 34%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(4, 17, 31, 0.24)),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05), rgba(4, 17, 31, 0.24)),
     rgba(17, 33, 49, 0.64);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.11),
@@ -502,7 +499,7 @@ body[data-theme="default"] .quota-card::before {
   top: 5px;
   bottom: 5px;
   left: 0;
-  width: 3px;
+  width: 2px;
   border-radius: 0 999px 999px 0;
   content: "";
   background: linear-gradient(
@@ -514,7 +511,7 @@ body[data-theme="default"] .quota-card::before {
     transparent
   );
   box-shadow:
-    0 0 5px rgba(var(--default-accent-rgb), 0.24),
+    0 0 5px rgba(var(--default-accent-rgb), 0.4),
     3px 0 7px rgba(var(--default-accent-rgb), 0.05);
   filter: blur(0.1px);
 }
@@ -660,6 +657,24 @@ body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy strong {
 body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy span {
   font-size: 12px;
   line-height: 14px;
+}
+
+/* 吸附时窗口仅露出半球，文字镜像移入当前可视半圆。 */
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="right"] .default-meter-copy {
+  transform: translateX(-18%);
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="left"] .default-meter-copy {
+  transform: translateX(25%);
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"]:not([data-dock="none"]) .default-meter-copy strong {
+  font-size: 23px;
+  line-height: 28px;
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"]:not([data-dock="none"]) .default-meter-copy span {
+  display: none;
 }
 
 @keyframes default-water-surface {
