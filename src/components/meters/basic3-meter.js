@@ -22,24 +22,23 @@ export function mount(root) {
     pathLength: 100,
     transform: "rotate(-90 65 65)"
   });
+  const track = svgElement("circle", { class: "basic3-gauge-track", cx: 65, cy: 65, r: 43, pathLength: 100 });
   const inner = svgElement("g", { class: "basic3-gauge-inner" });
   const mark = svgElement("path", { class: "basic3-gauge-mark", transform: MARK_TRANSFORM, d: MARK_PATH });
   const percent = svgElement("text", { class: "basic3-gauge-percent", x: 65, y: 96, "text-anchor": "middle" });
   const label = svgElement("text", { class: "basic3-gauge-label", x: 65, y: 111, "text-anchor": "middle" });
-  inner.append(
-    svgElement("circle", { class: "basic3-gauge-track", cx: 65, cy: 65, r: 43, pathLength: 100 }),
-    progress,
-    mark,
-    percent,
-    label
-  );
+  inner.append(mark, percent, label);
   svg.append(
     createDefs(),
     svgElement("circle", { class: "basic3-gauge-glow", cx: 65, cy: 65, r: 58 }),
     svgElement("circle", { class: "basic3-gauge-sphere", cx: 65, cy: 65, r: 56 }),
     svgElement("path", { class: "basic3-gauge-sheen", d: "M24 59c4-22 20-38 43-42 17-3 31 2 41 11-13-3-30-2-47 6-17 8-29 18-37 25Z" }),
+    svgElement("circle", { class: "basic3-gauge-ticks", cx: 65, cy: 65, r: 58.5 }),
+    svgElement("circle", { class: "basic3-gauge-refraction", cx: 65, cy: 65, r: 54.5 }),
     svgElement("circle", { class: "basic3-gauge-outer-track", cx: 65, cy: 65, r: 51, pathLength: 100 }),
     outerProgress,
+    track,
+    progress,
     inner
   );
   meter.append(svg);
@@ -106,7 +105,14 @@ function createDefs() {
     svgElement("stop", { offset: "44%", class: "basic3-gauge-sphere-stop-b" }),
     svgElement("stop", { offset: "100%", class: "basic3-gauge-sphere-stop-c" })
   );
-  const accent = svgElement("linearGradient", { id: "basic3GaugeAccent", x1: "22", y1: "18", x2: "108", y2: "112" });
+  const accent = svgElement("linearGradient", {
+    id: "basic3GaugeAccent",
+    gradientUnits: "userSpaceOnUse",
+    x1: "22",
+    y1: "18",
+    x2: "108",
+    y2: "112"
+  });
   accent.append(
     svgElement("stop", { offset: "0%", class: "basic3-gauge-accent-stop-a" }),
     svgElement("stop", { offset: "100%", class: "basic3-gauge-accent-stop-b" })
