@@ -18,6 +18,7 @@ export function createWindowController({
   service,
   render,
   applyNormalizedSettings,
+  persistSettings,
   saveCurrentSettings,
   showError,
   logger
@@ -29,8 +30,7 @@ export function createWindowController({
   const positionController = createPositionController({
     state,
     service,
-    applyNormalizedSettings,
-    saveCurrentSettings,
+    persistSettings,
     showError,
     logWindowError
   });

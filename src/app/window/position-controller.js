@@ -4,8 +4,7 @@ import { normalizeBallDock, normalizeWindowPosition } from "../settings-model.js
 export function createPositionController({
   state,
   service,
-  applyNormalizedSettings,
-  saveCurrentSettings,
+  persistSettings,
   showError,
   logWindowError
 }) {
@@ -46,7 +45,7 @@ export function createPositionController({
     try {
       const position = await readCurrentWindowPosition();
       if (!position) return;
-      await persistWindowPosition(position, state.widgetMode, state.ballDock, { silent });
+      await persistWindowPosition(position, state.widgetMode, state.ballDock);
     } catch (error) {
       if (silent) {
         logWindowError("保存窗口位置失败", error);
@@ -57,16 +56,17 @@ export function createPositionController({
     }
   }
 
-  async function persistWindowPosition(position, mode, dock = null, { silent = true } = {}) {
-    const nextSettings = { ...state.settings, widgetMode: state.widgetMode };
-    if (mode === WIDGET_MODES.BALL) {
-      nextSettings.ballPosition = position;
-      nextSettings.ballDock = normalizeBallDock(dock);
-    } else {
-      nextSettings.panelPosition = position;
-    }
-    applyNormalizedSettings(nextSettings, { syncDraft: !state.settingsOpen });
-    await saveCurrentSettings({ silent });
+  async function persistWindowPosition(position, mode, dock = null) {
+    await persistSettings((currentSettings) => {
+      const nextSettings = { ...currentSettings };
+      if (mode === WIDGET_MODES.BALL) {
+        nextSettings.ballPosition = position;
+        nextSettings.ballDock = normalizeBallDock(dock);
+      } else {
+        nextSettings.panelPosition = position;
+      }
+      return nextSettings;
+    }, { syncDraft: !state.settingsOpen });
   }
 
   async function readCurrentWindowPosition() {

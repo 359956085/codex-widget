@@ -6,6 +6,7 @@ import { createOnboardingController } from "./onboarding-controller.js";
 import { createQuotaController } from "./quota-controller.js";
 import { createRenderer } from "./render.js";
 import { createSettingsController } from "./settings-controller.js";
+import { createSettingsPersistence } from "./settings-persistence.js";
 import { applyNormalizedSettings as applyStateSettings, createAppState, renderLocale, renderTheme } from "./state.js";
 import { createTauriService } from "./tauri-service.js";
 import { createTooltipController } from "./tooltip-controller.js";
@@ -29,13 +30,18 @@ export function createApp() {
     return applyStateSettings(state, settings, options);
   }
 
+  const { persistSettings } = createSettingsPersistence({
+    state,
+    service,
+    applyNormalizedSettings,
+    render: () => render()
+  });
+
   async function saveCurrentSettings({ silent = false } = {}) {
     if (!service.isAvailable()) return;
 
     try {
-      const saved = await service.commands.saveSettings(state.settings);
-      applyNormalizedSettings(saved, { syncDraft: !state.settingsOpen });
-      render();
+      await persistSettings((currentSettings) => currentSettings);
     } catch (error) {
       if (silent) {
         logger.error("保存设置失败", error, "frontend.settings");
@@ -62,6 +68,7 @@ export function createApp() {
     service,
     render: () => render(),
     applyNormalizedSettings,
+    persistSettings,
     saveCurrentSettings,
     showError,
     logger
@@ -98,7 +105,7 @@ export function createApp() {
     service,
     render: () => render(),
     renderLocale: () => renderLocale(state),
-    applySettings,
+    persistSettings,
     normalizeError,
     readCurrentWindowPosition: windowController.readCurrentWindowPosition,
     mergeWindowPosition: windowController.mergeWindowPosition,

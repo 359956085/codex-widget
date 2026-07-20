@@ -1,9 +1,11 @@
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
+use tempfile::NamedTempFile;
 
 use crate::logging::LogLevel;
 
@@ -14,58 +16,38 @@ const MAX_REFRESH_INTERVAL_MINUTES: u16 = 1440;
 const DEFAULT_AUTO_UPDATE_ENABLED: bool = true;
 const DEFAULT_AUTO_START_ENABLED: bool = false;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Locale {
+    #[default]
     Zh,
     En,
 }
 
-impl Default for Locale {
-    fn default() -> Self {
-        Self::Zh
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeMode {
+    #[default]
     Default,
     Basic1,
     Basic2,
     Basic3,
 }
 
-impl Default for ThemeMode {
-    fn default() -> Self {
-        Self::Default
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum MeterWindow {
     Primary,
+    #[default]
     Secondary,
 }
 
-impl Default for MeterWindow {
-    fn default() -> Self {
-        Self::Secondary
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum WidgetMode {
+    #[default]
     Panel,
     Ball,
-}
-
-impl Default for WidgetMode {
-    fn default() -> Self {
-        Self::Panel
-    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -172,7 +154,8 @@ fn load_from_path(path: &Path) -> Result<AppSettings> {
 
     let text = fs::read_to_string(path)
         .with_context(|| format!("无法读取设置文件：{}", path.display()))?;
-    let settings = serde_json::from_str::<AppSettings>(&text).unwrap_or_default();
+    let settings = serde_json::from_str::<AppSettings>(&text)
+        .with_context(|| format!("设置文件格式无效：{}", path.display()))?;
     let should_persist_migration = !settings.meter_window_migrated;
     let settings = normalize_loaded_settings(settings);
     if should_persist_migration {
@@ -188,14 +171,39 @@ fn save_to_path(path: &Path, settings: AppSettings) -> Result<AppSettings> {
 }
 
 fn write_settings_file(path: &Path, settings: &AppSettings) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("无法创建设置目录：{}", parent.display()))?;
-    }
+    write_settings_file_with_hook(path, settings, || Ok(()))
+}
+
+fn write_settings_file_with_hook<F>(
+    path: &Path,
+    settings: &AppSettings,
+    before_persist: F,
+) -> Result<()>
+where
+    F: FnOnce() -> Result<()>,
+{
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow!("设置文件缺少父目录：{}", path.display()))?;
+    fs::create_dir_all(parent)
+        .with_context(|| format!("无法创建设置目录：{}", parent.display()))?;
 
     let text = serde_json::to_string_pretty(settings).context("设置序列化失败。")?;
-    fs::write(path, format!("{text}\n"))
-        .with_context(|| format!("无法写入设置文件：{}", path.display()))
+    let mut temp_file = NamedTempFile::new_in(parent)
+        .with_context(|| format!("无法在设置目录创建临时文件：{}", parent.display()))?;
+    temp_file
+        .write_all(format!("{text}\n").as_bytes())
+        .with_context(|| format!("无法写入设置临时文件：{}", path.display()))?;
+    temp_file
+        .as_file_mut()
+        .sync_all()
+        .with_context(|| format!("无法同步设置临时文件：{}", path.display()))?;
+    // 故障注入点同时保证测试能验证：替换前失败时，旧文件仍完整可读。
+    before_persist()?;
+    temp_file
+        .persist(path)
+        .map_err(|error| anyhow!("无法原子替换设置文件：{}，{}", path.display(), error.error))?;
+    Ok(())
 }
 
 fn validate_and_normalize(mut settings: AppSettings) -> Result<AppSettings> {
@@ -331,15 +339,19 @@ fn validate_codex_cli_executable(_path: &Path) -> Result<()> {
 }
 
 fn validate_proxy(proxy: &str) -> Result<()> {
-    let lower = proxy.to_ascii_lowercase();
-    let supported = lower.starts_with("http://")
-        || lower.starts_with("https://")
-        || lower.starts_with("socks5://");
-    if !supported || proxy.chars().any(char::is_whitespace) {
+    if proxy.chars().any(char::is_whitespace) {
         return Err(anyhow!(
             "自动更新代理必须以 http://、https:// 或 socks5:// 开头，且不能包含空白字符。"
         ));
     }
+
+    let url = reqwest::Url::parse(proxy).context("自动更新代理不是有效 URL。")?;
+    if !matches!(url.scheme(), "http" | "https" | "socks5") || url.host_str().is_none() {
+        return Err(anyhow!(
+            "自动更新代理必须使用 http、https 或 socks5 协议，并包含有效主机。"
+        ));
+    }
+    reqwest::Proxy::all(proxy).context("自动更新代理配置无效。")?;
     Ok(())
 }
 
@@ -358,15 +370,16 @@ mod tests {
     }
 
     #[test]
-    fn 无效_json_回退默认值() {
+    fn 无效_json_返回明确错误() {
         let dir = temp_test_dir("invalid-json");
         let path = dir.join("settings.json");
         fs::create_dir_all(&dir).unwrap();
         fs::write(&path, "{").unwrap();
 
-        let settings = load_from_path(&path).unwrap();
+        let error = load_from_path(&path).unwrap_err().to_string();
 
-        assert_eq!(settings, AppSettings::default());
+        assert!(error.contains("设置文件格式无效"));
+        assert!(error.contains("settings.json"));
     }
 
     #[test]
@@ -418,6 +431,29 @@ mod tests {
             Some(WindowPosition { x: 1800, y: 240 })
         );
         assert_eq!(loaded.ball_dock, Some(BallDock::Right));
+    }
+
+    #[test]
+    fn 原子替换前失败不会破坏旧设置() {
+        let dir = temp_test_dir("atomic-write-failure");
+        let path = dir.join("settings.json");
+        let original = AppSettings {
+            theme: ThemeMode::Basic1,
+            ..AppSettings::default()
+        };
+        save_to_path(&path, original.clone()).unwrap();
+        let original_text = fs::read_to_string(&path).unwrap();
+        let replacement = AppSettings {
+            theme: ThemeMode::Basic3,
+            ..AppSettings::default()
+        };
+
+        let result =
+            write_settings_file_with_hook(&path, &replacement, || Err(anyhow!("模拟替换失败")));
+
+        assert!(result.is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), original_text);
+        assert_eq!(load_from_path(&path).unwrap(), original);
     }
 
     #[test]
@@ -517,7 +553,9 @@ mod tests {
         assert!(validate_proxy("http://127.0.0.1:7890").is_ok());
         assert!(validate_proxy("https://proxy.local:7890").is_ok());
         assert!(validate_proxy("socks5://127.0.0.1:7890").is_ok());
+        assert!(validate_proxy("http://user:pass@[::1]:7890").is_ok());
         assert!(validate_proxy("ftp://127.0.0.1:21").is_err());
+        assert!(validate_proxy("http://").is_err());
         assert!(validate_proxy("http://127.0.0.1: 7890").is_err());
     }
 
@@ -525,9 +563,10 @@ mod tests {
     fn 刷新间隔必须在边界内() {
         let dir = temp_test_dir("refresh-interval");
         let path = dir.join("settings.json");
-        let mut settings = AppSettings::default();
-
-        settings.refresh_interval_minutes = 0;
+        let mut settings = AppSettings {
+            refresh_interval_minutes: 0,
+            ..AppSettings::default()
+        };
         assert!(save_to_path(&path, settings.clone()).is_err());
 
         settings.refresh_interval_minutes = 1441;

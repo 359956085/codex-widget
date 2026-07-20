@@ -32,8 +32,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: 安装 Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: 安装 Rust 1.88
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: rustfmt, clippy
 
       - name: 缓存 Rust 构建
         uses: Swatinem/rust-cache@v2
@@ -56,8 +58,8 @@ jobs:
       - name: 安装前端依赖
         run: npm run ci:install
 
-      - name: 运行 Rust 测试
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: 运行格式、Lint 和测试
+        run: npm run check
 
       - name: 构建 Windows 安装包
         run: npm run tauri:build:nsis:updater
@@ -120,9 +122,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: 安装 Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: 安装 Rust 1.88
+        uses: dtolnay/rust-toolchain@1.88.0
         with:
+          components: rustfmt, clippy
           targets: ${{ matrix.target }}
 
       - name: 缓存 Rust 构建
@@ -149,8 +152,8 @@ jobs:
       - name: 安装前端依赖
         run: npm run ci:install
 
-      - name: 运行 Rust 测试
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: 运行格式、Lint 和测试
+        run: npm run check
 
       - name: 构建 macOS 安装包
         run: npm run ${{ matrix.npm_script }}

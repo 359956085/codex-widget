@@ -12,9 +12,10 @@ const LOG_RETENTION_DAYS: i64 = 30;
 const LOG_FILE_PREFIX: &str = "codex-widget-";
 const LOG_FILE_EXTENSION: &str = ".log";
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LogLevel {
+    #[default]
     Off,
     Error,
     Warn,
@@ -36,12 +37,6 @@ struct LoggerState {
 
 pub struct AppLogger {
     state: Mutex<LoggerState>,
-}
-
-impl Default for LogLevel {
-    fn default() -> Self {
-        Self::Off
-    }
 }
 
 impl LogLevel {
@@ -79,11 +74,20 @@ impl AppLogger {
     }
 
     pub fn configure(&self, app: &AppHandle, level: LogLevel) -> Result<()> {
-        let log_dir = app
+        let log_dir = Self::resolve_log_dir(app)?;
+        self.configure_resolved(log_dir, level);
+        Ok(())
+    }
+
+    pub(crate) fn resolve_log_dir(app: &AppHandle) -> Result<PathBuf> {
+        Ok(app
             .path()
             .app_config_dir()
             .context("无法解析应用配置目录。")?
-            .join("logs");
+            .join("logs"))
+    }
+
+    pub(crate) fn configure_resolved(&self, log_dir: PathBuf, level: LogLevel) {
         prune_old_log_files_best_effort(&log_dir);
 
         let dir = if level == LogLevel::Off {
@@ -92,10 +96,13 @@ impl AppLogger {
             Some(log_dir)
         };
 
-        let mut state = self.state.lock().expect("日志状态锁已损坏");
+        // 日志配置只包含等级和目录；锁中毒后恢复数据比让设置保存进入半成功状态更安全。
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         state.level = level;
         state.dir = dir;
-        Ok(())
     }
 
     pub fn write(&self, level: LogLevel, source: &str, message: &str) -> Result<LogWriteOutcome> {
@@ -223,7 +230,7 @@ fn redact_url_credentials(value: &str) -> String {
         output.push_str(before);
         let after_scheme = after_before;
         let authority_end = after_scheme
-            .find(|ch| ch == '/' || ch == ' ' || ch == '\t')
+            .find(['/', ' ', '\t'])
             .unwrap_or(after_scheme.len());
         let (authority, tail) = after_scheme.split_at(authority_end);
         if let Some(at_index) = authority.rfind('@') {

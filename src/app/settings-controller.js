@@ -9,7 +9,7 @@ export function createSettingsController({
   service,
   render,
   renderLocale,
-  applySettings,
+  persistSettings,
   normalizeError,
   readCurrentWindowPosition,
   mergeWindowPosition,
@@ -176,15 +176,20 @@ export function createSettingsController({
   async function saveSettings() {
     if (state.savingSettings) return;
 
-    const draftSettings = collectSettingsDraft();
-    const currentPosition = await readCurrentWindowPosition();
-    const nextSettings = mergeWindowPosition(draftSettings, currentPosition);
     state.savingSettings = true;
     render();
 
     try {
-      const saved = service.isAvailable() ? await service.commands.saveSettings(nextSettings) : nextSettings;
-      applySettings(saved);
+      const draftSettings = collectSettingsDraft();
+      const currentPosition = await readCurrentWindowPosition();
+      await persistSettings((currentSettings) => mergeWindowPosition({
+        ...currentSettings,
+        ...draftSettings,
+        // 位置字段只由本次读取结果覆盖，保留队列中刚写入的另一种窗口位置。
+        panelPosition: currentSettings.panelPosition,
+        ballPosition: currentSettings.ballPosition,
+        ballDock: currentSettings.ballDock
+      }, currentPosition), { syncDraft: false });
       state.settingsOpen = false;
       state.error = "";
       setUpdateStatus({ type: "saved" });

@@ -107,6 +107,8 @@ function formatRemainingDuration(time) {
   return `${totalMinutes}m`;
 }
 
+// 预存兼容代码暂不删除，仅排除未使用检查。
+// eslint-disable-next-line no-unused-vars
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }

@@ -29,7 +29,24 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "base-uri": "'none'",
+        "default-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost",
+        "form-action": "'none'",
+        "img-src": "'self' data:",
+        "object-src": "'none'",
+        "style-src": "'self' 'unsafe-inline'"
+      },
+      "devCsp": {
+        "base-uri": "'none'",
+        "default-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost ws://127.0.0.1:1420",
+        "form-action": "'none'",
+        "img-src": "'self' data:",
+        "object-src": "'none'",
+        "style-src": "'self' 'unsafe-inline'"
+      }
     },
     "macOSPrivateApi": true
   },

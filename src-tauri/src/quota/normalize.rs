@@ -9,7 +9,8 @@ const FIVE_HOUR_WINDOW_MINS: u64 = 300;
 const WEEKLY_WINDOW_MINS: u64 = 10_080;
 
 pub fn normalize_rate_limits_response(response: &Value) -> Result<QuotaSnapshot> {
-    let snapshot = select_snapshot(response).ok_or_else(|| anyhow!("Codex CLI 未返回额度快照。"))?;
+    let snapshot =
+        select_snapshot(response).ok_or_else(|| anyhow!("Codex CLI 未返回额度快照。"))?;
     Ok(normalize_snapshot(response, snapshot))
 }
 
@@ -119,7 +120,10 @@ fn normalize_window(window: Option<&Value>) -> Option<QuotaWindow> {
     })
 }
 
-fn normalize_reset_credits_from_response(response: &Value, snapshot: &Value) -> Option<ResetCredits> {
+fn normalize_reset_credits_from_response(
+    response: &Value,
+    snapshot: &Value,
+) -> Option<ResetCredits> {
     normalize_reset_credits(response.get("rateLimitResetCredits"))
         .or_else(|| normalize_reset_credits(snapshot.get("rateLimitResetCredits")))
 }

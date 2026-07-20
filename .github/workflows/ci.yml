@@ -1,0 +1,55 @@
+name: 持续集成
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 检查 ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            runner: windows-latest
+          - name: macOS
+            runner: macos-15
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: 安装 Rust 1.88
+        uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: rustfmt, clippy
+
+      - name: 缓存 Rust 构建
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: 安装前端依赖
+        run: npm run ci:install
+
+      - name: 运行格式、Lint 和测试
+        run: npm run check
+
+      - name: 构建 Rust 应用
+        run: cargo build --manifest-path src-tauri/Cargo.toml

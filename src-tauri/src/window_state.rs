@@ -238,10 +238,16 @@ fn is_ball_at_internal_work_area_edge(
         bottom: position.y + window_height,
     };
 
-    edge_has_adjacent_work_area(area, dock, work_areas, window_width, window_height, position.y)
-        && work_areas
-            .iter()
-            .any(|other| *other != area && rects_intersect(window_rect, *other))
+    edge_has_adjacent_work_area(
+        area,
+        dock,
+        work_areas,
+        window_width,
+        window_height,
+        position.y,
+    ) && work_areas
+        .iter()
+        .any(|other| *other != area && rects_intersect(window_rect, *other))
 }
 
 fn resolve_ball_dock(

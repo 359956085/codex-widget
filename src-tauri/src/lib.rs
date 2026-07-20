@@ -23,6 +23,9 @@ use window_state::apply_startup_window_state;
 pub(crate) const MAIN_WINDOW_LABEL: &str = "main";
 
 pub fn run() {
+    // Reqwest 与 updater 共用 Ring，启动时显式安装，避免依赖传递特性决定 TLS 行为。
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     tauri::Builder::default()
         .manage(AppState::new())
         .plugin(tauri_plugin_autostart::init(

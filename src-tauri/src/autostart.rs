@@ -10,9 +10,7 @@ pub(crate) fn sync_auto_start(app: &AppHandle, enabled: bool) -> Result<(), Stri
     };
     result.map_err(|error| format!("无法同步开机自启设置：{error}"))?;
 
-    let actual = auto_start
-        .is_enabled()
-        .map_err(|error| format!("无法确认开机自启设置：{error}"))?;
+    let actual = read_auto_start_enabled(app)?;
     if actual != enabled {
         let expected = auto_start_state_label(enabled);
         let actual = auto_start_state_label(actual);
@@ -22,6 +20,12 @@ pub(crate) fn sync_auto_start(app: &AppHandle, enabled: bool) -> Result<(), Stri
     }
 
     Ok(())
+}
+
+pub(crate) fn read_auto_start_enabled(app: &AppHandle) -> Result<bool, String> {
+    app.autolaunch()
+        .is_enabled()
+        .map_err(|error| format!("无法确认开机自启设置：{error}"))
 }
 
 fn auto_start_state_label(enabled: bool) -> &'static str {
