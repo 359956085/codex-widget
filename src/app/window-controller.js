@@ -64,13 +64,23 @@ export function createWindowController({
   }
 
   async function hideWindow() {
-    await positionController.saveCurrentWindowPosition();
-    await service.commands.hideWindow();
+    try {
+      await positionController.saveCurrentWindowPosition();
+      await service.commands.hideWindow();
+    } catch (error) {
+      logWindowError("隐藏窗口失败", error);
+      showError(error);
+    }
   }
 
   async function closeApp() {
-    await positionController.saveCurrentWindowPosition();
-    await service.commands.closeApp();
+    try {
+      await positionController.saveCurrentWindowPosition();
+      await service.commands.closeApp();
+    } catch (error) {
+      logWindowError("退出应用失败", error);
+      showError(error);
+    }
   }
 
   async function setWidgetMode(nextMode) {

@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, Lines};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -15,6 +15,47 @@ use super::command::hide_background_process_window;
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(12);
 const STDERR_TAIL_LIMIT: usize = 4096;
 
+#[derive(Debug)]
+pub(super) enum SessionRequestError {
+    Transport(anyhow::Error),
+    Protocol(anyhow::Error),
+}
+
+impl SessionRequestError {
+    fn transport(error: impl Into<anyhow::Error>) -> Self {
+        Self::Transport(error.into())
+    }
+
+    fn protocol(error: impl Into<anyhow::Error>) -> Self {
+        Self::Protocol(error.into())
+    }
+
+    fn with_context(self, context: &'static str) -> Self {
+        match self {
+            Self::Transport(error) => Self::Transport(error.context(context)),
+            Self::Protocol(error) => Self::Protocol(error.context(context)),
+        }
+    }
+
+    pub(super) fn is_transport(&self) -> bool {
+        matches!(self, Self::Transport(_))
+    }
+
+    pub(super) fn into_error(self) -> anyhow::Error {
+        match self {
+            Self::Transport(error) | Self::Protocol(error) => error,
+        }
+    }
+}
+
+impl std::fmt::Display for SessionRequestError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Transport(error) | Self::Protocol(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
 pub(super) struct CodexSession {
     codex_command: PathBuf,
     child: Child,
@@ -22,7 +63,7 @@ pub(super) struct CodexSession {
     lines: Lines<BufReader<ChildStdout>>,
     next_request_id: u64,
     stderr_tail: Arc<Mutex<String>>,
-    stderr_task: JoinHandle<()>,
+    stderr_task: Option<JoinHandle<()>>,
 }
 
 impl CodexSession {
@@ -62,7 +103,7 @@ impl CodexSession {
             lines: BufReader::new(stdout).lines(),
             next_request_id: 1,
             stderr_tail,
-            stderr_task,
+            stderr_task: Some(stderr_task),
         };
 
         if let Err(error) = session.initialize().await {
@@ -98,18 +139,20 @@ impl CodexSession {
         .context("Codex CLI app-server 初始化请求发送失败")?;
         let _ = read_response(&mut self.lines, request_id, "initialize")
             .await
+            .map_err(SessionRequestError::into_error)
             .context("Codex CLI app-server 初始化失败")?;
         Ok(())
     }
 
-    pub(super) async fn read_rate_limits(&mut self) -> Result<Value> {
+    pub(super) async fn read_rate_limits(&mut self) -> Result<Value, SessionRequestError> {
         let request_id = self.next_request_id();
         send_request(&mut self.stdin, request_id, "account/rateLimits/read", None)
             .await
-            .context("Codex CLI 额度请求发送失败")?;
+            .map_err(SessionRequestError::transport)
+            .map_err(|error| error.with_context("Codex CLI 额度请求发送失败"))?;
         read_response(&mut self.lines, request_id, "account/rateLimits/read")
             .await
-            .context("Codex CLI 额度读取失败")
+            .map_err(|error| error.with_context("Codex CLI 额度读取失败"))
     }
 
     fn next_request_id(&mut self) -> u64 {
@@ -122,8 +165,18 @@ impl CodexSession {
 
     pub(super) async fn shutdown(mut self) {
         cleanup_child(&mut self.child).await;
-        self.stderr_task.abort();
-        let _ = self.stderr_task.await;
+        if let Some(stderr_task) = self.stderr_task.take() {
+            stderr_task.abort();
+            let _ = stderr_task.await;
+        }
+    }
+}
+
+impl Drop for CodexSession {
+    fn drop(&mut self) {
+        if let Some(stderr_task) = self.stderr_task.take() {
+            stderr_task.abort();
+        }
     }
 }
 
@@ -198,21 +251,31 @@ async fn send_request(
     Ok(())
 }
 
-async fn read_response(
-    lines: &mut Lines<BufReader<ChildStdout>>,
+async fn read_response<R>(
+    lines: &mut Lines<R>,
     expected_id: u64,
     method: &str,
-) -> Result<Value> {
+) -> Result<Value, SessionRequestError>
+where
+    R: AsyncBufRead + Unpin,
+{
     timeout(DEFAULT_TIMEOUT, read_matching_response(lines, expected_id))
         .await
-        .map_err(|_| anyhow!("Codex CLI 请求超时：{method}"))?
+        .map_err(|_| SessionRequestError::transport(anyhow!("Codex CLI 请求超时：{method}")))?
 }
 
-async fn read_matching_response(
-    lines: &mut Lines<BufReader<ChildStdout>>,
+async fn read_matching_response<R>(
+    lines: &mut Lines<R>,
     expected_id: u64,
-) -> Result<Value> {
-    while let Some(line) = lines.next_line().await? {
+) -> Result<Value, SessionRequestError>
+where
+    R: AsyncBufRead + Unpin,
+{
+    while let Some(line) = lines
+        .next_line()
+        .await
+        .map_err(SessionRequestError::transport)?
+    {
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -233,16 +296,17 @@ async fn read_matching_response(
                 .and_then(Value::as_str)
                 .map(ToOwned::to_owned)
                 .unwrap_or_else(|| error.to_string());
-            return Err(anyhow!(message));
+            return Err(SessionRequestError::protocol(anyhow!(message)));
         }
 
-        return message
-            .get("result")
-            .cloned()
-            .ok_or_else(|| anyhow!("Codex CLI 响应缺少 result 字段。"));
+        return message.get("result").cloned().ok_or_else(|| {
+            SessionRequestError::protocol(anyhow!("Codex CLI 响应缺少 result 字段。"))
+        });
     }
 
-    Err(anyhow!("Codex CLI 子进程提前退出。"))
+    Err(SessionRequestError::transport(anyhow!(
+        "Codex CLI 子进程提前退出。"
+    )))
 }
 
 async fn cleanup_child(child: &mut tokio::process::Child) {
@@ -255,6 +319,7 @@ async fn cleanup_child(child: &mut tokio::process::Child) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     #[test]
     fn 请求_id_会递增() {
@@ -272,5 +337,55 @@ mod tests {
         trim_text_tail(&mut text, 3);
 
         assert_eq!(text, "三四五");
+    }
+
+    #[tokio::test]
+    async fn 跳过通知空行和非_json_后匹配响应() {
+        let mut lines = response_lines(
+            r#"
+不是 JSON
+{"method":"account/updated","params":{}}
+{"id":2,"result":{"ignored":true}}
+{"id":1,"result":{"remaining":80}}
+"#,
+        );
+
+        let response = read_matching_response(&mut lines, 1).await.unwrap();
+
+        assert_eq!(response["remaining"], 80);
+    }
+
+    #[tokio::test]
+    async fn json_rpc_错误返回服务端消息() {
+        let mut lines = response_lines(r#"{"id":1,"error":{"message":"未登录"}}"#);
+
+        let error = read_matching_response(&mut lines, 1).await.unwrap_err();
+
+        assert_eq!(error.to_string(), "未登录");
+        assert!(!error.is_transport());
+    }
+
+    #[tokio::test]
+    async fn 缺少_result_字段返回明确错误() {
+        let mut lines = response_lines(r#"{"id":1}"#);
+
+        let error = read_matching_response(&mut lines, 1).await.unwrap_err();
+
+        assert_eq!(error.to_string(), "Codex CLI 响应缺少 result 字段。");
+        assert!(!error.is_transport());
+    }
+
+    #[tokio::test]
+    async fn 输出流结束返回子进程退出错误() {
+        let mut lines = response_lines("");
+
+        let error = read_matching_response(&mut lines, 1).await.unwrap_err();
+
+        assert_eq!(error.to_string(), "Codex CLI 子进程提前退出。");
+        assert!(error.is_transport());
+    }
+
+    fn response_lines(text: &str) -> Lines<BufReader<Cursor<Vec<u8>>>> {
+        BufReader::new(Cursor::new(text.as_bytes().to_vec())).lines()
     }
 }

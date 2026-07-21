@@ -7,6 +7,7 @@ import { createQuotaController } from "./quota-controller.js";
 import { createRenderer } from "./render.js";
 import { createSettingsController } from "./settings-controller.js";
 import { createSettingsPersistence } from "./settings-persistence.js";
+import { listenRuntimeEvent } from "./startup.js";
 import { applyNormalizedSettings as applyStateSettings, createAppState, renderLocale, renderTheme } from "./state.js";
 import { createTauriService } from "./tauri-service.js";
 import { createTooltipController } from "./tooltip-controller.js";
@@ -161,19 +162,35 @@ export function createApp() {
 
     try {
       state.alwaysOnTop = await service.commands.getAlwaysOnTop();
-    } catch {
+    } catch (error) {
+      logger.error("读取窗口置顶状态失败", error, "frontend.window");
       state.alwaysOnTop = true;
+      showError(error);
     }
 
-    await service.events.listen("quota:refresh-requested", () => quotaController.refreshQuota());
-    await service.events.listen("window:always-on-top-changed", (event) => {
-      state.alwaysOnTop = Boolean(event.payload);
-      render();
-    });
+    const runtimeEventRegistrations = [
+      listenRuntimeEvent(
+        service.events.listen,
+        "quota:refresh-requested",
+        () => quotaController.refreshQuota(),
+        (error) => logger.error("监听托盘刷新事件失败", error, "frontend.events")
+      ),
+      listenRuntimeEvent(
+        service.events.listen,
+        "window:always-on-top-changed",
+        (event) => {
+          state.alwaysOnTop = Boolean(event.payload);
+          render();
+        },
+        (error) => logger.error("监听窗口置顶事件失败", error, "frontend.events")
+      )
+    ];
 
-    quotaController.refreshQuota();
+    // 事件监听属于增强能力，不能阻塞核心刷新与定时任务启动。
+    void quotaController.refreshQuota();
     quotaController.scheduleAutoRefresh();
     updateController.scheduleUpdateChecks();
+    await Promise.all(runtimeEventRegistrations);
   }
 
   async function loadSettings() {

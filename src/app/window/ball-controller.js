@@ -7,6 +7,7 @@ import {
   workAreaBounds,
   workAreaForBallPosition
 } from "../geometry.js";
+import { createLatestPositionWriter } from "./position-writer.js";
 
 export function createBallController({
   els,
@@ -17,6 +18,13 @@ export function createBallController({
   positionController,
   logWindowError
 }) {
+  const positionWriter = createLatestPositionWriter(
+    (position) => service.window.setPosition(position),
+    (error) => logWindowError("移动悬浮球失败", error)
+  );
+  // 收尾包含最终吸附；新拖动必须等它完成，避免读取半完成位置。
+  let dragCompletion = Promise.resolve();
+
   async function startBallDrag(event) {
     event.preventDefault();
     state.ballPress = {
@@ -31,6 +39,8 @@ export function createBallController({
     if (!service.isAvailable()) return;
 
     try {
+      await dragCompletion;
+      await positionWriter.whenIdle();
       els.widget.setPointerCapture?.(event.pointerId);
       const [position, scaleFactor] = await Promise.all([service.window.outerPosition(), service.window.scaleFactor()]);
       const press = state.ballPress;
@@ -86,17 +96,16 @@ export function createBallController({
     drag.frame = window.requestAnimationFrame(() => {
       drag.frame = null;
       if (!state.ballDrag) return;
-      service.window
-        .setPosition({ x: drag.nextX, y: drag.nextY })
-        .catch((error) => logWindowError("移动悬浮球失败", error));
+      positionWriter.enqueue({ x: drag.nextX, y: drag.nextY });
     });
   }
 
-  async function finishBallDrag(event) {
+  function finishBallDrag(event) {
     const press = state.ballPress;
     const drag = state.ballDrag;
-    if (!press || event.pointerId !== press.pointerId) return;
+    if (!press || event.pointerId !== press.pointerId) return dragCompletion;
 
+    cancelBallDragFrame(drag);
     state.ballPress = null;
     state.ballDrag = null;
     try {
@@ -105,6 +114,14 @@ export function createBallController({
       // 指针捕获可能已由系统释放，这里只需要保证拖动状态被清理。
     }
 
+    dragCompletion = dragCompletion.then(() => completeBallDrag(event, press, drag)).catch((error) => {
+      logWindowError("结束悬浮球拖动失败", error);
+    });
+    return dragCompletion;
+  }
+
+  async function completeBallDrag(event, press, drag) {
+    await positionWriter.whenIdle();
     if (event.type === "pointercancel") return;
 
     const moved = press.moved || Boolean(drag?.moved);
@@ -114,6 +131,12 @@ export function createBallController({
     }
 
     await snapBallAfterDrag(drag ? { x: drag.nextX, y: drag.nextY } : null);
+  }
+
+  function cancelBallDragFrame(drag) {
+    if (!drag || drag.frame === null) return;
+    window.cancelAnimationFrame(drag.frame);
+    drag.frame = null;
   }
 
   function markBallPressMoved(press) {
