@@ -1,6 +1,6 @@
 {
-  "pid": 25524,
-  "version": "0.9.9",
+  "pid": 6480,
+  "version": "1.5.0",
   "socketPath": "\\\\.\\pipe\\codegraph-17fd681878c6d081",
-  "startedAt": 1784527539306
+  "startedAt": 1786325669122
 }

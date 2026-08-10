@@ -133,6 +133,7 @@ export function createApp() {
     settingsController.bindEvents();
     onboardingController.bindEvents();
     tooltipController.bindEvents();
+    document.addEventListener("contextmenu", (event) => event.preventDefault());
     els.pinBtn.addEventListener("click", toggleAlwaysOnTop);
     els.refreshBtn.addEventListener("click", () => quotaController.refreshQuota());
   }
