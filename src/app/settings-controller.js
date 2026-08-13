@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
 import { createCustomSelectController } from "./custom-select.js";
+import { createDialogFocusManager } from "./dialog-focus.js";
 import { syncSettingsDraftFromSettings } from "./state.js";
 import { normalizeInputValue, normalizeLogLevel, normalizeMeterWindow, normalizeTheme } from "./settings-model.js";
 
@@ -23,6 +24,11 @@ export function createSettingsController({
   const customSelects = createCustomSelectController({
     shells: els.customSelectShells,
     onChange: handleCustomSelectChange
+  });
+  const focusManager = createDialogFocusManager({
+    dialog: els.settingsPanel,
+    initialFocus: els.settingsCloseBtn,
+    onEscape: closeSettingsPanel
   });
   const selectOptionSignatures = new WeakMap();
   const customSelectHandlers = {
@@ -50,6 +56,7 @@ export function createSettingsController({
   ];
 
   function bindEvents() {
+    focusManager.bindEvents();
     els.settingsBtn.addEventListener("click", openSettingsPanel);
     els.settingsCloseBtn.addEventListener("click", closeSettingsPanel);
     els.cancelSettingsBtn.addEventListener("click", closeSettingsPanel);
@@ -66,6 +73,7 @@ export function createSettingsController({
     state.settingsOpen = true;
     fillSettingsForm();
     render();
+    focusManager.activate();
   }
 
   function closeSettingsPanel() {
@@ -73,6 +81,7 @@ export function createSettingsController({
     syncSettingsDraftFromSettings(state);
     customSelects.close();
     render();
+    focusManager.deactivate();
   }
 
   function fillSettingsForm() {
@@ -113,6 +122,8 @@ export function createSettingsController({
   function renderSettingsSaveState(text) {
     els.saveSettingsText.textContent = state.savingSettings ? text.loading : text.save;
     els.saveSettingsBtn.disabled = state.savingSettings;
+    els.settingsError.textContent = state.errors.settings;
+    els.settingsError.hidden = !state.errors.settings;
   }
 
   function syncSettingsControls(locale) {
@@ -168,7 +179,7 @@ export function createSettingsController({
       }
     } catch (error) {
       logger.error("选择 Codex CLI 路径失败", error, "frontend.settings");
-      state.error = normalizeError(error);
+      state.errors.settings = normalizeError(error);
       render();
     }
   }
@@ -191,14 +202,15 @@ export function createSettingsController({
         ballDock: currentSettings.ballDock
       }, currentPosition), { syncDraft: false });
       state.settingsOpen = false;
-      state.error = "";
+      state.errors.settings = "";
       setUpdateStatus({ type: "saved" });
       scheduleAutoRefresh();
       refreshQuota();
       scheduleUpdateChecks();
+      focusManager.deactivate();
     } catch (error) {
       logger.error("保存设置失败", error, "frontend.settings");
-      state.error = normalizeError(error);
+      state.errors.settings = normalizeError(error);
     } finally {
       state.savingSettings = false;
       render();

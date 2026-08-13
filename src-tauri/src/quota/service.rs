@@ -5,12 +5,22 @@ use serde_json::Value;
 
 use super::command::resolve_codex_command;
 use super::normalize::normalize_rate_limits_response;
-use super::session::{enrich_error_with_stderr, CodexSession};
+use super::session::{enrich_error_with_stderr, CodexSession, SessionRequestError};
 use super::types::QuotaSnapshot;
 
 enum SessionReadFailure {
     Transport(anyhow::Error),
     Protocol(anyhow::Error),
+}
+
+impl From<SessionRequestError> for SessionReadFailure {
+    fn from(error: SessionRequestError) -> Self {
+        if error.is_transport() {
+            Self::Transport(error.into_error())
+        } else {
+            Self::Protocol(error.into_error())
+        }
+    }
 }
 
 pub struct QuotaService {
@@ -72,7 +82,7 @@ impl QuotaService {
             self.session = Some(
                 CodexSession::start(codex_command)
                     .await
-                    .map_err(SessionReadFailure::Transport)?,
+                    .map_err(SessionReadFailure::from)?,
             );
         }
 
@@ -129,5 +139,13 @@ mod tests {
 
         assert!(error.contains("Codex CLI 额度响应解析失败"));
         assert!(!error.contains("会话重启"));
+    }
+
+    #[test]
+    fn 初始化协议错误不会归类为传输错误() {
+        let failure =
+            SessionReadFailure::from(SessionRequestError::Protocol(anyhow!("Not initialized")));
+
+        assert!(matches!(failure, SessionReadFailure::Protocol(_)));
     }
 }

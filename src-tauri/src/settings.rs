@@ -380,6 +380,25 @@ mod tests {
 
         assert!(error.contains("设置文件格式无效"));
         assert!(error.contains("settings.json"));
+        assert_eq!(fs::read_to_string(&path).unwrap(), "{");
+    }
+
+    #[test]
+    fn 显式保存可以恢复损坏设置文件() {
+        let dir = temp_test_dir("recover-invalid-json");
+        let path = dir.join("settings.json");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(&path, "{").unwrap();
+        let replacement = AppSettings {
+            theme: ThemeMode::Basic2,
+            ..AppSettings::default()
+        };
+
+        let saved = save_to_path(&path, replacement.clone()).unwrap();
+        let loaded = load_from_path(&path).unwrap();
+
+        assert_eq!(saved, replacement);
+        assert_eq!(loaded, replacement);
     }
 
     #[test]

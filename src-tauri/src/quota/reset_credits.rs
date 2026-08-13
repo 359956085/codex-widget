@@ -14,6 +14,7 @@ const RESET_CREDIT_EXPIRIES_URL: &str =
     "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits";
 const RESET_CREDIT_EXPIRY_LIMIT: usize = 5;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
+const MAX_RESPONSE_BYTES: usize = 256 * 1024;
 
 #[derive(Debug, Deserialize)]
 struct AuthFile {
@@ -41,15 +42,47 @@ pub async fn fetch_reset_credit_expiries(
         .context("请求重置次数过期时间失败")?
         .error_for_status()
         .context("重置次数过期时间接口返回失败状态")?;
-    let body = response
-        .text()
-        .await
-        .context("读取重置次数过期时间响应失败")?;
-    let value = serde_json::from_str::<Value>(&body).context("解析重置次数过期时间响应失败")?;
+    let body = read_limited_response(response).await?;
+    let value = serde_json::from_slice::<Value>(&body).context("解析重置次数过期时间响应失败")?;
 
     Ok(ResetCreditExpiries {
         expiries: parse_reset_credit_expiries(&value),
     })
+}
+
+async fn read_limited_response(mut response: reqwest::Response) -> Result<Vec<u8>> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
+    {
+        return Err(anyhow!(
+            "重置次数过期时间响应超过 {MAX_RESPONSE_BYTES} 字节限制。"
+        ));
+    }
+
+    let mut body = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .context("读取重置次数过期时间响应失败")?
+    {
+        append_response_chunk(&mut body, &chunk)?;
+    }
+    Ok(body)
+}
+
+fn append_response_chunk(body: &mut Vec<u8>, chunk: &[u8]) -> Result<()> {
+    let next_length = body
+        .len()
+        .checked_add(chunk.len())
+        .ok_or_else(|| anyhow!("重置次数过期时间响应长度溢出。"))?;
+    if next_length > MAX_RESPONSE_BYTES {
+        return Err(anyhow!(
+            "重置次数过期时间响应超过 {MAX_RESPONSE_BYTES} 字节限制。"
+        ));
+    }
+    body.extend_from_slice(chunk);
+    Ok(())
 }
 
 fn create_client(update_proxy: Option<&str>) -> Result<reqwest::Client> {
@@ -158,5 +191,24 @@ mod tests {
         assert!(
             parse_reset_credit_expiries(&json!({ "credits": [{ "expires_at": 1 }] })).is_empty()
         );
+    }
+
+    #[test]
+    fn 响应正文超过上限时拒绝继续缓冲() {
+        let mut body = vec![0; MAX_RESPONSE_BYTES - 1];
+
+        let error = append_response_chunk(&mut body, &[1, 2]).unwrap_err();
+
+        assert!(error.to_string().contains("超过"));
+        assert_eq!(body.len(), MAX_RESPONSE_BYTES - 1);
+    }
+
+    #[test]
+    fn 响应正文等于上限时允许() {
+        let mut body = vec![0; MAX_RESPONSE_BYTES - 1];
+
+        append_response_chunk(&mut body, &[1]).unwrap();
+
+        assert_eq!(body.len(), MAX_RESPONSE_BYTES);
     }
 }

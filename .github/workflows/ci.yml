@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: 检出源码
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -52,4 +54,7 @@ jobs:
         run: npm run check
 
       - name: 构建 Rust 应用
-        run: cargo build --manifest-path src-tauri/Cargo.toml
+        run: cargo build --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: 检查 Tauri 构建
+        run: npm run tauri:check

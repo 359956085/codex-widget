@@ -88,6 +88,7 @@
 }
 
 .settings-field > span,
+.settings-field > label,
 .settings-copy > span {
   overflow: hidden;
   color: var(--settings-text-color);
@@ -252,6 +253,10 @@
   background: var(--settings-accent-soft);
 }
 
+.custom-select-option[data-active="true"] {
+  box-shadow: inset 0 0 0 1px var(--settings-accent-color);
+}
+
 .custom-select-option[data-selected="true"]::after {
   content: "\2713";
 }
@@ -331,6 +336,21 @@
 .settings-actions {
   justify-content: flex-end;
   gap: 8px;
+}
+
+.settings-error {
+  flex: 1 1 auto;
+  overflow: hidden;
+  margin: 0;
+  color: #ffaaa4;
+  font-size: 10px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-error[hidden] {
+  display: none;
 }
 
 .primary-button,

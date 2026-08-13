@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -18,12 +18,12 @@ jobs:
     runs-on: windows-latest
     env:
       CARGO_TERM_COLOR: always
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - name: 检出源码
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -44,6 +44,8 @@ jobs:
 
       - name: 校验标签和密钥
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           $ErrorActionPreference = "Stop"
           $package = Get-Content -LiteralPath "package.json" -Raw | ConvertFrom-Json
@@ -62,6 +64,9 @@ jobs:
         run: npm run check
 
       - name: 构建 Windows 安装包
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri:build:nsis:updater
 
       - name: 整理 Windows 产物
@@ -108,12 +113,12 @@ jobs:
             npm_script: tauri:build:mac:x64:updater
     env:
       CARGO_TERM_COLOR: always
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - name: 检出源码
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -136,6 +141,8 @@ jobs:
 
       - name: 校验标签和密钥
         shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
@@ -156,6 +163,9 @@ jobs:
         run: npm run check
 
       - name: 构建 macOS 安装包
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run ${{ matrix.npm_script }}
 
       - name: 整理 macOS 产物
@@ -194,15 +204,17 @@ jobs:
   publish:
     name: 发布到 GitHub Releases
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - build-windows
       - build-macos
-    env:
-      GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: 检出源码
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
@@ -220,6 +232,8 @@ jobs:
 
       - name: 上传 Release 产物
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"

@@ -14,12 +14,14 @@ import { createTooltipController } from "./tooltip-controller.js";
 import { createUpdateController } from "./update-controller.js";
 import { createWindowController } from "./window-controller.js";
 
-export function createApp() {
-  const els = createElements();
-  const state = createAppState();
-  const service = createTauriService();
-  const logger = createLogger(service);
-  const tooltipController = createTooltipController({ root: els.body });
+export function createApp(dependencies = {}) {
+  const els = dependencies.els || createElements();
+  const state = dependencies.state || createAppState();
+  const service = dependencies.service || createTauriService();
+  const logger = dependencies.logger || createLogger(service);
+  const factories = dependencies.factories || {};
+  const initializeIcons = dependencies.initializeActionIcons || initializeActionIcons;
+  const tooltipController = (factories.createTooltipController || createTooltipController)({ root: els.body });
   let render = () => {};
 
   function applySettings(settings) {
@@ -31,7 +33,7 @@ export function createApp() {
     return applyStateSettings(state, settings, options);
   }
 
-  const { persistSettings } = createSettingsPersistence({
+  const { persistSettings } = (factories.createSettingsPersistence || createSettingsPersistence)({
     state,
     service,
     applyNormalizedSettings,
@@ -47,23 +49,32 @@ export function createApp() {
       if (silent) {
         logger.error("保存设置失败", error, "frontend.settings");
       } else {
-        showError(error);
+        showSettingsError(error);
       }
     }
   }
 
-  function showError(error) {
-    state.error = normalizeError(error);
+  function showSettingsError(error) {
+    state.errors.settings = normalizeError(error);
+    render();
+  }
+
+  function showWindowError(error) {
+    state.errors.window = normalizeError(error);
     render();
   }
 
   function normalizeError(error) {
     if (typeof error === "string") return error;
     if (error?.message) return error.message;
-    return JSON.stringify(error);
+    try {
+      return JSON.stringify(error) || "未知错误";
+    } catch {
+      return String(error ?? "未知错误");
+    }
   }
 
-  const windowController = createWindowController({
+  const windowController = (factories.createWindowController || createWindowController)({
     els,
     state,
     service,
@@ -71,11 +82,11 @@ export function createApp() {
     applyNormalizedSettings,
     persistSettings,
     saveCurrentSettings,
-    showError,
+    showError: showWindowError,
     logger
   });
 
-  const quotaController = createQuotaController({
+  const quotaController = (factories.createQuotaController || createQuotaController)({
     state,
     service,
     render: () => render(),
@@ -83,14 +94,14 @@ export function createApp() {
     logger
   });
 
-  const updateController = createUpdateController({
+  const updateController = (factories.createUpdateController || createUpdateController)({
     state,
     service,
     render: () => render(),
     logger
   });
 
-  const onboardingController = createOnboardingController({
+  const onboardingController = (factories.createOnboardingController || createOnboardingController)({
     els,
     state,
     renderLocale: () => renderLocale(state),
@@ -100,7 +111,7 @@ export function createApp() {
     i18n
   });
 
-  const settingsController = createSettingsController({
+  const settingsController = (factories.createSettingsController || createSettingsController)({
     els,
     state,
     service,
@@ -118,7 +129,7 @@ export function createApp() {
     clearPanelClick: windowController.clearPanelClick
   });
 
-  const renderer = createRenderer({
+  const renderer = (factories.createRenderer || createRenderer)({
     els,
     state,
     getLocale: () => renderLocale(state),
@@ -142,14 +153,16 @@ export function createApp() {
     try {
       const nextValue = !state.alwaysOnTop;
       state.alwaysOnTop = await service.commands.setAlwaysOnTop(nextValue);
+      state.errors.window = "";
       render();
     } catch (error) {
-      showError(error);
+      logger.error("设置窗口置顶状态失败", error, "frontend.window");
+      showWindowError(error);
     }
   }
 
   async function start() {
-    initializeActionIcons(els, logger);
+    initializeIcons(els, logger);
     bindEvents();
     await initialize();
   }
@@ -166,7 +179,7 @@ export function createApp() {
     } catch (error) {
       logger.error("读取窗口置顶状态失败", error, "frontend.window");
       state.alwaysOnTop = true;
-      showError(error);
+      showWindowError(error);
     }
 
     const runtimeEventRegistrations = [
@@ -206,6 +219,7 @@ export function createApp() {
     } catch (error) {
       logger.error("读取设置失败", error, "frontend.settings");
       applySettings(DEFAULT_SETTINGS);
+      showSettingsError(error);
     }
   }
 

@@ -8,7 +8,11 @@ export function createAppState() {
     locale: DEFAULT_SETTINGS.locale,
     quota: null,
     loading: false,
-    error: "",
+    errors: {
+      settings: "",
+      window: "",
+      quota: ""
+    },
     resetCreditExpiries: [],
     resetCreditExpiriesStatus: "idle",
     resetCreditExpiriesRequestId: 0,
@@ -31,6 +35,10 @@ export function createAppState() {
     windowMoveUnlisten: null,
     isApplyingWindowMode: false
   };
+}
+
+export function activeError(state) {
+  return state.errors.settings || state.errors.window || state.errors.quota || "";
 }
 
 export function applyNormalizedSettings(state, settings, { syncDraft = true } = {}) {

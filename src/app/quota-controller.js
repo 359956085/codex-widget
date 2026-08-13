@@ -1,9 +1,39 @@
 import { DEFAULT_SETTINGS, RESET_CREDIT_EXPIRY_DISPLAY_LIMIT } from "./constants.js";
 
 export function createQuotaController({ state, service, render, normalizeError, logger }) {
-  async function refreshQuota() {
-    if (state.loading) return;
+  let activeRefresh = null;
+  let refreshPending = false;
 
+  function refreshQuota() {
+    if (activeRefresh) {
+      // 刷新参数来自最新设置；忙碌期间只需保留一次尾随刷新。
+      refreshPending = true;
+      return activeRefresh;
+    }
+
+    activeRefresh = drainQuotaRefreshes();
+    return activeRefresh;
+  }
+
+  async function drainQuotaRefreshes() {
+    let shouldRestart = false;
+    try {
+      do {
+        refreshPending = false;
+        await refreshQuotaOnce();
+      } while (refreshPending);
+    } finally {
+      activeRefresh = null;
+      state.loading = false;
+      render();
+      shouldRestart = refreshPending;
+    }
+
+    // 防御 Promise 收尾与新事件同拍发生；不能把最后一次刷新留在队列外。
+    if (shouldRestart) await refreshQuota();
+  }
+
+  async function refreshQuotaOnce() {
     startQuotaRefresh();
     render();
 
@@ -23,23 +53,19 @@ export function createQuotaController({ state, service, render, normalizeError, 
 
   function startQuotaRefresh() {
     state.loading = true;
-    state.error = "";
-    clearResetCreditExpiries("idle");
+    state.errors.quota = "";
+    invalidateResetCreditExpiriesRequest();
   }
 
   function applyQuotaSuccess(quota) {
     state.quota = quota;
-    state.error = "";
+    state.errors.quota = "";
     scheduleResetRefresh(state.quota?.resetsAt);
-    state.loading = false;
   }
 
   function applyQuotaError(error) {
-    state.quota = null;
-    scheduleResetRefresh(null);
-    state.error = normalizeError(error);
-    state.loading = false;
-    clearResetCreditExpiries("error");
+    // 临时失败不能抹掉最后一次成功快照和对应重置时间。
+    state.errors.quota = normalizeError(error);
     logger?.error("刷新数据失败", error, "frontend.quota");
   }
 
@@ -95,10 +121,8 @@ export function createQuotaController({ state, service, render, normalizeError, 
     logger?.error("读取重置次数过期时间失败", error, "frontend.quota.resetCredits");
   }
 
-  function clearResetCreditExpiries(status) {
+  function invalidateResetCreditExpiriesRequest() {
     state.resetCreditExpiriesRequestId += 1;
-    state.resetCreditExpiries = [];
-    state.resetCreditExpiriesStatus = status;
   }
 
   function scheduleResetRefresh(resetsAt) {

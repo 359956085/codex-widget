@@ -61,6 +61,7 @@ export function createElements() {
     logLevelLabel: document.getElementById("logLevelLabel"),
     logLevelSelect: document.getElementById("logLevelSelect"),
     customSelectShells: Array.from(document.querySelectorAll(".custom-select-shell")),
+    settingsError: document.getElementById("settingsError"),
     cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
     saveSettingsBtn: document.getElementById("saveSettingsBtn"),
     saveSettingsText: document.getElementById("saveSettingsText")

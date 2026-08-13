@@ -48,8 +48,8 @@ fn restore_saved_window_position(
     };
 
     let size = window.outer_size()?;
-    let window_width = size.width as i32;
-    let window_height = size.height as i32;
+    let window_width = physical_dimension_to_i32(size.width);
+    let window_height = physical_dimension_to_i32(size.height);
     let monitors = window.available_monitors()?;
     let mut work_areas: Vec<WorkAreaBounds> = monitors
         .iter()
@@ -153,8 +153,8 @@ fn position_belongs_to_area(
     window_height: i32,
     area: WorkAreaBounds,
 ) -> bool {
-    let center_x = position.x + window_width / 2;
-    let center_y = position.y + window_height / 2;
+    let center_x = position.x.saturating_add(window_width / 2);
+    let center_y = position.y.saturating_add(window_height / 2);
     center_x >= area.left
         && center_x <= area.right
         && center_y >= area.top
@@ -180,8 +180,8 @@ fn set_position_in_work_area(
 
     if let Some(dock) = ball_dock {
         x = match dock {
-            BallDock::Left => area.left - window_width / 2,
-            BallDock::Right => area.right - window_width / 2,
+            BallDock::Left => area.left.saturating_sub(window_width / 2),
+            BallDock::Right => area.right.saturating_sub(window_width / 2),
         };
     }
 
@@ -231,12 +231,7 @@ fn is_ball_at_internal_work_area_edge(
         return false;
     }
 
-    let window_rect = WorkAreaBounds {
-        left: position.x,
-        top: position.y,
-        right: position.x + window_width,
-        bottom: position.y + window_height,
-    };
+    let window_rect = window_bounds(position, window_width, window_height);
 
     edge_has_adjacent_work_area(
         area,
@@ -256,13 +251,13 @@ fn resolve_ball_dock(
     area: WorkAreaBounds,
 ) -> Option<BallDock> {
     let left_edge = position.x;
-    let right_edge = position.x + window_width;
-    let center_x = position.x + window_width / 2;
-    let hits_left_dock = left_edge <= area.left + SNAP_DISTANCE;
-    let hits_right_dock = right_edge >= area.right - SNAP_DISTANCE;
+    let right_edge = position.x.saturating_add(window_width);
+    let center_x = position.x.saturating_add(window_width / 2);
+    let hits_left_dock = left_edge <= area.left.saturating_add(SNAP_DISTANCE);
+    let hits_right_dock = right_edge >= area.right.saturating_sub(SNAP_DISTANCE);
 
     if hits_left_dock && hits_right_dock {
-        let area_center_x = area.left + (area.right - area.left) / 2;
+        let area_center_x = coordinate_midpoint(area.left, area.right);
         return if center_x <= area_center_x {
             Some(BallDock::Left)
         } else {
@@ -289,16 +284,16 @@ fn edge_has_adjacent_work_area(
     let hidden_width = window_width / 2;
     let hidden_rect = match dock {
         BallDock::Left => WorkAreaBounds {
-            left: area.left - hidden_width,
+            left: area.left.saturating_sub(hidden_width),
             top: y,
             right: area.left,
-            bottom: y + window_height,
+            bottom: y.saturating_add(window_height),
         },
         BallDock::Right => WorkAreaBounds {
             left: area.right,
             top: y,
-            right: area.right + hidden_width,
-            bottom: y + window_height,
+            right: area.right.saturating_add(hidden_width),
+            bottom: y.saturating_add(window_height),
         },
     };
 
@@ -320,19 +315,98 @@ fn work_area_bounds(work_area: &tauri::PhysicalRect<i32, u32>) -> WorkAreaBounds
     WorkAreaBounds {
         left,
         top,
-        right: left + work_area.size.width as i32,
-        bottom: top + work_area.size.height as i32,
+        right: saturating_add_physical_dimension(left, work_area.size.width),
+        bottom: saturating_add_physical_dimension(top, work_area.size.height),
     }
+}
+
+fn window_bounds(
+    position: WindowPosition,
+    window_width: i32,
+    window_height: i32,
+) -> WorkAreaBounds {
+    WorkAreaBounds {
+        left: position.x,
+        top: position.y,
+        right: position.x.saturating_add(window_width),
+        bottom: position.y.saturating_add(window_height),
+    }
+}
+
+fn physical_dimension_to_i32(value: u32) -> i32 {
+    i32::try_from(value).unwrap_or(i32::MAX)
+}
+
+fn saturating_add_physical_dimension(position: i32, size: u32) -> i32 {
+    let result = i64::from(position) + i64::from(size);
+    i32::try_from(result).unwrap_or(i32::MAX)
+}
+
+fn coordinate_midpoint(start: i32, end: i32) -> i32 {
+    ((i64::from(start) + i64::from(end)) / 2) as i32
 }
 
 fn place_window_top_right(window: &WebviewWindow) -> tauri::Result<()> {
     if let Some(monitor) = window.primary_monitor()? {
         let work_area = monitor.work_area();
         let size = window.outer_size()?;
-        let x =
-            work_area.position.x + work_area.size.width as i32 - size.width as i32 - SNAP_DISTANCE;
-        let y = work_area.position.y + SNAP_DISTANCE;
+        let work_area_right =
+            saturating_add_physical_dimension(work_area.position.x, work_area.size.width);
+        let x = work_area_right
+            .saturating_sub(physical_dimension_to_i32(size.width))
+            .saturating_sub(SNAP_DISTANCE);
+        let y = work_area.position.y.saturating_add(SNAP_DISTANCE);
         window.set_position(Position::Physical(PhysicalPosition { x, y }))?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn 极端窗口坐标使用饱和运算() {
+        let bounds = window_bounds(
+            WindowPosition {
+                x: i32::MAX,
+                y: i32::MAX,
+            },
+            88,
+            88,
+        );
+
+        assert_eq!(bounds.right, i32::MAX);
+        assert_eq!(bounds.bottom, i32::MAX);
+    }
+
+    #[test]
+    fn 超大物理尺寸安全转换() {
+        assert_eq!(physical_dimension_to_i32(u32::MAX), i32::MAX);
+        assert_eq!(
+            saturating_add_physical_dimension(i32::MIN, u32::MAX),
+            i32::MAX
+        );
+        assert_eq!(coordinate_midpoint(i32::MIN, i32::MAX), 0);
+    }
+
+    #[test]
+    fn 极端位置归属判断不会溢出() {
+        let area = WorkAreaBounds {
+            left: i32::MIN,
+            top: i32::MIN,
+            right: i32::MAX,
+            bottom: i32::MAX,
+        };
+
+        assert!(position_belongs_to_area(
+            WindowPosition {
+                x: i32::MAX,
+                y: i32::MAX,
+            },
+            88,
+            88,
+            area,
+        ));
+    }
 }

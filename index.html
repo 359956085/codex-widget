@@ -6,7 +6,7 @@
     <title>Codex CLI 额度小组件</title>
   </head>
   <body data-state="loading">
-    <main class="widget" aria-live="polite">
+    <main class="widget">
       <header class="titlebar">
         <div class="brand">
           <span id="trafficLight" class="traffic-light loading" aria-hidden="true"></span>
@@ -88,10 +88,19 @@
           <i data-lucide="refresh-cw"></i>
         </span>
         <span id="statusDot" class="status-dot loading"></span>
-        <span id="statusText">正在通过 Codex CLI 读取额度...</span>
+        <span id="statusText" role="status" aria-live="polite" aria-atomic="true">正在通过 Codex CLI 读取额度...</span>
       </footer>
 
-      <section id="onboardingOverlay" class="onboarding-overlay" data-no-drag hidden aria-label="功能引导">
+      <section
+        id="onboardingOverlay"
+        class="onboarding-overlay"
+        data-no-drag
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboardingTitle"
+        aria-describedby="onboardingDescription"
+      >
         <span class="onboarding-target-ring" aria-hidden="true"></span>
         <span class="onboarding-node" aria-hidden="true"></span>
         <span class="onboarding-connector" aria-hidden="true"></span>
@@ -115,7 +124,15 @@
         </div>
       </section>
 
-      <section id="settingsPanel" class="settings-panel" data-no-drag hidden aria-label="设置">
+      <section
+        id="settingsPanel"
+        class="settings-panel"
+        data-no-drag
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settingsTitle"
+      >
         <div class="settings-head">
           <strong id="settingsTitle">设置</strong>
           <button id="settingsCloseBtn" class="icon-button" type="button" data-tooltip="关闭" aria-label="关闭">
@@ -124,56 +141,56 @@
         </div>
 
         <div class="settings-scroll">
-          <label class="settings-field">
+          <div class="settings-field">
             <span id="themeLabel">主题</span>
             <div class="custom-select-shell" data-no-drag>
-              <select id="themeSelect" class="settings-input settings-select" data-no-drag></select>
-              <button class="custom-select-trigger" type="button" data-no-drag>
+              <select id="themeSelect" class="settings-input settings-select" data-no-drag aria-labelledby="themeLabel"></select>
+              <button class="custom-select-trigger" type="button" data-no-drag aria-labelledby="themeLabel">
                 <span class="custom-select-value"></span>
                 <span class="custom-select-arrow" aria-hidden="true"></span>
               </button>
               <div class="custom-select-menu" data-no-drag></div>
             </div>
-          </label>
+          </div>
 
-          <label class="settings-field">
+          <div class="settings-field">
             <span id="languageLabel">语言</span>
             <div class="custom-select-shell" data-no-drag>
-              <select id="localeSelect" class="settings-input settings-select" data-no-drag>
+              <select id="localeSelect" class="settings-input settings-select" data-no-drag aria-labelledby="languageLabel">
                 <option value="zh">中文</option>
                 <option value="en">English</option>
               </select>
-              <button class="custom-select-trigger" type="button" data-no-drag>
+              <button class="custom-select-trigger" type="button" data-no-drag aria-labelledby="languageLabel">
                 <span class="custom-select-value"></span>
                 <span class="custom-select-arrow" aria-hidden="true"></span>
               </button>
               <div class="custom-select-menu" data-no-drag></div>
             </div>
-          </label>
+          </div>
 
-          <label class="settings-field">
+          <div class="settings-field">
             <span id="meterWindowLabel">仪表窗口</span>
             <div class="custom-select-shell" data-no-drag>
-              <select id="meterWindowSelect" class="settings-input settings-select" data-no-drag></select>
-              <button class="custom-select-trigger" type="button" data-no-drag>
+              <select id="meterWindowSelect" class="settings-input settings-select" data-no-drag aria-labelledby="meterWindowLabel"></select>
+              <button class="custom-select-trigger" type="button" data-no-drag aria-labelledby="meterWindowLabel">
                 <span class="custom-select-value"></span>
                 <span class="custom-select-arrow" aria-hidden="true"></span>
               </button>
               <div class="custom-select-menu" data-no-drag></div>
             </div>
-          </label>
+          </div>
 
-          <label class="settings-field">
+          <div class="settings-field">
             <span id="logLevelLabel">日志等级</span>
             <div class="custom-select-shell" data-no-drag>
-              <select id="logLevelSelect" class="settings-input settings-select" data-no-drag></select>
-              <button class="custom-select-trigger" type="button" data-no-drag>
+              <select id="logLevelSelect" class="settings-input settings-select" data-no-drag aria-labelledby="logLevelLabel"></select>
+              <button class="custom-select-trigger" type="button" data-no-drag aria-labelledby="logLevelLabel">
                 <span class="custom-select-value"></span>
                 <span class="custom-select-arrow" aria-hidden="true"></span>
               </button>
               <div class="custom-select-menu" data-no-drag></div>
             </div>
-          </label>
+          </div>
 
           <div class="settings-field settings-row">
             <div class="settings-copy">
@@ -208,18 +225,19 @@
             <small id="updateProxyHint" class="field-hint">仅用于 GitHub 自动更新，不影响 Codex CLI。</small>
           </label>
 
-          <label class="settings-field">
-            <span id="codexPathLabel">Codex CLI 路径</span>
+          <div class="settings-field">
+            <label id="codexPathLabel" for="codexPathInput">Codex CLI 路径</label>
             <div class="path-control">
               <input id="codexPathInput" class="settings-input" type="text" data-no-drag spellcheck="false" />
               <button id="chooseCodexBtn" class="icon-button" type="button" data-tooltip="选择 Codex CLI (codex/codex.exe)" aria-label="选择 Codex CLI (codex/codex.exe)">
                 <i data-lucide="folder-open"></i>
               </button>
             </div>
-          </label>
+          </div>
         </div>
 
         <div class="settings-actions">
+          <p id="settingsError" class="settings-error" role="alert" aria-live="assertive" hidden></p>
           <button id="cancelSettingsBtn" class="secondary-button" type="button" data-no-drag>取消</button>
           <button id="saveSettingsBtn" class="primary-button" type="button" data-no-drag>
             <span id="saveSettingsText">保存</span>

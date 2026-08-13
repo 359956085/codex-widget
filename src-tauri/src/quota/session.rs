@@ -4,7 +4,9 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, Lines};
+use tokio::io::{
+    AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, Lines,
+};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -46,6 +48,16 @@ impl SessionRequestError {
             Self::Transport(error) | Self::Protocol(error) => error,
         }
     }
+
+    fn with_stderr(self, stderr: String) -> Self {
+        let is_transport = self.is_transport();
+        let error = enrich_error_with_stderr(self.into_error(), stderr);
+        if is_transport {
+            Self::transport(error)
+        } else {
+            Self::protocol(error)
+        }
+    }
 }
 
 impl std::fmt::Display for SessionRequestError {
@@ -67,7 +79,9 @@ pub(super) struct CodexSession {
 }
 
 impl CodexSession {
-    pub(super) async fn start(codex_command: PathBuf) -> Result<Self> {
+    pub(super) async fn start(
+        codex_command: PathBuf,
+    ) -> std::result::Result<Self, SessionRequestError> {
         let mut command = Command::new(&codex_command);
         command
             .args(["app-server", "--listen", "stdio://"])
@@ -75,24 +89,23 @@ impl CodexSession {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true);
+        super::command::configure_codex_process_environment(&mut command);
         hide_background_process_window(&mut command);
 
         let mut child = command
             .spawn()
-            .with_context(|| format!("无法启动 Codex CLI：{}", codex_command.display()))?;
+            .with_context(|| format!("无法启动 Codex CLI：{}", codex_command.display()))
+            .map_err(SessionRequestError::transport)?;
 
-        let stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow!("无法打开 Codex CLI 输入流。"))?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| anyhow!("无法打开 Codex CLI 输出流。"))?;
-        let stderr = child
-            .stderr
-            .take()
-            .ok_or_else(|| anyhow!("无法打开 Codex CLI 错误流。"))?;
+        let stdin = child.stdin.take().ok_or_else(|| {
+            SessionRequestError::transport(anyhow!("无法打开 Codex CLI 输入流。"))
+        })?;
+        let stdout = child.stdout.take().ok_or_else(|| {
+            SessionRequestError::transport(anyhow!("无法打开 Codex CLI 输出流。"))
+        })?;
+        let stderr = child.stderr.take().ok_or_else(|| {
+            SessionRequestError::transport(anyhow!("无法打开 Codex CLI 错误流。"))
+        })?;
 
         let stderr_tail = Arc::new(Mutex::new(String::new()));
         let stderr_task = spawn_stderr_tail_task(stderr, Arc::clone(&stderr_tail));
@@ -108,7 +121,7 @@ impl CodexSession {
 
         if let Err(error) = session.initialize().await {
             let stderr = session.stderr_tail().await;
-            let error = enrich_error_with_stderr(error, stderr);
+            let error = error.with_stderr(stderr);
             session.shutdown().await;
             return Err(error);
         }
@@ -120,28 +133,11 @@ impl CodexSession {
         &self.codex_command
     }
 
-    async fn initialize(&mut self) -> Result<()> {
+    async fn initialize(&mut self) -> std::result::Result<(), SessionRequestError> {
         let request_id = self.next_request_id();
-        send_request(
-            &mut self.stdin,
-            request_id,
-            "initialize",
-            Some(json!({
-                "clientInfo": {
-                    "name": "codex-quota-widget-rs",
-                    "title": "Codex CLI 额度小组件",
-                    "version": env!("CARGO_PKG_VERSION")
-                },
-                "capabilities": null
-            })),
-        )
-        .await
-        .context("Codex CLI app-server 初始化请求发送失败")?;
-        let _ = read_response(&mut self.lines, request_id, "initialize")
+        initialize_connection(&mut self.stdin, &mut self.lines, request_id)
             .await
-            .map_err(SessionRequestError::into_error)
-            .context("Codex CLI app-server 初始化失败")?;
-        Ok(())
+            .map_err(|error| error.with_context("Codex CLI app-server 初始化失败"))
     }
 
     pub(super) async fn read_rate_limits(&mut self) -> Result<Value, SessionRequestError> {
@@ -234,20 +230,72 @@ fn take_next_request_id(next_request_id: &mut u64) -> u64 {
     request_id
 }
 
-async fn send_request(
-    stdin: &mut tokio::process::ChildStdin,
-    id: u64,
-    method: &str,
-    params: Option<Value>,
-) -> Result<()> {
+async fn initialize_connection<W, R>(
+    writer: &mut W,
+    lines: &mut Lines<R>,
+    request_id: u64,
+) -> std::result::Result<(), SessionRequestError>
+where
+    W: AsyncWrite + Unpin,
+    R: AsyncBufRead + Unpin,
+{
+    send_request(
+        writer,
+        request_id,
+        "initialize",
+        Some(json!({
+            "clientInfo": {
+                "name": "codex-quota-widget-rs",
+                "title": "Codex CLI 额度小组件",
+                "version": env!("CARGO_PKG_VERSION")
+            },
+            "capabilities": null
+        })),
+    )
+    .await
+    .map_err(SessionRequestError::transport)
+    .map_err(|error| error.with_context("初始化请求发送失败"))?;
+    let _ = read_response(lines, request_id, "initialize").await?;
+    // App Server 要求收到 initialize 响应后再发送 initialized，之后才可调用业务方法。
+    send_notification(writer, "initialized", None)
+        .await
+        .map_err(SessionRequestError::transport)
+        .map_err(|error| error.with_context("initialized 通知发送失败"))?;
+    Ok(())
+}
+
+async fn send_request<W>(writer: &mut W, id: u64, method: &str, params: Option<Value>) -> Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
     let payload = match params {
         Some(params) => json!({ "id": id, "method": method, "params": params }),
         None => json!({ "id": id, "method": method }),
     };
 
-    stdin.write_all(payload.to_string().as_bytes()).await?;
-    stdin.write_all(b"\n").await?;
-    stdin.flush().await?;
+    write_message(writer, &payload).await?;
+    Ok(())
+}
+
+async fn send_notification<W>(writer: &mut W, method: &str, params: Option<Value>) -> Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    let payload = match params {
+        Some(params) => json!({ "method": method, "params": params }),
+        None => json!({ "method": method }),
+    };
+    write_message(writer, &payload).await?;
+    Ok(())
+}
+
+async fn write_message<W>(writer: &mut W, payload: &Value) -> Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    writer.write_all(payload.to_string().as_bytes()).await?;
+    writer.write_all(b"\n").await?;
+    writer.flush().await?;
     Ok(())
 }
 
@@ -320,6 +368,7 @@ async fn cleanup_child(child: &mut tokio::process::Child) {
 mod tests {
     use super::*;
     use std::io::Cursor;
+    use tokio::io::AsyncReadExt;
 
     #[test]
     fn 请求_id_会递增() {
@@ -383,6 +432,46 @@ mod tests {
 
         assert_eq!(error.to_string(), "Codex CLI 子进程提前退出。");
         assert!(error.is_transport());
+    }
+
+    #[tokio::test]
+    async fn 初始化响应后发送_initialized_通知() {
+        let mut lines = response_lines(r#"{"id":1,"result":{"platformOs":"windows"}}"#);
+        let (mut writer, mut reader) = tokio::io::duplex(2048);
+
+        initialize_connection(&mut writer, &mut lines, 1)
+            .await
+            .unwrap();
+        drop(writer);
+        let mut output = String::new();
+        reader.read_to_string(&mut output).await.unwrap();
+        let messages = output
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0]["method"], "initialize");
+        assert_eq!(messages[0]["id"], 1);
+        assert_eq!(messages[1], json!({ "method": "initialized" }));
+    }
+
+    #[tokio::test]
+    async fn 初始化协议错误保持协议分类且不发送通知() {
+        let mut lines =
+            response_lines(r#"{"id":1,"error":{"code":-32600,"message":"Already initialized"}}"#);
+        let (mut writer, mut reader) = tokio::io::duplex(2048);
+
+        let error = initialize_connection(&mut writer, &mut lines, 1)
+            .await
+            .unwrap_err();
+        drop(writer);
+        let mut output = String::new();
+        reader.read_to_string(&mut output).await.unwrap();
+
+        assert!(!error.is_transport());
+        assert!(error.to_string().contains("Already initialized"));
+        assert_eq!(output.lines().count(), 1);
     }
 
     fn response_lines(text: &str) -> Lines<BufReader<Cursor<Vec<u8>>>> {

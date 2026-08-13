@@ -22,6 +22,14 @@ pub(crate) fn sync_auto_start(app: &AppHandle, enabled: bool) -> Result<(), Stri
     Ok(())
 }
 
+pub(crate) fn reconcile_auto_start(app: &AppHandle, expected: bool) -> Result<(), String> {
+    let actual = read_auto_start_enabled(app)?;
+    if actual == expected {
+        return Ok(());
+    }
+    sync_auto_start(app, expected)
+}
+
 pub(crate) fn read_auto_start_enabled(app: &AppHandle) -> Result<bool, String> {
     app.autolaunch()
         .is_enabled()

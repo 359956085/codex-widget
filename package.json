@@ -11,20 +11,22 @@
     "build": "npm run build:frontend",
     "build:frontend": "vite build",
     "lint": "eslint src scripts tests vite.config.js eslint.config.js",
+    "audit": "npm audit --audit-level=high --registry=https://registry.npmjs.org",
     "test": "vitest run",
-    "check:frontend": "npm run lint && npm run test && npm run build:frontend",
-    "check:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+    "check:frontend": "npm run lint && npm run test && npm run build:frontend && npm run audit",
+    "check:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check && cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --locked --manifest-path src-tauri/Cargo.toml",
     "check": "npm run check:frontend && npm run check:rust",
     "ci:install": "npm ci --prefer-offline --no-audit --no-fund",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:build:nsis": "tauri build --bundles nsis",
+    "tauri:check": "tauri build --no-bundle --ci -- --locked",
+    "tauri:build": "tauri build -- --locked",
+    "tauri:build:nsis": "tauri build --bundles nsis -- --locked",
     "updater:keygen": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"New-Item -ItemType Directory -Path certs -Force | Out-Null; tauri signer generate --write-keys certs/updater.key\"",
-    "tauri:build:nsis:updater": "tauri build --bundles nsis --config src-tauri/tauri.updater.conf.json",
+    "tauri:build:nsis:updater": "tauri build --bundles nsis --config src-tauri/tauri.updater.conf.json -- --locked",
     "updater:latest": "node scripts/create-latest-json.mjs",
     "release:github": "npm run tauri:build:nsis:updater && npm run updater:latest",
-    "tauri:build:mac:aarch64:updater": "tauri build --target aarch64-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json",
-    "tauri:build:mac:x64:updater": "tauri build --target x86_64-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json"
+    "tauri:build:mac:aarch64:updater": "tauri build --target aarch64-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json -- --locked",
+    "tauri:build:mac:x64:updater": "tauri build --target x86_64-apple-darwin --bundles dmg,app --config src-tauri/tauri.updater.conf.json -- --locked"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
@@ -37,6 +39,7 @@
     "@tauri-apps/cli": "^2.0.0",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
+    "jsdom": "^28.1.0",
     "vitest": "^4.0.0",
     "vite": "^7.0.0"
   }

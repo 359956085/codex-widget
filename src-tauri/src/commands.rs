@@ -2,14 +2,14 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::atomic::Ordering;
 
-use tauri::{AppHandle, Emitter, State, WebviewWindow};
+use tauri::{AppHandle, State, WebviewWindow};
 
 use crate::app_state::AppState;
 use crate::autostart::{read_auto_start_enabled, sync_auto_start};
 use crate::logging::{AppLogger, LogLevel};
 use crate::quota::{self, QuotaSnapshot, ResetCreditExpiries};
 use crate::settings::{AppSettings, SettingsService};
-use crate::tray::rebuild_tray_menu;
+use crate::tray::set_always_on_top_authoritative;
 
 #[tauri::command]
 pub(crate) async fn get_quota(
@@ -74,18 +74,13 @@ pub(crate) fn set_always_on_top(
     state: State<'_, AppState>,
     value: bool,
 ) -> Result<bool, String> {
-    window.set_always_on_top(value).map_err(|error| {
+    set_always_on_top_authoritative(&app, &window, value).map_err(|error| {
         let message = error.to_string();
         state
             .logger
             .write_best_effort(LogLevel::Error, "backend.window", &message);
         message
-    })?;
-    state.always_on_top.store(value, Ordering::SeqCst);
-    rebuild_tray_menu(&app, value).map_err(|error| error.to_string())?;
-    app.emit("window:always-on-top-changed", value)
-        .map_err(|error| error.to_string())?;
-    Ok(value)
+    })
 }
 
 #[tauri::command]
@@ -96,7 +91,9 @@ pub(crate) async fn open_codex(app: AppHandle, state: State<'_, AppState>) -> Re
     };
     let codex_cli_path = settings.codex_cli_path.as_deref().map(Path::new);
     let command = quota::resolve_codex_command(codex_cli_path);
-    Command::new(&command).spawn().map_err(|error| {
+    let mut process = Command::new(&command);
+    quota::configure_open_codex_process_environment(&mut process);
+    process.spawn().map_err(|error| {
         let message = format!("无法打开 Codex CLI：{}，{}", command.display(), error);
         state
             .logger
@@ -128,15 +125,15 @@ pub(crate) async fn save_settings(
     settings: AppSettings,
 ) -> Result<AppSettings, String> {
     let settings_guard = state.settings_lock.lock().await;
-    let (previous, previous_loaded) = match SettingsService::load(&app) {
-        Ok(settings) => (settings, true),
+    let previous = match SettingsService::load(&app) {
+        Ok(settings) => settings,
         Err(error) => {
             state.logger.write_best_effort(
                 LogLevel::Warn,
                 "backend.settings",
-                &format!("旧设置无法读取，将使用默认值恢复：{error}"),
+                &format!("旧设置无法读取，显式保存将使用当前表单恢复：{error}"),
             );
-            (AppSettings::default(), false)
+            AppSettings::default()
         }
     };
     let settings = SettingsService::normalize(settings).map_err(|error| {
@@ -147,17 +144,12 @@ pub(crate) async fn save_settings(
         message
     })?;
     let log_dir = AppLogger::resolve_log_dir(&app).map_err(|error| error.to_string())?;
-    let should_check_auto_start =
-        !previous_loaded || previous.auto_start_enabled != settings.auto_start_enabled;
-    let original_auto_start = if should_check_auto_start {
-        read_auto_start_enabled(&app).inspect_err(|error| {
-            state
-                .logger
-                .write_best_effort(LogLevel::Error, "backend.settings", error);
-        })?
-    } else {
-        settings.auto_start_enabled
-    };
+    // 配置是开机自启权威来源；每次保存都读取系统实态，顺带修复外部漂移。
+    let original_auto_start = read_auto_start_enabled(&app).inspect_err(|error| {
+        state
+            .logger
+            .write_best_effort(LogLevel::Error, "backend.settings", error);
+    })?;
     let codex_cli_path_changed = previous.codex_cli_path != settings.codex_cli_path;
     let target_auto_start = settings.auto_start_enabled;
     let saved = persist_with_auto_start(

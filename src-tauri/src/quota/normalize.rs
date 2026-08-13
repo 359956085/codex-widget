@@ -105,16 +105,14 @@ fn first_snapshot(map: Option<&Value>) -> Option<&Value> {
 
 fn normalize_window(window: Option<&Value>) -> Option<QuotaWindow> {
     let window = window?;
-    let used_percent = clamp_percent(read_number(window, "usedPercent").unwrap_or(0.0));
+    // 缺失或非有限比例不能伪装成 0% 已用，否则界面会错误显示 100% 剩余。
+    let used_percent = normalize_percent(read_number(window, "usedPercent")?)?;
     let window_duration_mins = read_u64(window, "windowDurationMins");
     let resets_at = read_unix_seconds(window, "resetsAt").and_then(format_unix_seconds);
-    if used_percent == 0 && window_duration_mins.is_none() && resets_at.is_none() {
-        return None;
-    }
 
     Some(QuotaWindow {
         used_percent,
-        remaining_percent: clamp_percent(100.0 - f64::from(used_percent)),
+        remaining_percent: 100 - used_percent,
         window_duration_mins,
         resets_at,
     })
@@ -148,11 +146,11 @@ fn normalize_reset_credit_expiries(value: &Value) -> Option<Vec<String>> {
     Some(expiries)
 }
 
-fn clamp_percent(value: f64) -> u8 {
+fn normalize_percent(value: f64) -> Option<u8> {
     if !value.is_finite() {
-        return 0;
+        return None;
     }
-    value.round().clamp(0.0, 100.0) as u8
+    Some(value.round().clamp(0.0, 100.0) as u8)
 }
 
 fn read_string(value: &Value, key: &str) -> Option<String> {
@@ -243,6 +241,28 @@ mod tests {
         let snapshot = normalize_rate_limits_response(&response).unwrap();
         assert_eq!(snapshot.primary.unwrap().used_percent, 100);
         assert_eq!(snapshot.remaining_percent, Some(0));
+    }
+
+    #[test]
+    fn 缺失或非有限比例不会伪装成满额窗口() {
+        let missing = json!({
+            "rateLimits": {
+                "primary": { "windowDurationMins": 300, "resetsAt": 1710000000 }
+            }
+        });
+        let non_finite = json!({
+            "rateLimits": {
+                "primary": { "usedPercent": "NaN", "windowDurationMins": 300 }
+            }
+        });
+
+        let missing = normalize_rate_limits_response(&missing).unwrap();
+        let non_finite = normalize_rate_limits_response(&non_finite).unwrap();
+
+        assert_eq!(missing.primary, None);
+        assert_eq!(missing.remaining_percent, None);
+        assert_eq!(non_finite.primary, None);
+        assert_eq!(non_finite.remaining_percent, None);
     }
 
     #[test]

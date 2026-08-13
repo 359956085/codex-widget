@@ -22,7 +22,7 @@ describe("额度刷新定时器", () => {
     }
   });
 
-  it("刷新进行中不会启动第二个请求", async () => {
+  it("刷新进行中不会并发启动第二个请求", async () => {
     const pendingQuota = deferred();
     const { controller, service, state } = createFixture(() => pendingQuota.promise);
 
@@ -32,6 +32,73 @@ describe("额度刷新定时器", () => {
     expect(service.commands.getQuota).toHaveBeenCalledTimes(1);
     pendingQuota.resolve(quotaResult());
     await Promise.all([first, second]);
+    expect(service.commands.getQuota).toHaveBeenCalledTimes(2);
+    expect(state.loading).toBe(false);
+  });
+
+  it("忙碌期间多个请求只追加一次尾随刷新", async () => {
+    const firstQuota = deferred();
+    const secondQuota = deferred();
+    const { controller, service, state } = createFixture(
+      vi.fn()
+        .mockImplementationOnce(() => firstQuota.promise)
+        .mockImplementationOnce(() => secondQuota.promise)
+    );
+
+    const first = controller.refreshQuota();
+    const second = controller.refreshQuota();
+    const third = controller.refreshQuota();
+
+    expect(service.commands.getQuota).toHaveBeenCalledOnce();
+    firstQuota.resolve(quotaResult({ id: "first" }));
+    await vi.waitFor(() => expect(service.commands.getQuota).toHaveBeenCalledTimes(2));
+    secondQuota.resolve(quotaResult({ id: "latest" }));
+    await Promise.all([first, second, third]);
+
+    expect(service.commands.getQuota).toHaveBeenCalledTimes(2);
+    expect(state.quota.id).toBe("latest");
+    expect(state.loading).toBe(false);
+  });
+
+  it("失败保留旧快照且尾随刷新继续执行", async () => {
+    const failedQuota = deferred();
+    const latestQuota = deferred();
+    const { controller, service, state, logger } = createFixture(
+      vi.fn()
+        .mockImplementationOnce(() => failedQuota.promise)
+        .mockImplementationOnce(() => latestQuota.promise)
+    );
+    const previousQuota = quotaResult({ id: "previous" });
+    state.quota = previousQuota;
+    state.resetCreditExpiries = ["2026-01-01T00:00:00Z"];
+    state.resetCreditExpiriesStatus = "success";
+
+    const first = controller.refreshQuota();
+    const trailing = controller.refreshQuota();
+    failedQuota.reject(new Error("第一次失败"));
+    await vi.waitFor(() => expect(service.commands.getQuota).toHaveBeenCalledTimes(2));
+
+    expect(state.quota).toBe(previousQuota);
+    expect(state.resetCreditExpiries).toEqual(["2026-01-01T00:00:00Z"]);
+    latestQuota.resolve(quotaResult({ id: "latest" }));
+    await Promise.all([first, trailing]);
+
+    expect(state.quota.id).toBe("latest");
+    expect(state.errors.quota).toBe("");
+    expect(logger.error).toHaveBeenCalledOnce();
+  });
+
+  it("单次失败保留最后成功值和错误", async () => {
+    const { controller, state } = createFixture(async () => {
+      throw new Error("网络失败");
+    });
+    const previousQuota = quotaResult({ id: "previous" });
+    state.quota = previousQuota;
+
+    await controller.refreshQuota();
+
+    expect(state.quota).toBe(previousQuota);
+    expect(state.errors.quota).toContain("网络失败");
     expect(state.loading).toBe(false);
   });
 
@@ -54,27 +121,31 @@ function createFixture(getQuota) {
       getResetCreditExpiries: vi.fn()
     }
   };
+  const logger = { error: vi.fn() };
   const controller = createQuotaController({
     state,
     service,
     render: vi.fn(),
     normalizeError: (error) => String(error),
-    logger: { error: vi.fn() }
+    logger
   });
-  return { controller, service, state };
+  return { controller, service, state, logger };
 }
 
-function quotaResult() {
+function quotaResult(overrides = {}) {
   return {
     resetsAt: null,
-    resetCredits: { expiries: [] }
+    resetCredits: { expiries: [] },
+    ...overrides
   };
 }
 
 function deferred() {
   let resolve;
-  const promise = new Promise((done) => {
+  let reject;
+  const promise = new Promise((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }

@@ -1,4 +1,5 @@
 import { WIDGET_MODES } from "./constants.js";
+import { createDialogFocusManager } from "./dialog-focus.js";
 
 const ONBOARDING_STEPS = [
   {
@@ -35,8 +36,14 @@ export function createOnboardingController({
   let initialized = false;
   let completed = false;
   let currentStepIndex = 0;
+  const focusManager = createDialogFocusManager({
+    dialog: els.onboardingOverlay,
+    initialFocus: els.onboardingNextBtn,
+    onEscape: () => void completeOnboarding()
+  });
 
   function bindEvents() {
+    focusManager.bindEvents();
     els.onboardingCloseBtn?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -74,6 +81,7 @@ export function createOnboardingController({
     currentStepIndex = 0;
     els.onboardingOverlay.hidden = false;
     renderCurrentStep();
+    focusManager.activate();
   }
 
   function renderCurrentStep() {
@@ -165,6 +173,7 @@ export function createOnboardingController({
     if (els.onboardingOverlay) {
       els.onboardingOverlay.hidden = true;
     }
+    focusManager.deactivate();
   }
 
   return {

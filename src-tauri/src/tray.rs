@@ -6,6 +6,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::app_state::AppState;
+use crate::logging::LogLevel;
 use crate::MAIN_WINDOW_LABEL;
 
 const TRAY_ID: &str = "main-tray";
@@ -24,7 +25,9 @@ pub(crate) fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 let _ = app.emit("quota:refresh-requested", ());
             }
             "toggle-always-on-top" => {
-                let _ = toggle_always_on_top_from_tray(app);
+                if let Err(error) = toggle_always_on_top_from_tray(app) {
+                    log_tray_error(app, "切换置顶失败", &error);
+                }
             }
             "quit" => app.exit(0),
             _ => {}
@@ -36,7 +39,9 @@ pub(crate) fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 ..
             } = event
             {
-                let _ = toggle_window(tray.app_handle());
+                if let Err(error) = toggle_window(tray.app_handle()) {
+                    log_tray_error(tray.app_handle(), "切换窗口显示状态失败", &error);
+                }
             }
         })
         .build(app)?;
@@ -65,6 +70,25 @@ pub(crate) fn rebuild_tray_menu(app: &AppHandle, always_on_top: bool) -> tauri::
     Ok(())
 }
 
+pub(crate) fn set_always_on_top_authoritative(
+    app: &AppHandle,
+    window: &tauri::WebviewWindow,
+    value: bool,
+) -> tauri::Result<bool> {
+    // 窗口属性是权威状态；托盘与事件只是投影，投影失败不能把已成功操作报告成失败。
+    window.set_always_on_top(value)?;
+    let state = app.state::<AppState>();
+    state.always_on_top.store(value, Ordering::SeqCst);
+
+    if let Err(error) = rebuild_tray_menu(app, value) {
+        log_tray_error(app, "刷新置顶托盘菜单失败", &error);
+    }
+    if let Err(error) = app.emit("window:always-on-top-changed", value) {
+        log_tray_error(app, "发送置顶状态事件失败", &error);
+    }
+    Ok(value)
+}
+
 fn toggle_window(app: &AppHandle) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
         if window.is_visible()? {
@@ -81,12 +105,17 @@ fn toggle_always_on_top_from_tray(app: &AppHandle) -> tauri::Result<()> {
     let state = app.state::<AppState>();
     let next = !state.always_on_top.load(Ordering::SeqCst);
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
-        window.set_always_on_top(next)?;
+        set_always_on_top_authoritative(app, &window, next)?;
     }
-    state.always_on_top.store(next, Ordering::SeqCst);
-    rebuild_tray_menu(app, next)?;
-    app.emit("window:always-on-top-changed", next)?;
     Ok(())
+}
+
+fn log_tray_error(app: &AppHandle, context: &str, error: &impl std::fmt::Display) {
+    app.state::<AppState>().logger.write_best_effort(
+        LogLevel::Error,
+        "backend.tray",
+        &format!("{context}：{error}"),
+    );
 }
 
 pub(crate) fn load_app_icon() -> tauri::Result<Image<'static>> {

@@ -1,4 +1,6 @@
 use std::env;
+#[cfg(target_os = "macos")]
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::{fs, time::SystemTime};
@@ -22,16 +24,12 @@ pub fn resolve_codex_command(codex_cli_path: Option<&Path>) -> PathBuf {
     push_command_lookup_candidates(&mut candidates);
 
     for candidate in candidates {
-        if candidate.exists() {
+        if is_usable_command_file(&candidate) {
             return candidate;
         }
     }
 
     PathBuf::from(CODEX_COMMAND_NAME)
-}
-
-pub fn configure_process_path_for_codex() {
-    configure_platform_process_path_for_codex();
 }
 
 fn push_env_path_candidate(candidates: &mut Vec<PathBuf>) {
@@ -100,7 +98,7 @@ fn find_codex_command_in_version_dirs(codex_bin: &PathBuf) -> Option<PathBuf> {
 
     for entry in entries.flatten() {
         let candidate = entry.path().join(CODEX_COMMAND_NAME);
-        if !candidate.exists() {
+        if !is_usable_command_file(&candidate) {
             continue;
         }
 
@@ -122,7 +120,7 @@ fn find_command_in_path(command_name: &str) -> Option<PathBuf> {
     let path_var = env::var_os("PATH")?;
     for dir in env::split_paths(&path_var) {
         let candidate = dir.join(command_name);
-        if candidate.exists() {
+        if is_usable_command_file(&candidate) {
             return Some(candidate);
         }
     }
@@ -143,7 +141,7 @@ fn macos_common_codex_paths() -> Vec<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-fn configure_platform_process_path_for_codex() {
+fn codex_process_path() -> Option<OsString> {
     let mut paths = env::var_os("PATH")
         .map(|value| env::split_paths(&value).collect::<Vec<_>>())
         .unwrap_or_default();
@@ -152,10 +150,7 @@ fn configure_platform_process_path_for_codex() {
             paths.push(dir);
         }
     }
-    if let Ok(joined) = env::join_paths(paths) {
-        // macOS 从 Finder 启动 .app 时通常拿不到 shell PATH，这里补充常见命令目录。
-        env::set_var("PATH", joined);
-    }
+    env::join_paths(paths).ok()
 }
 
 #[cfg(target_os = "macos")]
@@ -174,8 +169,47 @@ fn macos_common_command_dirs() -> Vec<PathBuf> {
     dirs
 }
 
+#[cfg(target_os = "macos")]
+pub(super) fn configure_codex_process_environment(command: &mut Command) {
+    if let Some(path) = codex_process_path() {
+        // 只修改 Codex 子进程环境，避免 Tauri 多线程运行期改写全局 PATH。
+        command.env("PATH", path);
+    }
+}
+
 #[cfg(not(target_os = "macos"))]
-fn configure_platform_process_path_for_codex() {}
+pub(super) fn configure_codex_process_environment(_command: &mut Command) {}
+
+#[cfg(target_os = "macos")]
+pub fn configure_open_codex_process_environment(command: &mut std::process::Command) {
+    if let Some(path) = codex_process_path() {
+        command.env("PATH", path);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn configure_open_codex_process_environment(_command: &mut std::process::Command) {}
+
+fn is_usable_command_file(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    is_executable_file(path)
+}
+
+#[cfg(unix)]
+fn is_executable_file(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    path.metadata()
+        .map(|metadata| metadata.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(_path: &Path) -> bool {
+    true
+}
 
 #[cfg(windows)]
 pub(super) fn hide_background_process_window(command: &mut Command) {
@@ -185,3 +219,33 @@ pub(super) fn hide_background_process_window(command: &mut Command) {
 
 #[cfg(not(windows))]
 pub(super) fn hide_background_process_window(_command: &mut Command) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn 目录不能作为_codex_命令() {
+        let dir = tempfile::tempdir().unwrap();
+
+        assert!(!is_usable_command_file(dir.path()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_命令必须有可执行权限() {
+        use std::fs;
+
+        let dir = tempfile::tempdir().unwrap();
+        let command = dir.path().join("codex");
+        fs::write(&command, "").unwrap();
+
+        assert!(!is_usable_command_file(&command));
+
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(&command).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&command, permissions).unwrap();
+        assert!(is_usable_command_file(&command));
+    }
+}

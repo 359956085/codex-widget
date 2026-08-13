@@ -14,6 +14,7 @@ import { removeAttribute, setAttribute, setDatasetValue, setText } from "./dom-u
 import { clamp } from "./geometry.js";
 import { updateActionButton } from "./icons.js";
 import { formatUpdateStatus } from "./update-status.js";
+import { activeError } from "./state.js";
 import { createMeterController } from "../components/meters/meter-controller.js";
 
 export function createRenderer({ els, state, getLocale, getTheme, onVersionClick, settingsView }) {
@@ -43,7 +44,8 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     const remaining = typeof meterWindowData?.remainingPercent === "number" ? meterWindowData.remainingPercent : null;
     const remainingValue = remaining === null ? 0 : clamp(remaining, 0, 100);
     const visualState = getVisualState(remaining);
-    const mainState = state.error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
+    const error = activeError(state);
+    const mainState = error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
     const updateStatusText = formatUpdateStatus(text, state.updateStatus);
 
     return {
@@ -55,6 +57,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       remaining,
       remainingValue,
       visualState,
+      error,
       mainState,
       updateStatusText
     };
@@ -89,13 +92,13 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     updateActionButton(els.chooseCodexBtn, "folder-open", text.chooseCodex);
   }
 
-  function renderStatus({ activeLocale, hasQuota, mainState, quota, text, updateStatusText, visualState }) {
+  function renderStatus({ activeLocale, error, hasQuota, mainState, quota, text, updateStatusText, visualState }) {
     setClassName(els.trafficLight, `traffic-light ${mainState}`);
-    setClassName(els.statusDot, `status-dot ${state.error ? "error" : mainState}`);
+    setClassName(els.statusDot, `status-dot ${error ? "error" : mainState}`);
 
-    if (state.error) {
+    if (error) {
       setText(els.stateText, hasQuota ? stateLabel(visualState, text) : text.error);
-      setText(els.statusText, state.error);
+      setText(els.statusText, error);
     } else if (state.loading) {
       setText(els.stateText, text.loading);
       setText(els.statusText, text.reading);
@@ -152,12 +155,16 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       setTooltip(els.widget, text.ballRestoreHint);
       removeAttribute(els.widget, "title");
       setAttribute(els.widget, "aria-label", text.ballRestoreHint);
+      setAttribute(els.widget, "role", "button");
+      setAttribute(els.widget, "tabindex", "0");
       return;
     }
 
     removeTooltip(els.widget);
     removeAttribute(els.widget, "title");
     removeAttribute(els.widget, "aria-label");
+    removeAttribute(els.widget, "role");
+    removeAttribute(els.widget, "tabindex");
   }
 
   function createBrandView() {
