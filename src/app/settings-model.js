@@ -1,4 +1,7 @@
-import { DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES, WIDGET_MODES } from "./constants.js";
+import { DATA_BAR_CONTENTS, DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES, WIDGET_MODES } from "./constants.js";
+
+export const PLUS_DEFAULT_DATA_BARS = ["fiveHour", "weekly", "quotaEstimate"];
+export const OTHER_DEFAULT_DATA_BARS = ["quotaEstimate", "weekly", "resetCredits"];
 
 export function normalizeSettings(settings) {
   const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
@@ -13,6 +16,7 @@ export function normalizeSettings(settings) {
     locale: settings?.locale === "en" ? "en" : "zh",
     theme: normalizeTheme(settings?.theme),
     meterWindow: normalizeMeterWindow(settings?.meterWindow),
+    dataBars: normalizeDataBars(settings?.dataBars),
     logLevel: normalizeLogLevel(settings?.logLevel),
     autoUpdateEnabled:
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
@@ -52,6 +56,24 @@ export function normalizeLogLevel(logLevel) {
 
 export function normalizeMeterWindow(meterWindow) {
   return Object.hasOwn(METER_WINDOWS, meterWindow) ? meterWindow : DEFAULT_SETTINGS.meterWindow;
+}
+
+export function normalizeDataBarContent(content) {
+  return Object.hasOwn(DATA_BAR_CONTENTS, content) ? content : null;
+}
+
+export function normalizeDataBars(dataBars) {
+  if (!Array.isArray(dataBars) || dataBars.length !== 3) return null;
+  const normalized = dataBars.map(normalizeDataBarContent);
+  return normalized.every(Boolean) ? normalized : null;
+}
+
+export function resolveDataBars(dataBars, planType) {
+  const normalized = normalizeDataBars(dataBars);
+  if (normalized) return normalized;
+  // null 表示尚未自定义；套餐默认只在此状态生效，不能覆盖用户保存的布局。
+  const isPlus = typeof planType === "string" && planType.trim().toLowerCase() === "plus";
+  return [...(isPlus ? PLUS_DEFAULT_DATA_BARS : OTHER_DEFAULT_DATA_BARS)];
 }
 
 export function normalizeInputValue(value) {

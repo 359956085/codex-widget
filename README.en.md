@@ -2,12 +2,13 @@
 
 [简体中文](README.md)
 
-Codex Quota Widget is a desktop floating widget. It reads quota data from your local signed-in Codex and shows weekly quota, previous/current weekly quota estimates, reset credits, refresh time, and reset time in a compact panel or floating ball.
+Codex Quota Widget is a desktop floating widget. It reads quota data from your local signed-in Codex and shows 5-hour quota, weekly quota, previous/current weekly quota estimates, reset credits, refresh time, and reset time in a compact panel or floating ball.
 
 ### Features
 
-- Panel mode: keeps the meter fixed to weekly quota and shows previous/current weekly quota estimates, reset credits, refresh time, and reset time.
-- Floating ball mode: keeps weekly quota visible in a small desktop widget.
+- Panel mode: each of the three data bars can show the 5-hour window, weekly window, reset credits, or quota estimate. Duplicate selections are allowed.
+- Plan defaults: Plus uses "5-hour window / weekly window / quota estimate"; other or unknown plans use "quota estimate / weekly window / reset credits".
+- Meter and floating ball: choose the 5-hour or weekly quota in settings. New configurations default to weekly quota.
 - Edge docking: docks the floating ball to the left or right screen edge.
 - Status colors: green for healthy, yellow for low, red for critical, empty, or error, and blue for loading.
 - Auto refresh: refreshes every 5 minutes by default and can refresh again after quota reset.
@@ -72,7 +73,7 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 2. Start this app.
 3. The app tries to detect `codex` or `codex.exe` automatically.
 4. If reading fails, open settings and choose the `codex` or `codex.exe` path manually.
-5. Check weekly quota, previous/current weekly quota estimates, and reset credits in the panel.
+5. Check the three panel data bars, then adjust each bar and the meter window in settings when needed.
 6. Click the circle button to switch to floating ball mode; double-click the ball to restore the panel.
 
 ### Settings
@@ -84,6 +85,9 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 - Refresh minutes: auto refresh interval, from `1` to `1440`.
 - Theme: choose Default theme, Basic theme 1, Basic theme 2, and Basic theme 3. The selection persists after restart.
 - Language: choose Chinese or English.
+- Meter window: choose whether the meter and floating ball show the 5-hour or weekly quota. Weekly is the default.
+- Data bars 1/2/3: each bar can show the 5-hour window, weekly window, reset credits, or quota estimate, including duplicates. Plan defaults apply until a custom layout is saved.
+- Missing data: if the selected 5-hour window or other source is unavailable, the bar shows `--` and does not substitute another source.
 
 ### Quota Estimate Formula
 

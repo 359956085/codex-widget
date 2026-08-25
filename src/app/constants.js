@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS = {
   locale: "zh",
   theme: "default",
   meterWindow: "secondary",
+  dataBars: null,
   logLevel: "off",
   autoUpdateEnabled: true,
   autoStartEnabled: false,
@@ -61,6 +62,33 @@ export const METER_WINDOWS = {
     label: {
       zh: "周窗口",
       en: "Weekly window"
+    }
+  }
+};
+
+export const DATA_BAR_CONTENTS = {
+  fiveHour: {
+    label: {
+      zh: "5小时窗口",
+      en: "5h window"
+    }
+  },
+  weekly: {
+    label: {
+      zh: "周窗口",
+      en: "Weekly window"
+    }
+  },
+  resetCredits: {
+    label: {
+      zh: "重置次数",
+      en: "Reset credits"
+    }
+  },
+  quotaEstimate: {
+    label: {
+      zh: "额度估算",
+      en: "Quota estimate"
     }
   }
 };
@@ -173,6 +201,9 @@ export const i18n = {
     theme: "主题",
     language: "语言",
     meterWindow: "仪表窗口",
+    dataBar1: "数据栏 1",
+    dataBar2: "数据栏 2",
+    dataBar3: "数据栏 3",
     logLevel: "日志等级",
     autoUpdate: "自动更新",
     autoUpdateHint: "更新依赖 GitHub，网络不可达时可能需要配置代理。",
@@ -260,6 +291,9 @@ export const i18n = {
     theme: "Theme",
     language: "Language",
     meterWindow: "Meter window",
+    dataBar1: "Data bar 1",
+    dataBar2: "Data bar 2",
+    dataBar3: "Data bar 3",
     logLevel: "Log level",
     autoUpdate: "Auto update",
     autoUpdateHint: "Updates depend on GitHub. Configure a proxy if the network cannot reach it.",

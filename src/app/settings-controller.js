@@ -1,8 +1,16 @@
-import { DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
+import { DATA_BAR_CONTENTS, DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
 import { createCustomSelectController } from "./custom-select.js";
 import { createDialogFocusManager } from "./dialog-focus.js";
 import { syncSettingsDraftFromSettings } from "./state.js";
-import { normalizeInputValue, normalizeLogLevel, normalizeMeterWindow, normalizeTheme } from "./settings-model.js";
+import {
+  normalizeDataBarContent,
+  normalizeDataBars,
+  normalizeInputValue,
+  normalizeLogLevel,
+  normalizeMeterWindow,
+  normalizeTheme,
+  resolveDataBars
+} from "./settings-model.js";
 
 export function createSettingsController({
   els,
@@ -35,6 +43,9 @@ export function createSettingsController({
     themeSelect: selectSettingsTheme,
     localeSelect: selectSettingsLocale,
     meterWindowSelect: selectMeterWindow,
+    dataBar1Select: (value) => selectDataBar(0, value),
+    dataBar2Select: (value) => selectDataBar(1, value),
+    dataBar3Select: (value) => selectDataBar(2, value),
     logLevelSelect: selectLogLevel
   };
   const selectOptionConfigs = [
@@ -48,6 +59,11 @@ export function createSettingsController({
       registry: METER_WINDOWS,
       currentValue: () => normalizeMeterWindow(state.settingsDraft.meterWindow)
     },
+    ...els.dataBarSelects.map((select, index) => ({
+      select,
+      registry: DATA_BAR_CONTENTS,
+      currentValue: () => resolveDataBars(state.settingsDraft.dataBars, state.quota?.planType)[index]
+    })),
     {
       select: els.logLevelSelect,
       registry: LOG_LEVELS,
@@ -113,6 +129,9 @@ export function createSettingsController({
     els.themeLabel.textContent = text.theme;
     els.languageLabel.textContent = text.language;
     els.meterWindowLabel.textContent = text.meterWindow;
+    els.dataBarLabels.forEach((label, index) => {
+      label.textContent = text[`dataBar${index + 1}`];
+    });
     els.logLevelLabel.textContent = text.logLevel;
     els.codexPathInput.placeholder = text.codexPathPlaceholder;
     els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
@@ -165,6 +184,16 @@ export function createSettingsController({
 
   function selectMeterWindow(meterWindow) {
     state.settingsDraft.meterWindow = normalizeMeterWindow(meterWindow);
+    render();
+  }
+
+  function selectDataBar(index, content) {
+    const normalized = normalizeDataBarContent(content);
+    if (!normalized) return;
+    // 首次修改时固化当前套餐布局，之后只按用户明确选择保存。
+    const dataBars = resolveDataBars(state.settingsDraft.dataBars, state.quota?.planType);
+    dataBars[index] = normalized;
+    state.settingsDraft.dataBars = dataBars;
     render();
   }
 
@@ -226,6 +255,7 @@ export function createSettingsController({
       locale: els.localeSelect.value === "en" ? "en" : "zh",
       theme: normalizeTheme(els.themeSelect.value),
       meterWindow: normalizeMeterWindow(els.meterWindowSelect.value),
+      dataBars: normalizeDataBars(state.settingsDraft.dataBars),
       logLevel: normalizeLogLevel(els.logLevelSelect.value),
       autoUpdateEnabled: els.autoUpdateSwitch.checked,
       autoStartEnabled: els.autoStartSwitch.checked,

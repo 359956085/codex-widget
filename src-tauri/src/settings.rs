@@ -42,6 +42,15 @@ pub enum MeterWindow {
     Secondary,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DataBarContent {
+    FiveHour,
+    Weekly,
+    ResetCredits,
+    QuotaEstimate,
+}
+
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum WidgetMode {
@@ -81,6 +90,8 @@ pub struct AppSettings {
     pub meter_window: MeterWindow,
     #[serde(default)]
     pub meter_window_migrated: bool,
+    #[serde(default)]
+    pub data_bars: Option<[DataBarContent; 3]>,
     #[serde(default = "default_auto_update_enabled")]
     pub auto_update_enabled: bool,
     #[serde(default = "default_auto_start_enabled")]
@@ -109,6 +120,7 @@ impl Default for AppSettings {
             theme: ThemeMode::default(),
             meter_window: MeterWindow::default(),
             meter_window_migrated: true,
+            data_bars: None,
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
             onboarding_seen: false,
@@ -233,9 +245,7 @@ fn normalize_loaded_settings(mut settings: AppSettings) -> AppSettings {
     settings.codex_cli_path = normalize_optional_text(settings.codex_cli_path);
     settings.update_proxy = normalize_optional_text(settings.update_proxy);
     if !settings.meter_window_migrated {
-        if settings.meter_window == MeterWindow::Primary {
-            settings.meter_window = MeterWindow::Secondary;
-        }
+        // 固定周仪表策略已撤销；旧配置中的 5 小时选择必须原样恢复。
         settings.meter_window_migrated = true;
     }
     if !is_valid_refresh_interval(settings.refresh_interval_minutes) {
@@ -414,6 +424,11 @@ mod tests {
             theme: ThemeMode::Basic3,
             meter_window: MeterWindow::Secondary,
             meter_window_migrated: false,
+            data_bars: Some([
+                DataBarContent::QuotaEstimate,
+                DataBarContent::QuotaEstimate,
+                DataBarContent::ResetCredits,
+            ]),
             auto_update_enabled: false,
             auto_start_enabled: true,
             onboarding_seen: true,
@@ -426,6 +441,8 @@ mod tests {
 
         let saved = save_to_path(&path, settings).unwrap();
         let loaded = load_from_path(&path).unwrap();
+        let persisted = fs::read_to_string(&path).unwrap();
+        let persisted = serde_json::from_str::<serde_json::Value>(&persisted).unwrap();
 
         assert_eq!(saved, loaded);
         assert_eq!(loaded.codex_cli_path, Some(codex.display().to_string()));
@@ -436,6 +453,17 @@ mod tests {
         assert_eq!(loaded.theme, ThemeMode::Basic3);
         assert_eq!(loaded.meter_window, MeterWindow::Secondary);
         assert!(loaded.meter_window_migrated);
+        assert_eq!(
+            loaded.data_bars,
+            Some([
+                DataBarContent::QuotaEstimate,
+                DataBarContent::QuotaEstimate,
+                DataBarContent::ResetCredits,
+            ])
+        );
+        assert_eq!(persisted["dataBars"][0], "quotaEstimate");
+        assert_eq!(persisted["dataBars"][1], "quotaEstimate");
+        assert_eq!(persisted["dataBars"][2], "resetCredits");
         assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
@@ -499,6 +527,7 @@ mod tests {
         assert_eq!(settings.theme, ThemeMode::Default);
         assert_eq!(settings.meter_window, MeterWindow::Secondary);
         assert!(settings.meter_window_migrated);
+        assert_eq!(settings.data_bars, None);
         assert_eq!(settings.log_level, LogLevel::Off);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);
@@ -507,7 +536,7 @@ mod tests {
     }
 
     #[test]
-    fn 旧五小时配置首次读取会迁移并写回() {
+    fn 旧五小时配置首次读取会保留选择并写回迁移标记() {
         let dir = temp_test_dir("migrate-meter-window");
         let path = dir.join("settings.json");
         fs::create_dir_all(&dir).unwrap();
@@ -523,9 +552,9 @@ mod tests {
         let persisted = fs::read_to_string(&path).unwrap();
         let persisted = serde_json::from_str::<serde_json::Value>(&persisted).unwrap();
 
-        assert_eq!(migrated.meter_window, MeterWindow::Secondary);
+        assert_eq!(migrated.meter_window, MeterWindow::Primary);
         assert!(migrated.meter_window_migrated);
-        assert_eq!(persisted["meterWindow"], "secondary");
+        assert_eq!(persisted["meterWindow"], "primary");
         assert_eq!(persisted["meterWindowMigrated"], true);
     }
 

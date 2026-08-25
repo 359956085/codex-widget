@@ -54,7 +54,10 @@ export function applyNormalizedSettings(state, settings, { syncDraft = true } = 
 }
 
 export function syncSettingsDraftFromSettings(state) {
-  state.settingsDraft = { ...state.settings };
+  state.settingsDraft = {
+    ...state.settings,
+    dataBars: state.settings.dataBars ? [...state.settings.dataBars] : null
+  };
 }
 
 export function renderLocale(state) {

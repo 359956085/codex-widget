@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/app/constants.js";
 import {
   normalizeBallDock,
+  normalizeDataBars,
   normalizeInputValue,
   normalizeSettings,
-  normalizeWindowPosition
+  normalizeWindowPosition,
+  resolveDataBars
 } from "../src/app/settings-model.js";
 
 describe("设置标准化", () => {
@@ -15,6 +17,7 @@ describe("设置标准化", () => {
       locale: "en",
       theme: "basic2",
       meterWindow: "primary",
+      dataBars: ["weekly", "weekly", "quotaEstimate"],
       logLevel: "debug",
       widgetMode: "ball",
       panelPosition: { x: -10.6, y: 20.4 },
@@ -26,6 +29,7 @@ describe("设置标准化", () => {
       locale: "en",
       theme: "basic2",
       meterWindow: "primary",
+      dataBars: ["weekly", "weekly", "quotaEstimate"],
       logLevel: "debug",
       widgetMode: "ball",
       panelPosition: { x: -11, y: 20 },
@@ -43,5 +47,20 @@ describe("设置标准化", () => {
     expect(normalizeBallDock("top")).toBeNull();
     expect(normalizeInputValue("   ")).toBeNull();
     expect(normalizeInputValue("  value  ")).toBe("value");
+  });
+
+  it("数据栏严格要求三个合法值并允许重复", () => {
+    expect(normalizeDataBars(["weekly", "weekly", "quotaEstimate"]))
+      .toEqual(["weekly", "weekly", "quotaEstimate"]);
+    expect(normalizeDataBars(["weekly", "quotaEstimate"])).toBeNull();
+    expect(normalizeDataBars(["weekly", "bad", "quotaEstimate"])).toBeNull();
+  });
+
+  it("未自定义数据栏时按套餐选择默认布局", () => {
+    expect(resolveDataBars(null, " PLUS ")).toEqual(["fiveHour", "weekly", "quotaEstimate"]);
+    expect(resolveDataBars(null, "business")).toEqual(["quotaEstimate", "weekly", "resetCredits"]);
+    expect(resolveDataBars(null, null)).toEqual(["quotaEstimate", "weekly", "resetCredits"]);
+    expect(resolveDataBars(["fiveHour", "fiveHour", "fiveHour"], "plus"))
+      .toEqual(["fiveHour", "fiveHour", "fiveHour"]);
   });
 });

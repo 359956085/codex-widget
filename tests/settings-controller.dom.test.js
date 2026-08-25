@@ -36,13 +36,15 @@ describe("设置面板", () => {
     expect(fixture.els.settingsError.getAttribute("aria-live")).toBe("assertive");
   });
 
-  it("隐藏仪表窗口后仍保留旧配置值", async () => {
+  it("恢复仪表窗口设置并保存旧配置值", async () => {
     const fixture = createFixture(vi.fn().mockResolvedValue({}));
     fixture.state.settings.meterWindow = "primary";
     fixture.open();
 
     expect(fixture.els.meterWindowSelect.value).toBe("primary");
-    expect(fixture.els.meterWindowSelect.closest(".settings-field").hidden).toBe(true);
+    expect(fixture.els.meterWindowSelect.closest(".settings-field").hidden).toBe(false);
+    expect(fixture.els.meterWindowSelect.tabIndex).toBe(-1);
+    expect(fixture.els.meterWindowSelect.closest(".custom-select-shell").querySelector("button").tabIndex).toBe(0);
 
     fixture.els.saveSettingsBtn.click();
     await vi.waitFor(() => expect(fixture.persistSettings).toHaveBeenCalledOnce());
@@ -53,6 +55,63 @@ describe("设置面板", () => {
       meterWindow: "secondary"
     });
     expect(savedSettings.meterWindow).toBe("primary");
+  });
+
+  it("自动数据栏按 Plus 套餐展示且保存其他设置仍保持自动", async () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}));
+    fixture.state.quota = { planType: "plus" };
+    fixture.open();
+
+    expect(fixture.els.dataBarSelects.map((select) => select.value))
+      .toEqual(["fiveHour", "weekly", "quotaEstimate"]);
+    expect(fixture.els.dataBarLabels.map((label) => label.textContent))
+      .toEqual(["数据栏 1", "数据栏 2", "数据栏 3"]);
+
+    fixture.els.saveSettingsBtn.click();
+    await vi.waitFor(() => expect(fixture.persistSettings).toHaveBeenCalledOnce());
+    const [updateSettings] = fixture.persistSettings.mock.calls[0];
+    expect(updateSettings(fixture.state.settings).dataBars).toBeNull();
+  });
+
+  it("修改任一数据栏后保存完整布局并允许重复", async () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}));
+    fixture.state.quota = { planType: "plus" };
+    fixture.open();
+
+    fixture.els.dataBarSelects[0].value = "weekly";
+    fixture.els.dataBarSelects[0].dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(fixture.state.settingsDraft.dataBars).toEqual(["weekly", "weekly", "quotaEstimate"]);
+
+    fixture.els.saveSettingsBtn.click();
+    await vi.waitFor(() => expect(fixture.persistSettings).toHaveBeenCalledOnce());
+    const [updateSettings] = fixture.persistSettings.mock.calls[0];
+    expect(updateSettings(fixture.state.settings).dataBars).toEqual(["weekly", "weekly", "quotaEstimate"]);
+  });
+
+  it("取消设置会丢弃数据栏草稿", () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}));
+    fixture.state.quota = { planType: "plus" };
+    fixture.open();
+
+    fixture.els.dataBarSelects[0].value = "resetCredits";
+    fixture.els.dataBarSelects[0].dispatchEvent(new Event("change", { bubbles: true }));
+    expect(fixture.state.settingsDraft.dataBars).toEqual(["resetCredits", "weekly", "quotaEstimate"]);
+
+    fixture.els.cancelSettingsBtn.click();
+    expect(fixture.state.settingsOpen).toBe(false);
+    expect(fixture.state.settingsDraft.dataBars).toBeNull();
+  });
+
+  it("英文设置展示数据栏标签和选项", () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}), { locale: "en" });
+    fixture.state.settings.locale = "en";
+    fixture.open();
+
+    expect(fixture.els.dataBarLabels.map((label) => label.textContent))
+      .toEqual(["Data bar 1", "Data bar 2", "Data bar 3"]);
+    expect(Array.from(fixture.els.dataBarSelects[0].options, (option) => option.textContent))
+      .toEqual(["5h window", "Weekly window", "Reset credits", "Quota estimate"]);
   });
 
   it("Escape 关闭面板并恢复打开按钮焦点", () => {
@@ -71,7 +130,7 @@ describe("设置面板", () => {
   });
 });
 
-function createFixture(persistSettings) {
+function createFixture(persistSettings, { locale = "zh" } = {}) {
   loadApplicationMarkup();
   const els = createElements();
   const state = createAppState();
@@ -79,7 +138,7 @@ function createFixture(persistSettings) {
   const refreshQuota = vi.fn();
   const scheduleUpdateChecks = vi.fn();
   let controller;
-  const render = vi.fn(() => controller.renderSettingsPanel(i18n.zh));
+  const render = vi.fn(() => controller.renderSettingsPanel(i18n[locale]));
   controller = createSettingsController({
     els,
     state,
@@ -88,7 +147,7 @@ function createFixture(persistSettings) {
       dialog: { chooseCodexPath: vi.fn() }
     },
     render,
-    renderLocale: () => "zh",
+    renderLocale: () => locale,
     persistSettings,
     normalizeError: (error) => error.message,
     readCurrentWindowPosition: vi.fn().mockResolvedValue(null),
