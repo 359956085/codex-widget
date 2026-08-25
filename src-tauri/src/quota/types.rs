@@ -23,6 +23,33 @@ pub struct ResetCreditExpiries {
     pub expiries: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum EstimateStatus {
+    Ready,
+    Collecting,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CycleQuotaEstimate {
+    pub cycle_ends_at: String,
+    pub status: EstimateStatus,
+    pub full_quota_usd: Option<f64>,
+    pub sample_count: u32,
+    pub percent_span: u8,
+    pub unpriced_event_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct QuotaEstimate {
+    pub price_table_as_of: String,
+    pub previous: Option<CycleQuotaEstimate>,
+    pub current: Option<CycleQuotaEstimate>,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaSnapshot {
@@ -38,4 +65,6 @@ pub struct QuotaSnapshot {
     pub used_percent: Option<u8>,
     pub resets_at: Option<String>,
     pub fetched_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quota_estimate: Option<QuotaEstimate>,
 }

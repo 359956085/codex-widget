@@ -2,12 +2,12 @@
 
 [简体中文](README.md)
 
-Codex Quota Widget is a desktop floating widget. It reads quota data from your local signed-in Codex and shows remaining quota, quota windows, reset credits, refresh time, and reset time in a compact panel or floating ball.
+Codex Quota Widget is a desktop floating widget. It reads quota data from your local signed-in Codex and shows weekly quota, previous/current weekly quota estimates, reset credits, refresh time, and reset time in a compact panel or floating ball.
 
 ### Features
 
-- Panel mode: shows remaining quota, 5-hour window, weekly window, reset credits, refresh time, and reset time.
-- Floating ball mode: keeps quota visible in a small desktop widget.
+- Panel mode: keeps the meter fixed to weekly quota and shows previous/current weekly quota estimates, reset credits, refresh time, and reset time.
+- Floating ball mode: keeps weekly quota visible in a small desktop widget.
 - Edge docking: docks the floating ball to the left or right screen edge.
 - Status colors: green for healthy, yellow for low, red for critical, empty, or error, and blue for loading.
 - Auto refresh: refreshes every 5 minutes by default and can refresh again after quota reset.
@@ -72,7 +72,7 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 2. Start this app.
 3. The app tries to detect `codex` or `codex.exe` automatically.
 4. If reading fails, open settings and choose the `codex` or `codex.exe` path manually.
-5. Check remaining quota, 5-hour quota, weekly quota, and reset credits in the panel.
+5. Check weekly quota, previous/current weekly quota estimates, and reset credits in the panel.
 6. Click the circle button to switch to floating ball mode; double-click the ball to restore the panel.
 
 ### Settings
@@ -85,9 +85,66 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 - Theme: choose Default theme, Basic theme 1, Basic theme 2, and Basic theme 3. The selection persists after restart.
 - Language: choose Chinese or English.
 
+### Quota Estimate Formula
+
+The quota estimate is the Token API equivalent value of 100% weekly quota. It is intended as a rough comparison, not an actual OpenAI bill. Results meeting the sample and span gates are rounded to whole dollars; results below either gate display `--`.
+
+#### Data and cycle selection
+
+The app streams local session logs from the latest 16 days under `CODEX_HOME/sessions`. It extracts only model, Token usage, weekly quota percentage, and reset time. Cumulative Token fingerprints deduplicate events. A weekly window is identified as `10080` minutes; reset times drifting by no more than 30 minutes belong to one cycle. The current cycle may differ from the live reset time by up to 2 hours, and the previous cycle is the nearest valid earlier cycle.
+
+`codex-auto-review` is estimated using GPT-5.4 pricing and participates normally in cost accumulation and regression. Other models without public pricing are not guessed and terminate the current sample segment. A new clean segment starts from a new quota-percentage and cumulative-cost baseline, preventing unknown models from contaminating later regression.
+
+#### Built-in price table
+
+Price table date: `2026-08-25`. All prices are USD per million Tokens, ordered as input, cached input, and output.
+
+| Model | Input | Cached input | Output |
+|---|---:|---:|---:|
+| [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol) | 4 | 0.4 | 20 |
+| [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) | 2 | 0.2 | 12 |
+| [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) | 0.2 | 0.02 | 1.2 |
+| [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
+| [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
+
+GPT-5.6 cache writes use `1.25×` the input price. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
+
+#### Per-event cost
+
+Variables:
+
+- `I`: input Tokens.
+- `C`: cached input Tokens.
+- `W`: cache-write Tokens.
+- `O`: output Tokens.
+- `P_in`, `P_cached`, `P_write`, and `P_out`: the model's per-million Token prices.
+
+```text
+U = max(I - C - W, 0)
+
+When I <= 272000: m_in = 1, m_out = 1
+When I > 272000:  m_in = 2, m_out = 1.5
+
+Cost = [m_in × (U × P_in + C × P_cached + W × P_write)
+        + m_out × O × P_out] / 1,000,000
+```
+
+Cached input and cache-write Tokens are deducted from input Tokens first. Reasoning Tokens are not added again. Tool-call fees are excluded.
+
+#### Weekly quota regression
+
+Each clean sample segment starts from zero. Let `X` be cumulative priced USD within the segment and `Y` be the increase in weekly quota used percentage from the segment baseline. The app uses an origin-constrained least-squares regression. Effective span is the union length of percentage intervals actually covered by all clean segments; overlaps count once and unobserved gaps are not filled.
+
+```text
+k = Σ(X × Y) / Σ(X²)
+100% weekly quota API equivalent = 100 / k
+```
+
+An amount is shown only when all gates pass: at least `10` valid percentage samples, at least `5%` unique covered span, and a positive finite slope. Changes in model mix, long-context share, cache hits, and sample distribution can change the estimate.
+
 ### Privacy
 
-This app only calls the local Codex and reuses your local sign-in state. It does not ask for tokens, store tokens, or upload quota data.
+This app only calls the local Codex and reuses your local sign-in state. It does not ask for or store tokens. Quota estimation reads only structured metering fields from local session logs; it does not read conversation content, upload session logs or estimates, or persist estimate results.
 
 ### Community
 

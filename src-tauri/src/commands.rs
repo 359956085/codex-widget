@@ -21,15 +21,35 @@ pub(crate) async fn get_quota(
         load_operational_settings(&app, &state, "backend.quota")
     };
     let codex_cli_path = settings.codex_cli_path.as_deref().map(Path::new);
-    // 长连接会话必须串行使用，避免多个刷新同时读写同一条 stdio 通道。
-    let mut service = state.quota_service.lock().await;
-    service.get_quota(codex_cli_path).await.map_err(|error| {
-        let message = error.to_string();
-        state
-            .logger
-            .write_best_effort(LogLevel::Error, "backend.quota", &message);
-        message
-    })
+    let mut snapshot = {
+        // 长连接会话必须串行使用，避免多个刷新同时读写同一条 stdio 通道。
+        let mut service = state.quota_service.lock().await;
+        service.get_quota(codex_cli_path).await.map_err(|error| {
+            let message = error.to_string();
+            state
+                .logger
+                .write_best_effort(LogLevel::Error, "backend.quota", &message);
+            message
+        })?
+    };
+
+    // 本地日志扫描不占用 App Server 会话锁；估算失败不能阻断权威额度刷新。
+    if let Some(reset_at) = snapshot
+        .secondary
+        .as_ref()
+        .and_then(|window| window.resets_at.as_deref())
+    {
+        match quota::estimate_weekly_quota(reset_at).await {
+            Ok(estimate) => snapshot.quota_estimate = Some(estimate),
+            Err(error) => state.logger.write_best_effort(
+                LogLevel::Warn,
+                "backend.quota.estimate",
+                &error.to_string(),
+            ),
+        }
+    }
+
+    Ok(snapshot)
 }
 
 #[tauri::command]

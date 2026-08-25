@@ -34,6 +34,7 @@ fn normalize_snapshot(response: &Value, snapshot: &Value) -> QuotaSnapshot {
         used_percent,
         resets_at,
         fetched_at: Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true),
+        quota_estimate: None,
     }
 }
 

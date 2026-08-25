@@ -466,6 +466,27 @@ body[data-theme="basic2"] .quota-card {
   backdrop-filter: blur(18px) saturate(1.08);
 }
 
+body[data-theme="basic2"] .quota-card.estimate-card {
+  grid-template-columns: 31px minmax(52px, 1fr) 1px 47px 1px 47px;
+  gap: 4px;
+  padding-right: 7px;
+}
+
+body[data-theme="basic2"] .estimate-card .estimate-divider {
+  background: rgba(238, 178, 88, 0.4);
+}
+
+body[data-theme="basic2"] .estimate-card .estimate-period small {
+  color: rgba(230, 213, 184, 0.78);
+}
+
+body[data-theme="basic2"] .quota-card.estimate-card .estimate-value {
+  color: rgba(255, 190, 82, 0.98);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.72),
+    0 0 9px rgba(238, 178, 88, 0.28);
+}
+
 body[data-theme="basic2"] .quota-card.primary,
 body[data-theme="basic2"] .quota-card.slim {
   background:

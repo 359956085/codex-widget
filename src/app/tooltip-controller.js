@@ -149,6 +149,7 @@ function pointerFromEvent(event) {
 }
 
 function placementFor(target) {
+  if (target.classList.contains("estimate-card")) return "estimate";
   return document.body.dataset.widgetMode === "ball" && target.classList.contains("widget") ? "ball" : "top";
 }
 

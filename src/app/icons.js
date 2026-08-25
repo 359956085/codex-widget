@@ -9,6 +9,7 @@ import {
   PinOff,
   RefreshCw,
   Settings,
+  WalletCards,
   X
 } from "lucide";
 
@@ -46,6 +47,7 @@ const ACTION_ICONS = {
   "pin-off": PinOff,
   "refresh-cw": RefreshCw,
   settings: Settings,
+  "wallet-cards": WalletCards,
   x: X
 };
 
@@ -60,6 +62,7 @@ export function initializeActionIcons(els, logger) {
     [els.settingsCloseBtn, "x"],
     [els.chooseCodexBtn, "folder-open"],
     [els.statusIcon, "refresh-cw"],
+    [document.querySelector('[data-quota-icon="estimate"]'), "wallet-cards"],
     [document.querySelector('[data-quota-icon="primary"]'), "clock-3"],
     [document.querySelector('[data-quota-icon="secondary"]'), "calendar-days"],
     [document.querySelector('[data-quota-icon="plan"]'), "reset-credit"]

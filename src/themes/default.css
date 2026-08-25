@@ -531,6 +531,36 @@ body[data-theme="default"] .quota-icon {
   display: none;
 }
 
+body[data-theme="default"] .quota-card.estimate-card {
+  grid-template-columns: 22px minmax(54px, 1fr) 1px 46px 1px 46px;
+  gap: 5px;
+  padding: 0 9px 0 8px;
+}
+
+body[data-theme="default"] .estimate-card .quota-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--default-accent);
+  background: rgba(var(--default-accent-rgb), 0.08);
+  box-shadow: inset 0 0 0 1px rgba(var(--default-accent-rgb), 0.24);
+}
+
+body[data-theme="default"] .estimate-card .quota-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+body[data-theme="default"] .estimate-card .estimate-divider {
+  background: rgba(var(--default-accent-rgb), 0.24);
+}
+
+body[data-theme="default"] .estimate-card .estimate-period small {
+  color: rgba(var(--default-accent-rgb), 0.62);
+}
+
 body[data-theme="default"] .quota-card > span:not(.quota-icon),
 body[data-theme="default"] .quota-card .quota-copy > span {
   color: rgba(236, 244, 250, 0.88);

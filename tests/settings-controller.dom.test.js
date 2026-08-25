@@ -36,6 +36,25 @@ describe("设置面板", () => {
     expect(fixture.els.settingsError.getAttribute("aria-live")).toBe("assertive");
   });
 
+  it("隐藏仪表窗口后仍保留旧配置值", async () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}));
+    fixture.state.settings.meterWindow = "primary";
+    fixture.open();
+
+    expect(fixture.els.meterWindowSelect.value).toBe("primary");
+    expect(fixture.els.meterWindowSelect.closest(".settings-field").hidden).toBe(true);
+
+    fixture.els.saveSettingsBtn.click();
+    await vi.waitFor(() => expect(fixture.persistSettings).toHaveBeenCalledOnce());
+
+    const [updateSettings] = fixture.persistSettings.mock.calls[0];
+    const savedSettings = updateSettings({
+      ...fixture.state.settings,
+      meterWindow: "secondary"
+    });
+    expect(savedSettings.meterWindow).toBe("primary");
+  });
+
   it("Escape 关闭面板并恢复打开按钮焦点", () => {
     const fixture = createFixture(vi.fn().mockResolvedValue({}));
     fixture.open();

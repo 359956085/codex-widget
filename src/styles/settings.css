@@ -76,6 +76,10 @@
   gap: 4px;
 }
 
+.settings-field[hidden] {
+  display: none;
+}
+
 .settings-row {
   justify-content: space-between;
   gap: 10px;

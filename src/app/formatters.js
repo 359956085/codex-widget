@@ -12,6 +12,27 @@ export function formatResetCredits(availableCount) {
   return "--";
 }
 
+export function formatQuotaEstimateUsd(estimate, locale) {
+  const value = estimate?.status === "ready" ? Number(estimate.fullQuotaUsd) : Number.NaN;
+  if (!Number.isFinite(value) || value <= 0) return "--";
+
+  const amount = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", {
+    maximumFractionDigits: 0
+  }).format(Math.round(value));
+  return `$${amount}`;
+}
+
+export function formatQuotaEstimateTooltip(estimate, text, locale) {
+  const separator = locale === "zh" ? "；" : "; ";
+  const parts = [text.estimateDisclaimer];
+  parts.push(formatEstimateCycleDetails(text.estimatePrevious, estimate?.previous, text, locale));
+  parts.push(formatEstimateCycleDetails(text.estimateCurrent, estimate?.current, text, locale));
+  if (estimate?.priceTableAsOf) {
+    parts.push(`${text.estimatePriceTable} ${estimate.priceTableAsOf}`);
+  }
+  return parts.join(separator);
+}
+
 export function formatResetCreditExpiries(expiries, status) {
   if (status !== "success" || !Array.isArray(expiries) || expiries.length === 0) {
     return "--";
@@ -30,7 +51,8 @@ export function formatWindowLabel(minutes, fallbackLabel, text, locale) {
   if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) return fallbackLabel;
   if (minutes % 10080 === 0) {
     const value = minutes / 10080;
-    return locale === "zh" ? `${value}周窗口` : `${value}w window`;
+    if (locale === "zh") return value === 1 ? "周窗口" : `${value}周窗口`;
+    return `${value}w window`;
   }
   if (minutes % 1440 === 0) {
     const value = minutes / 1440;
@@ -105,6 +127,32 @@ function formatRemainingDuration(time) {
   if (hours >= 1) return `${hours}h`;
 
   return `${totalMinutes}m`;
+}
+
+function formatEstimateCycleDetails(label, estimate, text, locale) {
+  const delimiter = locale === "zh" ? "：" : ": ";
+  if (!estimate) {
+    return `${label}${delimiter}${text.estimateUnavailable}`;
+  }
+
+  const details = [
+    `${text.estimateSamples} ${formatEstimateMetric(estimate.sampleCount)}`,
+    `${text.estimateSpan} ${formatEstimateMetric(estimate.percentSpan)}%`
+  ];
+  details.push(`${text.estimateUnpriced} ${formatEstimateMetric(estimate.unpricedEventCount)}`);
+
+  if (estimate.status === "unavailable") {
+    return `${label}${delimiter}${text.estimateUnavailable} (${details.join(", ")})`;
+  }
+  if (estimate.status !== "ready") {
+    return `${label}${delimiter}${text.estimateCollecting} (${details.join(", ")})`;
+  }
+  return `${label}${delimiter}${formatQuotaEstimateUsd(estimate, locale)} (${details.join(", ")})`;
+}
+
+function formatEstimateMetric(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? String(Math.round(number)) : "0";
 }
 
 // 预存兼容代码暂不删除，仅排除未使用检查。

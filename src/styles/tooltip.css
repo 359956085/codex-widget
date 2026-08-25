@@ -48,6 +48,13 @@
     0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
+.app-tooltip[data-placement="estimate"] {
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  text-align: left;
+  white-space: normal;
+}
+
 .app-tooltip[data-placement="ball"]::after {
   display: none;
 }

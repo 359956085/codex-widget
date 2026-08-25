@@ -2,8 +2,9 @@ import { APP_VERSION_LABEL, i18n, WIDGET_MODES } from "./constants.js";
 import {
   formatResetCreditExpiries,
   formatResetCredits,
+  formatQuotaEstimateTooltip,
+  formatQuotaEstimateUsd,
   formatDateTimeOrPlaceholder,
-  formatTimeOrPlaceholder,
   formatWindowLabel,
   getVisualState,
   selectedMeterWindow,
@@ -39,8 +40,8 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     const text = i18n[activeLocale];
     const quota = state.quota;
     const hasQuota = Boolean(quota);
-    const meterWindow = state.settingsOpen ? state.settingsDraft.meterWindow : state.settings.meterWindow;
-    const meterWindowData = selectedMeterWindow(quota, meterWindow);
+    // OpenAI 当前未提供 5 小时限额；保留旧设置代码，方便未来恢复后重新启用。
+    const meterWindowData = selectedMeterWindow(quota, "secondary");
     const remaining = typeof meterWindowData?.remainingPercent === "number" ? meterWindowData.remainingPercent : null;
     const remainingValue = remaining === null ? 0 : clamp(remaining, 0, 100);
     const visualState = getVisualState(remaining);
@@ -125,13 +126,19 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
   }
 
   function renderQuotaCards({ activeLocale, quota, text }) {
+    const estimate = quota?.quotaEstimate;
+    setText(els.estimateLabel, text.estimateTitle);
+    setText(els.previousEstimateLabel, text.estimatePrevious);
+    setText(els.currentEstimateLabel, text.estimateCurrent);
+    setText(els.previousEstimateValue, formatQuotaEstimateUsd(estimate?.previous, activeLocale));
+    setText(els.currentEstimateValue, formatQuotaEstimateUsd(estimate?.current, activeLocale));
+    const estimateTooltip = formatQuotaEstimateTooltip(estimate, text, activeLocale);
+    setTooltip(els.quotaEstimateCard, estimateTooltip);
+    setAttribute(els.quotaEstimateCard, "aria-label", estimateTooltip);
     setText(els.planLabel, text.plan);
-    setText(els.primaryResetLabel, text.primaryResetInlineLabel);
     setText(els.secondaryResetLabel, text.secondaryResetLabel);
     setText(els.planExpiryLabel, text.resetCreditExpiryPrefix);
-    renderWindow(quota?.primary, els.primaryLabel, els.primaryText, text.primaryFallback, text, activeLocale);
     renderWindow(quota?.secondary, els.secondaryLabel, els.secondaryText, text.secondaryFallback, text, activeLocale);
-    setText(els.primaryResetValue, formatTimeOrPlaceholder(quota?.primary?.resetsAt, activeLocale));
     setText(els.secondaryResetValue, formatDateTimeOrPlaceholder(quota?.secondary?.resetsAt, activeLocale));
     setText(els.planText, formatResetCredits(quota?.resetCredits?.availableCount));
     setText(

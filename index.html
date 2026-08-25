@@ -41,18 +41,28 @@
         <div id="meterHost" class="meter-host"></div>
 
         <div class="quota-panel">
-          <div class="quota-card primary">
-            <span class="quota-icon" data-quota-icon="primary" aria-hidden="true">
-              <i data-lucide="clock-3"></i>
+          <div
+            id="quotaEstimateCard"
+            class="quota-card primary estimate-card"
+            data-no-drag
+            role="group"
+            tabindex="0"
+            aria-label="100% 周额度 Token API 等价值，不等于实际账单"
+          >
+            <span class="quota-icon" data-quota-icon="estimate" aria-hidden="true">
+              <i data-lucide="wallet-cards"></i>
             </span>
-            <span class="quota-copy">
-              <span id="primaryLabel">5小时窗口</span>
-              <small class="quota-subtext">
-                <span id="primaryResetLabel" class="quota-sub-label">重置时间：</span>
-                <span id="primaryResetValue" class="quota-sub-value">--</span>
-              </small>
+            <span id="estimateLabel" class="estimate-title">额度估算</span>
+            <span class="estimate-divider" aria-hidden="true"></span>
+            <span class="estimate-period">
+              <small id="previousEstimateLabel">上周</small>
+              <strong id="previousEstimateValue" class="estimate-value">--</strong>
             </span>
-            <strong id="primaryText">--</strong>
+            <span class="estimate-divider" aria-hidden="true"></span>
+            <span class="estimate-period">
+              <small id="currentEstimateLabel">本周</small>
+              <strong id="currentEstimateValue" class="estimate-value">--</strong>
+            </span>
           </div>
           <div class="quota-card">
             <span class="quota-icon" data-quota-icon="secondary" aria-hidden="true">
@@ -168,7 +178,7 @@
             </div>
           </div>
 
-          <div class="settings-field">
+          <div class="settings-field" hidden>
             <span id="meterWindowLabel">仪表窗口</span>
             <div class="custom-select-shell" data-no-drag>
               <select id="meterWindowSelect" class="settings-input settings-select" data-no-drag aria-labelledby="meterWindowLabel"></select>

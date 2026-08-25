@@ -16,6 +16,57 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
+.quota-card.estimate-card {
+  grid-template-columns: minmax(58px, 1fr) 1px 46px 1px 46px;
+  gap: 5px;
+  cursor: help;
+}
+
+.estimate-title {
+  min-width: 0;
+  font-weight: 760;
+}
+
+.quota-card .estimate-divider {
+  width: 1px;
+  height: 26px;
+  justify-self: center;
+  background: rgba(225, 237, 248, 0.2);
+}
+
+.quota-card .estimate-period {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  gap: 1px;
+  overflow: visible;
+}
+
+.quota-card .estimate-period small {
+  overflow: hidden;
+  max-width: 100%;
+  color: rgba(225, 237, 248, 0.62);
+  font-size: 9px;
+  font-weight: 660;
+  line-height: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quota-card.estimate-card .estimate-value {
+  max-width: none;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 17px;
+  text-align: center;
+}
+
+.estimate-card:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 1px;
+}
+
 .quota-icon,
 .status-icon {
   display: none;
