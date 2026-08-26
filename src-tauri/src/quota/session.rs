@@ -89,7 +89,7 @@ impl CodexSession {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true);
-        super::command::configure_codex_process_environment(&mut command);
+        super::command::configure_codex_process_environment(&mut command, &codex_command);
         hide_background_process_window(&mut command);
 
         let mut child = command

@@ -158,7 +158,7 @@ k = Σ(X × Y) / Σ(X²)
 
 **找不到 Codex CLI**
 
-在设置中手动选择 `codex` 或 `codex.exe`。应用会优先使用设置中的路径，其次读取 `CODEX_CLI_PATH`，再尝试系统常见安装目录和 `PATH`。
+在设置中手动选择 `codex` 或 `codex.exe`。应用会优先使用设置中的路径，其次读取 `CODEX_CLI_PATH`，再尝试系统 `PATH` 和常见安装目录。macOS 还会自动探测 `~/.nvm/versions/node/*/bin/codex`，并为 Codex 子进程补充对应的 Node 路径，Finder 启动时无需加载 `.zshrc`。也可按 [Codex CLI 官方说明](https://developers.openai.com/codex/cli/)安装独立版。
 
 **额度读取失败**
 

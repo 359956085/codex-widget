@@ -158,7 +158,7 @@ This app only calls the local Codex and reuses your local sign-in state. It does
 
 **Codex CLI not found**
 
-Choose `codex` or `codex.exe` manually in settings. The app checks the saved path first, then `CODEX_CLI_PATH`, common install paths, and `PATH`.
+Choose `codex` or `codex.exe` manually in settings. The app checks the saved path first, then `CODEX_CLI_PATH`, the system `PATH`, and common install locations. On macOS it also detects `~/.nvm/versions/node/*/bin/codex` and adds the matching Node directory to the Codex child process, so Finder launches do not depend on `.zshrc`. You can also install the standalone build from the [official Codex CLI instructions](https://developers.openai.com/codex/cli/).
 
 **Quota read failed**
 

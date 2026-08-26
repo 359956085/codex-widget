@@ -2,7 +2,7 @@ use std::env;
 #[cfg(target_os = "macos")]
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 use std::{fs, time::SystemTime};
 
 use tokio::process::Command;
@@ -59,6 +59,9 @@ fn push_platform_candidates(candidates: &mut Vec<PathBuf>) {
 #[cfg(target_os = "macos")]
 fn push_platform_candidates(candidates: &mut Vec<PathBuf>) {
     for path in macos_common_codex_paths() {
+        candidates.push(path);
+    }
+    if let Some(path) = find_macos_nvm_codex_command() {
         candidates.push(path);
     }
 }
@@ -141,10 +144,58 @@ fn macos_common_codex_paths() -> Vec<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-fn codex_process_path() -> Option<OsString> {
+fn find_macos_nvm_codex_command() -> Option<PathBuf> {
+    let home = env::var_os("HOME")?;
+    let versions_dir = PathBuf::from(home)
+        .join(".nvm")
+        .join("versions")
+        .join("node");
+    find_newest_macos_nvm_codex_command(&versions_dir)
+}
+
+#[cfg(target_os = "macos")]
+fn find_newest_macos_nvm_codex_command(versions_dir: &Path) -> Option<PathBuf> {
+    let entries = fs::read_dir(versions_dir).ok()?;
+    let mut newest: Option<(SystemTime, PathBuf)> = None;
+
+    for entry in entries.flatten() {
+        let candidate = entry.path().join("bin").join(CODEX_COMMAND_NAME);
+        if !is_usable_command_file(&candidate) {
+            continue;
+        }
+
+        let modified_at = candidate
+            .metadata()
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        let should_replace = match &newest {
+            None => true,
+            Some((current_time, current_path)) => {
+                modified_at > *current_time
+                    || (modified_at == *current_time && candidate < *current_path)
+            }
+        };
+        if should_replace {
+            newest = Some((modified_at, candidate));
+        }
+    }
+
+    newest.map(|(_, path)| path)
+}
+
+#[cfg(target_os = "macos")]
+fn codex_process_path(codex_command: &Path) -> Option<OsString> {
     let mut paths = env::var_os("PATH")
         .map(|value| env::split_paths(&value).collect::<Vec<_>>())
         .unwrap_or_default();
+    if let Some(parent) = codex_command
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+    {
+        // NVM 的 codex 通过 `/usr/bin/env node` 启动，必须先让它找到同目录的 Node。
+        paths.retain(|path| path != parent);
+        paths.insert(0, parent.to_path_buf());
+    }
     for dir in macos_common_command_dirs() {
         if !paths.iter().any(|path| path == &dir) {
             paths.push(dir);
@@ -170,25 +221,32 @@ fn macos_common_command_dirs() -> Vec<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-pub(super) fn configure_codex_process_environment(command: &mut Command) {
-    if let Some(path) = codex_process_path() {
+pub(super) fn configure_codex_process_environment(command: &mut Command, codex_command: &Path) {
+    if let Some(path) = codex_process_path(codex_command) {
         // 只修改 Codex 子进程环境，避免 Tauri 多线程运行期改写全局 PATH。
         command.env("PATH", path);
     }
 }
 
 #[cfg(not(target_os = "macos"))]
-pub(super) fn configure_codex_process_environment(_command: &mut Command) {}
+pub(super) fn configure_codex_process_environment(_command: &mut Command, _codex_command: &Path) {}
 
 #[cfg(target_os = "macos")]
-pub fn configure_open_codex_process_environment(command: &mut std::process::Command) {
-    if let Some(path) = codex_process_path() {
+pub fn configure_open_codex_process_environment(
+    command: &mut std::process::Command,
+    codex_command: &Path,
+) {
+    if let Some(path) = codex_process_path(codex_command) {
         command.env("PATH", path);
     }
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn configure_open_codex_process_environment(_command: &mut std::process::Command) {}
+pub fn configure_open_codex_process_environment(
+    _command: &mut std::process::Command,
+    _codex_command: &Path,
+) {
+}
 
 fn is_usable_command_file(path: &Path) -> bool {
     if !path.is_file() {
@@ -247,5 +305,121 @@ mod tests {
         permissions.set_mode(0o755);
         fs::set_permissions(&command, permissions).unwrap();
         assert!(is_usable_command_file(&command));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_nvm_选择修改时间最新的可执行命令() {
+        use std::fs::{self, File, FileTimes};
+        use std::os::unix::fs::PermissionsExt;
+        use std::time::{Duration, SystemTime};
+
+        let dir = tempfile::tempdir().unwrap();
+        let old_command = create_nvm_codex_for_test(dir.path(), "v22.0.0");
+        let new_command = create_nvm_codex_for_test(dir.path(), "v24.14.0");
+        File::options()
+            .write(true)
+            .open(&old_command)
+            .unwrap()
+            .set_times(
+                FileTimes::new().set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(1)),
+            )
+            .unwrap();
+        File::options()
+            .write(true)
+            .open(&new_command)
+            .unwrap()
+            .set_times(
+                FileTimes::new().set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(2)),
+            )
+            .unwrap();
+
+        let invalid = dir.path().join("v25.0.0").join("bin").join("codex");
+        fs::create_dir_all(invalid.parent().unwrap()).unwrap();
+        fs::write(&invalid, "#!/bin/sh\n").unwrap();
+        let mut permissions = fs::metadata(&invalid).unwrap().permissions();
+        permissions.set_mode(0o644);
+        fs::set_permissions(&invalid, permissions).unwrap();
+        fs::create_dir_all(dir.path().join("v26.0.0").join("bin").join("codex")).unwrap();
+
+        assert_eq!(
+            find_newest_macos_nvm_codex_command(dir.path()),
+            Some(new_command)
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_nvm_修改时间相同时按路径稳定选择() {
+        use std::fs::{File, FileTimes};
+        use std::time::{Duration, SystemTime};
+
+        let dir = tempfile::tempdir().unwrap();
+        let first = create_nvm_codex_for_test(dir.path(), "v22.0.0");
+        let second = create_nvm_codex_for_test(dir.path(), "v24.0.0");
+        let modified_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1);
+        for command in [&first, &second] {
+            File::options()
+                .write(true)
+                .open(command)
+                .unwrap()
+                .set_times(FileTimes::new().set_modified(modified_at))
+                .unwrap();
+        }
+
+        assert_eq!(find_newest_macos_nvm_codex_command(dir.path()), Some(first));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_子进程_path_优先包含命令父目录且不重复() {
+        let command = PathBuf::from("/Users/test/.nvm/versions/node/v24/bin/codex");
+        let path = codex_process_path(&command).unwrap();
+        let paths = env::split_paths(&path).collect::<Vec<_>>();
+        let parent = command.parent().unwrap();
+
+        assert_eq!(paths.first().map(PathBuf::as_path), Some(parent));
+        assert_eq!(
+            paths.iter().filter(|path| path.as_path() == parent).count(),
+            1
+        );
+        assert!(paths.contains(&PathBuf::from("/usr/bin")));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_nvm_codex_可通过同目录_env_node_启动() {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let codex = dir.path().join("codex");
+        let node = dir.path().join("node");
+        fs::write(&codex, "#!/usr/bin/env node\n").unwrap();
+        fs::write(&node, "#!/bin/sh\nexit 0\n").unwrap();
+        for path in [&codex, &node] {
+            let mut permissions = fs::metadata(path).unwrap().permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(path, permissions).unwrap();
+        }
+
+        let mut command = std::process::Command::new(&codex);
+        configure_open_codex_process_environment(&mut command, &codex);
+
+        assert!(command.status().unwrap().success());
+    }
+
+    #[cfg(target_os = "macos")]
+    fn create_nvm_codex_for_test(versions_dir: &Path, version: &str) -> PathBuf {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let command = versions_dir.join(version).join("bin").join("codex");
+        fs::create_dir_all(command.parent().unwrap()).unwrap();
+        fs::write(&command, "#!/bin/sh\n").unwrap();
+        let mut permissions = fs::metadata(&command).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&command, permissions).unwrap();
+        command
     }
 }

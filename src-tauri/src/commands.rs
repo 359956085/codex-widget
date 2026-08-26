@@ -112,7 +112,7 @@ pub(crate) async fn open_codex(app: AppHandle, state: State<'_, AppState>) -> Re
     let codex_cli_path = settings.codex_cli_path.as_deref().map(Path::new);
     let command = quota::resolve_codex_command(codex_cli_path);
     let mut process = Command::new(&command);
-    quota::configure_open_codex_process_environment(&mut process);
+    quota::configure_open_codex_process_environment(&mut process, &command);
     process.spawn().map_err(|error| {
         let message = format!("无法打开 Codex CLI：{}，{}", command.display(), error);
         state
