@@ -144,7 +144,7 @@ k = Σ(X × Y) / Σ(X²)
 100% weekly quota API equivalent = 100 / k
 ```
 
-An amount is shown only when all gates pass: at least `10` valid percentage samples, at least `5%` unique covered span, and a positive finite slope. Changes in model mix, long-context share, cache hits, and sample distribution can change the estimate.
+An amount is shown only when all gates pass: at least `3` valid percentage samples, at least `2%` unique covered span, and a positive finite slope. Changes in model mix, long-context share, cache hits, and sample distribution can change the estimate.
 
 ### Privacy
 

@@ -22,9 +22,15 @@ export function formatQuotaEstimateUsd(estimate, locale) {
   return `$${amount}`;
 }
 
-export function formatQuotaEstimateTooltip(estimate, text, locale) {
+export function formatQuotaEstimateTooltip(estimate, text, locale, { loading = false } = {}) {
   const separator = locale === "zh" ? "；" : "; ";
   const parts = [text.estimateDisclaimer];
+  if (loading) {
+    const delimiter = locale === "zh" ? "：" : ": ";
+    parts.push(`${text.estimatePrevious}${delimiter}${text.estimateLoading}`);
+    parts.push(`${text.estimateCurrent}${delimiter}${text.estimateLoading}`);
+    return parts.join(separator);
+  }
   parts.push(formatEstimateCycleDetails(text.estimatePrevious, estimate?.previous, text, locale));
   parts.push(formatEstimateCycleDetails(text.estimateCurrent, estimate?.current, text, locale));
   if (estimate?.priceTableAsOf) {

@@ -69,6 +69,7 @@ describe("展示格式化", () => {
       estimateSpan: "跨度",
       estimateUnpriced: "未计价",
       estimateCollecting: "仍在收集",
+      estimateLoading: "正在获取数据",
       estimateUnavailable: "不可用"
     };
     const tooltip = formatQuotaEstimateTooltip({
@@ -92,6 +93,10 @@ describe("展示格式化", () => {
     expect(tooltip).not.toContain("R²");
     expect(tooltip).toContain("本周：仍在收集");
     expect(tooltip).toContain("价格表 2026-08-25");
+    const loadingTooltip = formatQuotaEstimateTooltip(null, text, "zh", { loading: true });
+    expect(loadingTooltip).toContain("上周：正在获取数据");
+    expect(loadingTooltip).toContain("本周：正在获取数据");
+    expect(loadingTooltip).not.toContain("不可用");
     expect(formatQuotaEstimateTooltip(null, text, "zh")).toContain("上周：不可用");
     expect(formatQuotaEstimateTooltip({
       previous: null,

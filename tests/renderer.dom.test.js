@@ -13,16 +13,18 @@ describe("界面渲染", () => {
   let els;
   let state;
   let renderer;
+  let locale;
 
   beforeEach(() => {
     loadApplicationMarkup();
     els = createElements();
     initializeActionIcons(els);
     state = createAppState();
+    locale = "zh";
     renderer = createRenderer({
       els,
       state,
-      getLocale: () => "zh",
+      getLocale: () => locale,
       getTheme: () => state.settings.theme,
       onVersionClick: vi.fn(),
       settingsView: { renderSettingsPanel: vi.fn() }
@@ -183,6 +185,62 @@ describe("界面渲染", () => {
     expect(estimateCard.dataset.tooltip).not.toContain("R²");
     expect(estimateCard.getAttribute("aria-label")).toContain("不等于实际账单");
     expect(els.dataBarCards[1].querySelector("strong").textContent).toBe("97%");
+  });
+
+  it("冷启动时额度估算保持占位符并提示正在获取", () => {
+    state.settings.dataBars = ["quotaEstimate", "quotaEstimate", "quotaEstimate"];
+    state.loading = true;
+
+    renderer.render();
+
+    expect(els.statusText.textContent).toBe("正在通过 Codex CLI 读取额度...");
+    els.dataBarCards.forEach((estimateCard) => {
+      expect([...estimateCard.querySelectorAll(".estimate-value")].map((element) => element.textContent)).toEqual([
+        "--",
+        "--"
+      ]);
+      expect(estimateCard.dataset.tooltip).toContain("上周：正在获取数据");
+      expect(estimateCard.dataset.tooltip).toContain("本周：正在获取数据");
+      expect(estimateCard.dataset.tooltip).not.toContain("无可用本地会话数据");
+      expect(estimateCard.getAttribute("aria-label")).toBe(estimateCard.dataset.tooltip);
+    });
+  });
+
+  it("英文冷启动提示使用 Fetching data", () => {
+    locale = "en";
+    state.settings.dataBars = ["quotaEstimate", "weekly", "resetCredits"];
+    state.loading = true;
+
+    renderer.render();
+
+    const estimateCard = els.dataBarCards[0];
+    expect(estimateCard.dataset.tooltip).toContain("Last: Fetching data");
+    expect(estimateCard.dataset.tooltip).toContain("Current: Fetching data");
+    expect(estimateCard.dataset.tooltip).not.toContain("No usable local session data");
+  });
+
+  it("后台刷新保留已有估算且不显示获取中", () => {
+    state.quota = createQuotaFixture();
+    state.loading = true;
+
+    renderer.render();
+
+    const estimateCard = els.dataBarCards[0];
+    expect(estimateCard.querySelectorAll(".estimate-value")[0].textContent).toBe("$105");
+    expect(estimateCard.dataset.tooltip).toContain("样本 39");
+    expect(estimateCard.dataset.tooltip).not.toContain("正在获取数据");
+  });
+
+  it("加载结束但估算缺失时恢复无可用数据", () => {
+    state.settings.dataBars = ["quotaEstimate", "weekly", "resetCredits"];
+    state.loading = false;
+
+    renderer.render();
+    expect(els.dataBarCards[0].dataset.tooltip).toContain("上周：无可用本地会话数据");
+
+    state.quota = { ...createQuotaFixture(), quotaEstimate: null };
+    renderer.render();
+    expect(els.dataBarCards[0].dataset.tooltip).toContain("本周：无可用本地会话数据");
   });
 
   it("四套主题都能挂载套餐默认和重复布局", () => {

@@ -50,6 +50,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     const remainingValue = remaining === null ? 0 : clamp(remaining, 0, 100);
     const visualState = getVisualState(remaining);
     const error = activeError(state);
+    const isInitialQuotaLoading = state.loading && !hasQuota;
     const mainState = error && !hasQuota ? "error" : state.loading ? "loading" : visualState;
     const updateStatusText = formatUpdateStatus(text, state.updateStatus);
 
@@ -64,6 +65,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
       remainingValue,
       visualState,
       error,
+      isInitialQuotaLoading,
       mainState,
       updateStatusText
     };
@@ -188,7 +190,7 @@ function createDataBarView(card, state) {
   let activeContent = null;
   let elements = null;
 
-  function render(content, { activeLocale, quota, text }) {
+  function render(content, { activeLocale, isInitialQuotaLoading, quota, text }) {
     if (activeContent !== content) {
       activeContent = content;
       elements = buildDataBar(card, content);
@@ -210,7 +212,7 @@ function createDataBarView(card, state) {
       return;
     }
 
-    renderEstimateData(card, elements, quota?.quotaEstimate, text, activeLocale);
+    renderEstimateData(card, elements, quota?.quotaEstimate, text, activeLocale, isInitialQuotaLoading);
   }
 
   return { render };
@@ -305,13 +307,13 @@ function renderWindowData(elements, windowData, fallbackLabel, resetLabel, text,
   setText(elements.subValue, formatDateTimeOrPlaceholder(windowData?.resetsAt, locale));
 }
 
-function renderEstimateData(card, elements, estimate, text, locale) {
+function renderEstimateData(card, elements, estimate, text, locale, isInitialQuotaLoading) {
   setText(elements.label, text.estimateTitle);
   setText(elements.previousLabel, text.estimatePrevious);
   setText(elements.currentLabel, text.estimateCurrent);
   setText(elements.previousValue, formatQuotaEstimateUsd(estimate?.previous, locale));
   setText(elements.currentValue, formatQuotaEstimateUsd(estimate?.current, locale));
-  const tooltip = formatQuotaEstimateTooltip(estimate, text, locale);
+  const tooltip = formatQuotaEstimateTooltip(estimate, text, locale, { loading: isInitialQuotaLoading });
   setTooltip(card, tooltip);
   setAttribute(card, "aria-label", tooltip);
 }

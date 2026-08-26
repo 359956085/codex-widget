@@ -21,8 +21,8 @@ const MAX_FILE_COUNT: usize = 5_000;
 const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_LINE_BYTES: usize = 1024 * 1024;
 const MAX_DIRECTORY_DEPTH: usize = 8;
-const MIN_SAMPLE_COUNT: usize = 10;
-const MIN_PERCENT_SPAN: f64 = 5.0;
+const MIN_SAMPLE_COUNT: usize = 3;
+const MIN_PERCENT_SPAN: f64 = 2.0;
 const LONG_CONTEXT_INPUT_TOKENS: u64 = 272_000;
 
 #[derive(Debug, Clone, Copy)]
@@ -906,40 +906,45 @@ mod tests {
     #[test]
     fn 样本和跨度恰好达到门槛时展示估值() {
         let reset_at = 10_000;
-        let events = (0..=10)
-            .map(|index| {
+        let events = [0.0, 0.5, 1.0, 2.0]
+            .into_iter()
+            .enumerate()
+            .map(|(index, percent)| {
                 test_event(
-                    1_000 + i64::from(index),
+                    1_000 + i64::try_from(index).unwrap(),
                     reset_at,
-                    f64::from(index) * 0.5,
+                    percent,
                     Some(if index == 0 { 0.0 } else { 1.0 }),
                 )
             })
             .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.sample_count, 10);
-        assert_eq!(current.percent_span, 5);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 2);
         assert_eq!(current.status, EstimateStatus::Ready);
+        assert!(current.full_quota_usd.is_some());
     }
 
     #[test]
     fn 唯一跨度不足时不返回金额() {
         let reset_at = 10_000;
-        let events = (0..=10)
-            .map(|index| {
+        let events = [0.0, 0.3, 0.6, 1.0]
+            .into_iter()
+            .enumerate()
+            .map(|(index, percent)| {
                 test_event(
-                    1_000 + i64::from(index),
+                    1_000 + i64::try_from(index).unwrap(),
                     reset_at,
-                    f64::from(index) * 0.4,
+                    percent,
                     Some(if index == 0 { 0.0 } else { 1.0 }),
                 )
             })
             .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.sample_count, 10);
-        assert_eq!(current.percent_span, 4);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 1);
         assert_eq!(current.status, EstimateStatus::Collecting);
         assert_eq!(current.full_quota_usd, None);
     }
@@ -947,7 +952,7 @@ mod tests {
     #[test]
     fn 样本不足时不返回金额() {
         let reset_at = 10_000;
-        let events = (0..5)
+        let events = (0..=2)
             .map(|percent| {
                 test_event(
                     1_000 + i64::from(percent),
@@ -959,6 +964,8 @@ mod tests {
             .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
+        assert_eq!(current.sample_count, 2);
+        assert_eq!(current.percent_span, 2);
         assert_eq!(current.status, EstimateStatus::Collecting);
         assert_eq!(current.full_quota_usd, None);
     }
