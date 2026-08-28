@@ -245,7 +245,7 @@ body[data-widget-mode="ball"] .titlebar,
 body[data-widget-mode="ball"] .quota-panel,
 body[data-widget-mode="ball"] .status,
 body[data-widget-mode="ball"] .settings-panel {
-  display: none;
+  display: none !important;
 }
 
 body[data-widget-mode="ball"] .content {

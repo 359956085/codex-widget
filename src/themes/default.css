@@ -1,28 +1,27 @@
 body[data-theme="default"] {
-  --default-accent: #22F37DFF;
-  --default-accent-deep: #00bd78;
-  --default-accent-rgb: 34, 240, 166;
-  --default-panel-text: rgba(250, 253, 255, 0.98);
-  --default-muted-text: rgba(221, 234, 244, 0.76);
-  --default-faint-text: rgba(190, 211, 226, 0.58);
+  --default-accent: #22F37D;
+  --default-accent-deep: #05b864;
+  --default-accent-rgb: 34, 243, 125;
+  --default-panel-text: #ffffff;
+  --default-muted-text: rgba(195, 218, 238, 0.75);
+  --default-faint-text: rgba(160, 190, 218, 0.55);
   --widget-surface-background:
-    radial-gradient(ellipse 220px 140px at 102% 4%, rgba(43, 103, 151, 0.14), transparent 64%),
-    linear-gradient(145deg, rgba(37, 54, 70, 0.985), rgba(7, 24, 41, 0.995) 47%, rgba(1, 10, 20, 1));
+    radial-gradient(ellipse 260px 150px at 15% 10%, rgba(45, 95, 135, 0.22), transparent 70%),
+    radial-gradient(ellipse 200px 120px at 85% 90%, rgba(10, 45, 60, 0.25), transparent 65%),
+    linear-gradient(145deg, #111e2b 0%, #0a131c 55%, #050b11 100%);
   --widget-surface-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 1px 0 0 rgba(220, 240, 255, 0.1),
-    inset 0 -42px 74px rgba(0, 0, 0, 0.43),
-    inset 18px 18px 52px rgba(218, 238, 255, 0.045),
-    0 14px 32px rgba(0, 8, 17, 0.46),
-    0 3px 9px rgba(0, 8, 17, 0.42);
-  --widget-surface-backdrop: blur(30px) saturate(1.34);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 -20px 40px rgba(0, 0, 0, 0.45);
+  --widget-surface-backdrop: blur(36px) saturate(1.4);
   --meter-primary-color: #ffffff;
+  --default-signature-green: #22F37D;
+  --default-signature-rgb: 34, 243, 125;
   --settings-accent-color: var(--default-accent);
-  --settings-accent-soft: rgba(var(--default-accent-rgb), 0.16);
+  --settings-accent-soft: rgba(var(--default-accent-rgb), 0.18);
 }
 
-body[data-theme="default"][data-state="low"],
-body[data-theme="default"] .default-meter[data-level="low"] {
+body[data-theme="default"][data-state="low"] {
   --default-accent: #ffd257;
   --default-accent-deep: #f59f26;
   --default-accent-rgb: 255, 210, 87;
@@ -30,90 +29,43 @@ body[data-theme="default"] .default-meter[data-level="low"] {
 
 body[data-theme="default"][data-state="critical"],
 body[data-theme="default"][data-state="empty"],
-body[data-theme="default"][data-state="error"],
-body[data-theme="default"] .default-meter[data-level="critical"],
-body[data-theme="default"] .default-meter[data-level="empty"],
-body[data-theme="default"] .default-meter[data-level="error"] {
-  --default-accent: #ff6b78;
-  --default-accent-deep: #ee3652;
-  --default-accent-rgb: 255, 107, 120;
+body[data-theme="default"][data-state="error"] {
+  --default-accent: #ff5f6d;
+  --default-accent-deep: #ee3148;
+  --default-accent-rgb: 255, 95, 109;
 }
 
 body[data-theme="default"][data-state="loading"],
-body[data-theme="default"][data-state="unknown"],
-body[data-theme="default"] .default-meter[data-level="loading"],
-body[data-theme="default"] .default-meter[data-level="unknown"] {
-  --default-accent: #70c7ff;
-  --default-accent-deep: #3b8ef3;
-  --default-accent-rgb: 112, 199, 255;
+body[data-theme="default"][data-state="unknown"] {
+  --default-accent: #5ec7ff;
+  --default-accent-deep: #2e8ff5;
+  --default-accent-rgb: 94, 199, 255;
 }
 
+/* =========================================================
+   面板整体容器与框架 (390 x 236)
+   ========================================================= */
 body[data-theme="default"] .widget {
-  padding: 13px 13px 12px;
-  border: 1px solid rgba(190, 220, 242, 0.27);
+  box-sizing: border-box;
+  width: 390px;
+  height: 236px;
+  padding: 13px 14px 12px;
+  border: 1px solid rgba(200, 225, 245, 0.18);
   border-radius: 16px;
   background: var(--widget-surface-background);
   box-shadow: var(--widget-surface-shadow);
-}
-
-body[data-theme="default"] .default-meter {
-  position: relative;
-}
-
-body[data-theme="default"] .default-meter-rim,
-body[data-theme="default"] .default-meter-shine {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  border-radius: 50%;
-}
-
-body[data-theme="default"] .default-meter-fill {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  min-height: 0;
-  transition: height 420ms ease;
-}
-
-body[data-theme="default"] .default-meter-wave {
-  position: absolute;
-  top: -16px;
-  left: -18px;
-  width: 160px;
-  height: 32px;
-  border-radius: 45%;
-  background: rgba(255, 255, 255, 0.24);
-  animation: wave 3.6s linear infinite;
-}
-
-body[data-theme="default"] .default-meter-wave-two {
-  top: -11px;
-  left: -28px;
-  opacity: 0.6;
-  animation-duration: 5.2s;
-  animation-direction: reverse;
-}
-
-body[data-theme="default"] .default-meter-copy {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: grid;
-  place-content: center;
-  gap: 4px;
-  text-align: center;
+  backdrop-filter: var(--widget-surface-backdrop);
 }
 
 body[data-theme="default"] .widget::before {
+  position: absolute;
+  inset: 0;
   z-index: 0;
+  pointer-events: none;
+  border-radius: 15px;
+  content: "";
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.11), transparent 25%, rgba(0, 0, 0, 0.1) 88%),
-    /*linear-gradient(116deg, rgba(255, 255, 255, 0.11), transparent 27%),*/
-    radial-gradient(ellipse 76px 86px at 24% 59%, rgba(var(--default-accent-rgb), 0.25), transparent 72%),
-    radial-gradient(ellipse 172px 92px at 75% -6%, rgba(137, 191, 229, 0.17), transparent 70%);
+    radial-gradient(ellipse 200px 100px at 80% 0%, rgba(120, 180, 230, 0.12), transparent 70%);
 }
 
 body[data-theme="default"] .widget::after {
@@ -123,60 +75,70 @@ body[data-theme="default"] .widget::after {
   pointer-events: none;
   border-radius: 15px;
   content: "";
-  background:
-    linear-gradient(135deg, transparent 58%, rgba(0, 0, 0, 0.19) 100%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.065), transparent 18%, transparent 78%, rgba(123, 178, 211, 0.1));
   box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, 0.17),
-    inset -10px -12px 28px rgba(0, 0, 0, 0.2),
-    inset 0 -24px 48px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
 body[data-theme="default"] .titlebar,
 body[data-theme="default"] .content,
 body[data-theme="default"] .status {
+  position: relative;
   z-index: 2;
 }
 
+/* =========================================================
+   标题栏与控制按钮
+   ========================================================= */
 body[data-theme="default"] .titlebar {
-  height: 39px;
-  gap: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  gap: 10px;
 }
 
 body[data-theme="default"] .brand {
-  grid-template-columns: 18px minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
 }
 
 body[data-theme="default"] .traffic-light {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
   background: var(--default-accent);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18);
+    0 0 10px rgba(var(--default-accent-rgb), 0.8),
+    0 0 20px rgba(var(--default-accent-rgb), 0.35);
+  transition: background 300ms ease, box-shadow 300ms ease;
 }
 
 body[data-theme="default"] .brand-copy {
+  display: flex;
+  flex-direction: column;
   gap: 1px;
 }
 
 body[data-theme="default"] .brand-name {
-  color: var(--default-panel-text);
-  font-size: 16px;
-  font-weight: 860;
-  line-height: 19px;
-  text-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.62),
-    0 0 14px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 18px;
+  letter-spacing: 0.2px;
 }
 
 body[data-theme="default"] .version-badge {
   margin-left: 8px;
-  color: rgba(218, 232, 244, 0.76);
-  font-size: 11px;
-  font-weight: 750;
+  color: rgba(185, 210, 235, 0.65);
+  font-size: 11.5px;
+  font-weight: 600;
   line-height: 16px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.42);
+  transition: color 150ms ease;
 }
 
 body[data-theme="default"] .version-badge:hover {
@@ -184,552 +146,759 @@ body[data-theme="default"] .version-badge:hover {
 }
 
 body[data-theme="default"] .brand-state {
-  color: rgba(221, 234, 244, 0.74);
-  font-size: 12px;
-  font-weight: 620;
+  color: rgba(185, 210, 235, 0.68);
+  font-size: 11.5px;
+  font-weight: 550;
   line-height: 14px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.42);
 }
 
 body[data-theme="default"] .window-actions {
+  display: flex;
+  align-items: center;
   align-self: center;
   gap: 6px;
-  margin-top: 0;
-  transform: translate(-3px, -4px);
+  margin: 0;
+  transform: none;
 }
 
 body[data-theme="default"] .window-actions .icon-button {
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
   padding: 0;
-}
-
-body[data-theme="default"] .icon-button {
-  width: 25px;
-  height: 25px;
-  border-radius: 9px;
-  color: rgba(248, 252, 255, 0.92);
-  background:
-    radial-gradient(circle at 34% 12%, rgba(255, 255, 255, 0.2), transparent 38%),
-    linear-gradient(148deg, rgba(255, 255, 255, 0.11), rgba(5, 18, 31, 0.48)),
-    rgba(15, 31, 47, 0.76);
+  border-radius: 50%;
+  color: rgba(235, 245, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    inset 0 0 0 1px rgba(203, 232, 252, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -8px 14px rgba(0, 0, 0, 0.24),
-    0 2px 6px rgba(0, 7, 16, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 2px 5px rgba(0, 5, 12, 0.25);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
 }
 
-body[data-theme="default"] .icon-button svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2.45;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.1));
+body[data-theme="default"] .window-actions .icon-button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
 }
 
-body[data-theme="default"] .icon-button:hover,
-body[data-theme="default"] .icon-button.active {
+body[data-theme="default"] .window-actions .icon-button:hover {
   color: #ffffff;
-  background:
-    radial-gradient(circle at 35% 16%, rgba(255, 255, 255, 0.28), transparent 40%),
-    linear-gradient(146deg, rgba(var(--default-accent-rgb), 0.2), rgba(7, 22, 36, 0.46)),
-    rgba(20, 43, 60, 0.88);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
   box-shadow:
-    inset 0 0 0 1px rgba(var(--default-accent-rgb), 0.58),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -9px 16px rgba(0, 0, 0, 0.25),
-    0 0 16px rgba(var(--default-accent-rgb), 0.24);
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 3px 8px rgba(0, 5, 12, 0.35);
 }
 
-body[data-theme="default"] .icon-button.danger:hover {
-  background:
-    linear-gradient(145deg, rgba(255, 104, 118, 0.32), rgba(54, 14, 23, 0.5)),
-    rgba(58, 22, 30, 0.84);
+/* 置顶激活态：去除绿色，采用纯白微透磨砂底色与明亮白边框，与其他按钮保持一致的无彩质感 */
+body[data-theme="default"] .window-actions .icon-button.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 131, 145, 0.5),
-    0 0 14px rgba(255, 91, 107, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 2px 6px rgba(0, 5, 12, 0.3),
+    0 0 8px rgba(255, 255, 255, 0.1);
 }
 
+body[data-theme="default"] .window-actions .icon-button.active:hover {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 8px rgba(0, 5, 12, 0.35),
+    0 0 12px rgba(255, 255, 255, 0.18);
+}
+
+body[data-theme="default"] .window-actions .icon-button.danger:hover {
+  color: #ffffff;
+  background: rgba(255, 75, 95, 0.32);
+  border-color: rgba(255, 95, 115, 0.6);
+  box-shadow: 0 0 12px rgba(255, 75, 95, 0.35);
+}
+
+/* =========================================================
+   主内容区布局
+   ========================================================= */
 body[data-theme="default"] .content {
-  grid-template-columns: 147px minmax(0, 1fr);
-  height: 142px;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  height: 138px;
+  gap: 10px;
+}
+
+/* =========================================================
+   3D 发光水晶水球 (Default Meter)
+   ========================================================= */
+body[data-theme="default"] .meter-host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
 }
 
 body[data-theme="default"] .default-meter {
-  isolation: isolate;
+  position: relative;
   width: 130px;
   height: 130px;
-  margin-left: 5px;
-  overflow: hidden;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 18% 17%, rgba(220, 239, 252, 0.18), transparent 31%),
-    radial-gradient(ellipse 118px 82px at 55% 1%, rgba(7, 20, 34, 0.76), rgba(12, 32, 47, 0.5) 54%, transparent 76%),
-    radial-gradient(circle at 59% 29%, rgba(103, 163, 198, 0.13), transparent 48%),
-    radial-gradient(ellipse 112px 44px at 50% 99%, rgba(var(--default-accent-rgb), 0.19), transparent 72%),
-    linear-gradient(180deg, rgba(15, 33, 49, 0.99), rgba(1, 11, 22, 1));
-  box-shadow:
-    inset 6px 11px 18px rgba(255, 255, 255, 0.13),
-    inset -10px -18px 28px rgba(0, 0, 0, 0.48),
-    inset 0 -32px 40px rgba(var(--default-accent-rgb), 0.14),
-    0 12px 23px rgba(0, 0, 0, 0.38),
-    0 0 15px rgba(var(--default-accent-rgb), 0.12),
-    0 12px 12px rgba(var(--default-accent-rgb), 0.2);
+  isolation: isolate;
+  user-select: none;
 }
 
-body[data-theme="default"] .default-meter::before,
-body[data-theme="default"] .default-meter::after {
+/* 球体外部光影：仅在右下方模拟光线穿透球体产生的少量柔和绿色漫反射，上方、左侧与左下方无多余绿光圈 */
+body[data-theme="default"] .default-meter-glow {
   position: absolute;
-  /* 内圈玻璃罩刻意内缩，给外环保留暗色接缝。 */
-  inset: 5px;
-  z-index: 2;
+  top: auto;
+  left: auto;
+  right: -8px;
+  bottom: -8px;
+  width: 80px;
+  height: 64px;
+  z-index: 0;
   pointer-events: none;
   border-radius: 50%;
-  content: "";
+  background: radial-gradient(
+    ellipse 52px 38px at 50% 50%,
+    rgba(var(--default-signature-rgb), 0.38) 0%,
+    rgba(var(--default-signature-rgb), 0.14) 48%,
+    transparent 74%
+  );
+  filter: blur(12px);
+  transform: translateZ(0);
 }
 
-body[data-theme="default"] .default-meter::before {
-  background:
-    radial-gradient(ellipse 112px 78px at 52% -5%, rgba(1, 8, 18, 0.8), rgba(8, 28, 43, 0.5) 15%, transparent 78%),
-    radial-gradient(ellipse 70px 48px at 24% 9%, rgba(191, 220, 240, 0.12), transparent 71%),
-    radial-gradient(circle at 72% 34%, rgba(91, 226, 225, 0.2) 0 0.8px, transparent 1.4px),
-    radial-gradient(circle at 77% 29%, rgba(176, 250, 246, 0.17) 0 0.7px, transparent 1.3px),
-    radial-gradient(circle at 75% 39%, rgba(91, 226, 225, 0.14) 0 0.7px, transparent 1.3px);
-  opacity: 0.96;
-}
-
-body[data-theme="default"] .default-meter::after {
-  z-index: 3;
-  background:
-    radial-gradient(ellipse 68px 46px at 22% 7%, rgba(242, 250, 255, 0.25), rgba(186, 219, 239, 0.09) 46%, transparent 73%),
-    linear-gradient(132deg, rgba(255, 255, 255, 0.075), rgba(213, 237, 250, 0.025) 30%, transparent 47%),
-    radial-gradient(ellipse 50px 104px at 103% 54%, rgba(0, 5, 14, 0.25), transparent 72%),
-    radial-gradient(ellipse 104px 42px at 50% 104%, rgba(var(--default-accent-rgb), 0.22), transparent 73%),
-    radial-gradient(circle at 50% 46%, transparent 57%, rgba(188, 227, 242, 0.035) 76%, rgba(0, 6, 14, 0.16) 100%);
-  box-shadow:
-    inset 1px 1px 0 rgba(246, 252, 255, 0.3),
-    inset -2px -3px 0 rgba(var(--default-accent-rgb), 0.08),
-    inset 7px 9px 16px rgba(225, 242, 252, 0.07),
-    inset -13px -15px 24px rgba(0, 5, 13, 0.25),
-    inset 0 -18px 27px rgba(var(--default-accent-rgb), 0.11),
-    inset 0 0 0 1px rgba(174, 216, 235, 0.12);
-}
-
-body[data-theme="default"] .default-meter-fill {
-  right: 5px;
-  bottom: 5px;
-  left: 5px;
-  max-height: calc(100% - 18px);
-  z-index: 1;
-  overflow: hidden;
-  border-radius: 0 0 999px 999px / 0 0 58px 58px;
-  -webkit-clip-path: inset(0 0 0 0 round 0 0 999px 999px);
-  clip-path: inset(0 0 0 0 round 0 0 999px 999px);
-  -webkit-mask-image: radial-gradient(circle 60px at 50% calc(100% - 60px), #000 0 98%, transparent 100%);
-  mask-image: radial-gradient(circle 60px at 50% calc(100% - 60px), #000 0 98%, transparent 100%);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  background:
-    /*radial-gradient(ellipse 112px 48px at 50% 0%, rgba(235, 255, 247, 0.5), transparent 70%),*/
-    /*radial-gradient(ellipse 44px 72px at 18% 45%, rgba(255, 255, 255, 0.12), transparent 72%),*/
-    /*radial-gradient(ellipse 82px 70px at 48% 58%, rgba(255, 255, 255, 0.13), transparent 70%),*/
-    linear-gradient(90deg, rgba(0, 15, 21, 0.2), transparent 23%, transparent 77%, rgba(0, 15, 21, 0.18)),
-    radial-gradient(ellipse 98px 76px at 50% 88%, rgba(0, 24, 30, 0.13), transparent 72%),
-    radial-gradient(ellipse 82px 34px at 50% 98%, rgba(var(--default-accent-rgb), 0.5), transparent 74%),
-    linear-gradient(180deg, var(--default-accent) 10%, var(--default-accent) 32%, var(--default-accent-deep) 100%);
-  box-shadow:
-    inset 0 15px 22px rgba(255, 255, 255, 0.17),
-    inset 0 -22px 32px rgba(0, 20, 27, 0.15),
-    0 -2px 15px rgba(var(--default-accent-rgb), 0.38);
-}
-
-body[data-theme="default"] .default-meter-fill::before,
-body[data-theme="default"] .default-meter-fill::after {
+/* 核心圆球容器（严格的 50% 圆形裁剪，杜绝液体溢出为方形角） */
+body[data-theme="default"] .default-meter-body {
   position: absolute;
-  pointer-events: none;
-  content: "";
-}
-
-body[data-theme="default"] .default-meter-fill::before {
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 2;
-  height: 8px;
-  border-radius: 50%;
-  background:
-    radial-gradient(ellipse 104px 5px at 50% 50%, rgba(245, 255, 251, 0.38), transparent 78%),
-    linear-gradient(180deg, rgba(3, 29, 31, 0.18), transparent 34%),
-    linear-gradient(180deg, rgba(225, 255, 244, 0.42), rgba(var(--default-accent-rgb), 0.2) 50%, rgba(var(--default-accent-rgb), 0.02) 82%),
-    rgba(var(--default-accent-rgb), 0.06);
-  box-shadow:
-    0 1px 7px rgba(var(--default-accent-rgb), 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 3px rgba(0, 32, 36, 0.14);
-  transform: translate3d(0, 0, 0) scaleX(1) scaleY(1);
-  transform-origin: center 54%;
-  animation: default-water-surface 4.8s ease-in-out infinite;
-  will-change: transform, opacity, filter;
-}
-
-body[data-theme="default"] .default-meter-fill::after {
   inset: 0;
   z-index: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(circle at center, black 99%, transparent 100%);
+  isolation: isolate;
+}
+
+/* 3D 玻璃球底壳：完全通透透明，让卡片面板原本的黑蓝底色自然透光呈现，不叠加任何多余死黑底色 */
+body[data-theme="default"] .default-meter-sphere {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 50%;
   background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.16), transparent 34%),
-    radial-gradient(ellipse 22px 72px at 5% 50%, rgba(255, 255, 255, 0.13), transparent 72%),
-    radial-gradient(ellipse 44px 74px at 76% 48%, rgba(255, 255, 255, 0.11), transparent 74%),
-    radial-gradient(ellipse 24px 72px at 96% 54%, rgba(var(--default-accent-rgb), 0.14), transparent 74%),
-    radial-gradient(ellipse 94px 38px at 50% 96%, rgba(var(--default-accent-rgb), 0.4), transparent 74%);
+    radial-gradient(circle 1.2px at 28% 25%, rgba(255, 255, 255, 0.65) 0%, transparent 100%),
+    radial-gradient(circle 1px at 70% 32%, rgba(255, 255, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 45% 42%, rgba(255, 255, 255, 0.45) 0%, transparent 100%);
+  box-shadow: none;
 }
 
-body[data-theme="default"] .default-meter-wave {
-  display: none;
-  animation: none;
+/* 一体化 SVG 矢量流体水体系统（水面高光与翡翠水体 100% 物理一体，彻底根除分离脱节） */
+body[data-theme="default"] .default-meter-fluid-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 0 12px rgba(7, 155, 80, 0.25));
 }
 
-body[data-theme="default"] .default-meter-wave-two {
-  display: none;
-  animation: none;
+body[data-theme="default"] .default-meter-wave-group {
+  will-change: transform;
 }
 
-body[data-theme="default"] .default-meter-rim {
-  z-index: 4;
-  background: conic-gradient(
-    from 210deg,
-    rgba(18, 70, 79, 0.72),
-    rgba(244, 253, 255, 0.9) 20%,
-    rgba(123, 218, 235, 0.52) 43%,
-    rgba(var(--default-accent-rgb), 0.76) 72%,
-    rgba(17, 68, 76, 0.74)
-  );
-  /* 内外两侧使用短 Alpha 过渡，避免圆环边缘硬切。 */
-  -webkit-mask-image: radial-gradient(
-    circle closest-side,
-    transparent calc(100% - 2.2px),
-    rgba(0, 0, 0, 0.42) calc(100% - 1.9px),
-    #000 calc(100% - 1.45px),
-    #000 calc(100% - 0.55px),
-    rgba(0, 0, 0, 0.45) calc(100% - 0.2px),
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    circle closest-side,
-    transparent calc(100% - 2.2px),
-    rgba(0, 0, 0, 0.42) calc(100% - 1.9px),
-    #000 calc(100% - 1.45px),
-    #000 calc(100% - 0.55px),
-    rgba(0, 0, 0, 0.45) calc(100% - 0.2px),
-    transparent 100%
-  );
-  filter: drop-shadow(0 0 2px rgba(var(--default-accent-rgb), 0.18));
+/* 前浪：带 1.3px 晶莹高光线，在 100px 严格周期内平缓流淌 */
+body[data-theme="default"] .default-meter-wave-one-group {
+  animation: default-fluid-wave-one 6s linear infinite;
 }
 
+/* 后浪：半透深色微波，错相位反向平缓推进 */
+body[data-theme="default"] .default-meter-wave-two-group {
+  opacity: 0.75;
+  animation: default-fluid-wave-two 8.5s linear infinite;
+}
+
+/* 液体内部悬浮微粒/光斑层 */
+body[data-theme="default"] .default-meter-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle 1.5px at 32% 65%, rgba(255, 255, 255, 0.65) 0%, transparent 100%),
+    radial-gradient(circle 1px at 70% 72%, rgba(255, 255, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(circle 1.8px at 48% 82%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
+    radial-gradient(circle 1.2px at 62% 58%, rgba(255, 255, 255, 0.55) 0%, transparent 100%);
+  opacity: 0.85;
+}
+
+/* 顶部镜面高光区：精准收拢至左上角 10:30 局部玻璃光带，消除向中右方散开的白雾，还原深邃纯净暗穹 */
 body[data-theme="default"] .default-meter-shine {
-  inset: 7px;
-  z-index: 5;
+  position: absolute;
+  inset: 4px;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: 50%;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 38px 15px at 14% 31%, rgba(255, 255, 255, 0.46), rgba(229, 243, 252, 0.12) 50%, transparent 78%),
-    radial-gradient(ellipse 60px 30px at 22% 9%, rgba(230, 245, 255, 0.14), transparent 72%);
-  opacity: 0.9;
-  mix-blend-mode: screen;
+    radial-gradient(
+      ellipse 38px 20px at 24% 16%,
+      rgba(255, 255, 255, 0.82) 0%,
+      rgba(255, 255, 255, 0.48) 30%,
+      rgba(255, 255, 255, 0.12) 60%,
+      transparent 88%
+    ),
+    radial-gradient(
+      ellipse 20px 12px at 16% 24%,
+      rgba(255, 255, 255, 0.38) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 80%
+    );
+  filter: blur(1px);
+  transform: translateZ(0);
 }
 
 body[data-theme="default"] .default-meter-shine::before {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background: linear-gradient(126deg, rgba(252, 254, 255, 0.48), rgba(223, 240, 251, 0.17) 48%, rgba(181, 215, 236, 0.04) 80%, transparent);
-  /* 增加中间控制点，让玻璃高光右缘形成轻微弧度。 */
-  clip-path: polygon(1% 17%, 28% 2%, 40% 9%, 52% 18%, 63% 29%, 72% 39%, 59% 53%, 21% 27%, 6% 41%);
-  filter: blur(1.2px);
-  opacity: 0.82;
+  display: none;
 }
 
+/* 右下边缘反光弧：与球体完全同心同曲率，紧贴右下角 4:00~5:30 外壳边缘，绝不向内侵入水体 */
+body[data-theme="default"] .default-meter-bottom-shine {
+  position: absolute;
+  inset: 3px;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: 50%;
+  border-bottom: 2.2px solid rgba(220, 255, 240, 0.9);
+  border-right: 2.2px solid rgba(130, 245, 190, 0.78);
+  border-top: 2.2px solid transparent;
+  border-left: 2.2px solid transparent;
+  box-shadow:
+    inset -1.5px -1.5px 4px rgba(255, 255, 255, 0.45),
+    0 0 8px rgba(var(--default-signature-rgb), 0.55);
+  background: radial-gradient(
+    ellipse 56px 28px at 86% 86%,
+    rgba(210, 255, 238, 0.35) 0%,
+    rgba(var(--default-signature-rgb), 0.12) 40%,
+    transparent 72%
+  );
+  filter: drop-shadow(0 0 3px rgba(34, 243, 125, 0.5));
+}
+
+/* 球体边缘微光外环（内外双层水晶玻璃外壳厚度与透光折射） */
+body[data-theme="default"] .default-meter-rim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1.5px 3px rgba(255, 255, 255, 0.55),
+    inset 0 0 0 3.2px rgba(6, 18, 26, 0.68),
+    inset 0 -1.5px 3.5px rgba(var(--default-signature-rgb), 0.45),
+    0 0 10px rgba(var(--default-signature-rgb), 0.15);
+}
+
+/* 吸附条 (Dock Bar) 默认隐藏 */
+body[data-theme="default"] .default-meter-dock-bar {
+  display: none;
+}
+
+/* 球体内居中文本 */
 body[data-theme="default"] .default-meter-copy {
+  position: absolute;
+  inset: 0;
   z-index: 6;
-  gap: 4px;
-  text-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.6),
-    0 0 18px rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  pointer-events: none;
 }
 
 body[data-theme="default"] .default-meter-copy strong {
   color: #ffffff;
-  font-size: 39px;
-  font-weight: 900;
-  line-height: 41px;
+  font-size: 37px;
+  font-weight: 700;
+  line-height: 39px;
+  letter-spacing: -0.5px;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.7),
+    0 0 16px rgba(255, 255, 255, 0.2);
 }
 
 body[data-theme="default"] .default-meter-copy span {
-  color: rgba(248, 252, 255, 0.92);
-  font-size: 13px;
-  font-weight: 720;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12.5px;
+  font-weight: 500;
   line-height: 15px;
+  letter-spacing: 0.5px;
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.7),
+    0 0 10px rgba(0, 0, 0, 0.4);
 }
 
+/* =========================================================
+   右侧额度卡片 (Quota Panel & Cards)
+   ========================================================= */
 body[data-theme="default"] .quota-panel {
-  gap: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 body[data-theme="default"] .quota-card {
-  position: relative;
-  grid-template-columns: minmax(0, 1fr) auto;
-  height: 40px;
-  padding: 0 14px;
-  overflow: hidden;
-  border: 1px solid rgba(185, 216, 239, 0.18);
-  border-radius: 10px;
-  background:
-    radial-gradient(ellipse 14px 54px at -5% 105%, rgba(var(--default-accent-rgb), 0.14), transparent 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.065), transparent 34%),
-    linear-gradient(45deg, rgba(255, 255, 255, 0.05), rgba(4, 17, 31, 0.24)),
-    rgba(17, 33, 49, 0.64);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    inset 0 -14px 24px rgba(0, 0, 0, 0.22),
-    0 3px 8px rgba(0, 8, 18, 0.13);
-  backdrop-filter: blur(20px) saturate(1.18);
-}
-
-body[data-theme="default"] .quota-card::before {
-  position: absolute;
-  top: 5px;
-  bottom: 5px;
-  left: 0;
-  width: 2px;
-  border-radius: 0 999px 999px 0;
-  content: "";
-  background: linear-gradient(
-    180deg,
-    transparent,
-    rgba(var(--default-accent-rgb), 0.18) 18%,
-    rgba(var(--default-accent-rgb), 0.54) 48%,
-    rgba(var(--default-accent-rgb), 0.2) 80%,
-    transparent
-  );
-  box-shadow:
-    0 0 5px rgba(var(--default-accent-rgb), 0.4),
-    3px 0 7px rgba(var(--default-accent-rgb), 0.05);
-  filter: blur(0.1px);
-}
-
-body[data-theme="default"] .quota-card::after {
-  position: absolute;
-  top: 1px;
-  right: 2px;
-  left: 8px;
-  height: 1px;
-  pointer-events: none;
-  content: "";
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 74%);
-}
-
-body[data-theme="default"] .quota-icon {
-  display: none;
-}
-
-body[data-theme="default"] .quota-card.estimate-card {
-  grid-template-columns: 22px minmax(54px, 1fr) 1px 46px 1px 46px;
-  gap: 5px;
-  padding: 0 9px 0 8px;
-}
-
-body[data-theme="default"] .estimate-card .quota-icon {
+  box-sizing: border-box;
   display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  color: var(--default-accent);
-  background: rgba(var(--default-accent-rgb), 0.08);
-  box-shadow: inset 0 0 0 1px rgba(var(--default-accent-rgb), 0.24);
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  height: 42px;
+  padding: 0 11px;
+  gap: 8px;
+  border-radius: 11px;
+  background: rgba(12, 22, 33, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 3px 8px rgba(0, 4, 10, 0.3);
+  backdrop-filter: blur(16px);
+  transition: background 150ms ease, border-color 150ms ease;
 }
 
-body[data-theme="default"] .estimate-card .quota-icon svg {
-  width: 13px;
-  height: 13px;
+body[data-theme="default"] .quota-card:hover {
+  background: rgba(16, 30, 45, 0.85);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* 显示左侧卡片图标，呈现常驻荧光翠绿（不随警戒色变化） */
+body[data-theme="default"] .quota-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--default-signature-green);
+  filter: drop-shadow(0 0 6px rgba(var(--default-signature-rgb), 0.45));
+}
+
+body[data-theme="default"] .quota-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.2;
+}
+
+/* 中间文字排版 */
+body[data-theme="default"] .quota-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* 卡片主标题: 5小时窗口 / 1周窗口 / 重置次数 */
+body[data-theme="default"] .quota-copy > span {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 卡片副标题: 重置时间 / 过期时间 (常驻特色翠绿文字，不随警戒色变化) */
+body[data-theme="default"] .quota-subtext {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  overflow: hidden;
+  color: var(--default-signature-green);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 13px;
+  text-shadow: 0 0 8px rgba(var(--default-signature-rgb), 0.25);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="default"] .quota-subtext .quota-sub-label {
+  color: var(--default-signature-green);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+body[data-theme="default"] .quota-subtext .quota-sub-value {
+  color: var(--default-signature-green);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* 右侧大号数值 */
+body[data-theme="default"] .quota-card strong {
+  max-width: 80px;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 23px;
+  text-align: right;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* 额度估算卡片：内边距 padding 设为 0 11px，gap 设为 8px，图标与标题坐标与上方周窗口/5小时窗口完美对其 */
+body[data-theme="default"] .quota-card.estimate-card {
+  grid-template-columns: 20px auto 1px auto 1px auto;
+  gap: 8px;
+  padding: 0 11px;
+}
+
+body[data-theme="default"] .estimate-card .estimate-title {
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 15px;
+  white-space: nowrap;
 }
 
 body[data-theme="default"] .estimate-card .estimate-divider {
-  background: rgba(var(--default-accent-rgb), 0.24);
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  justify-self: center;
+}
+
+body[data-theme="default"] .estimate-card .estimate-period {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  gap: 1px;
 }
 
 body[data-theme="default"] .estimate-card .estimate-period small {
-  color: rgba(var(--default-accent-rgb), 0.62);
+  color: var(--default-signature-green);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 13px;
+  text-shadow: 0 0 8px rgba(var(--default-signature-rgb), 0.25);
+  white-space: nowrap;
 }
 
-body[data-theme="default"] .quota-card > span:not(.quota-icon),
-body[data-theme="default"] .quota-card .quota-copy > span {
-  color: rgba(236, 244, 250, 0.88);
-  font-size: 13px;
-  font-weight: 720;
-  line-height: 16px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
-}
-
-body[data-theme="default"] .quota-card .quota-subtext {
-  color: rgba(var(--default-accent-rgb), 0.48);
-  font-size: 8px;
-  font-weight: 680;
-  line-height: 9px;
-  text-shadow: 0 0 7px rgba(var(--default-accent-rgb), 0.12);
-}
-
-body[data-theme="default"] .quota-card .quota-sub-value {
-  color: rgba(var(--default-accent-rgb), 0.62);
-}
-
-body[data-theme="default"] .quota-card strong {
-  max-width: 64px;
+body[data-theme="default"] .estimate-card .estimate-value {
   color: #ffffff;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 25px;
-  text-shadow:
-    0 2px 3px rgba(0, 0, 0, 0.58),
-    0 0 13px rgba(255, 255, 255, 0.1);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 18px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
 }
 
+/* =========================================================
+   底部状态栏（带有设计图分割线）
+   ========================================================= */
 body[data-theme="default"] .status {
-  grid-template-columns: 10px minmax(0, 1fr);
-  height: 30px;
-  gap: 9px;
-  padding-top: 7px;
-  border-top: 1px solid rgba(205, 228, 244, 0.1);
-  color: var(--default-muted-text);
-  font-size: 12px;
-  font-weight: 620;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  align-items: center;
+  height: 24px;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
+  color: rgba(185, 210, 235, 0.7);
+  font-size: 11.5px;
+  font-weight: 550;
   line-height: 14px;
 }
 
 body[data-theme="default"] .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
   background: var(--default-accent);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 11px rgba(var(--default-accent-rgb), 0.62),
-    0 4px 9px rgba(var(--default-accent-rgb), 0.18);
+    0 0 8px rgba(var(--default-accent-rgb), 0.8),
+    0 0 14px rgba(var(--default-accent-rgb), 0.3);
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .widget {
-  width: 88px;
-  height: 88px;
-  padding: 0;
-  border: 0;
+/* =========================================================
+   悬浮球模式 (88 x 88) 与吸附效果 (Dock Effect)
+   ========================================================= */
+body[data-theme="default"][data-widget-mode="ball"] .widget,
+body[data-theme="default"] .widget[data-widget-mode="ball"] {
+  position: relative !important;
+  box-sizing: border-box !important;
+  width: 88px !important;
+  height: 88px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+}
+
+body[data-theme="default"][data-widget-mode="ball"] .widget::before,
+body[data-theme="default"][data-widget-mode="ball"] .widget::after,
+body[data-theme="default"][data-widget-mode="ball"] .titlebar,
+body[data-theme="default"][data-widget-mode="ball"] .quota-panel,
+body[data-theme="default"][data-widget-mode="ball"] .status,
+body[data-theme="default"][data-widget-mode="ball"] .settings-panel,
+body[data-theme="default"] .widget[data-widget-mode="ball"]::before,
+body[data-theme="default"] .widget[data-widget-mode="ball"]::after,
+body[data-theme="default"] .widget[data-widget-mode="ball"] .titlebar,
+body[data-theme="default"] .widget[data-widget-mode="ball"] .quota-panel,
+body[data-theme="default"] .widget[data-widget-mode="ball"] .status,
+body[data-theme="default"] .widget[data-widget-mode="ball"] .settings-panel {
+  display: none !important;
+}
+
+body[data-theme="default"][data-widget-mode="ball"] .content,
+body[data-theme="default"] .widget[data-widget-mode="ball"] .content {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 88px !important;
+  height: 88px !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  cursor: grab;
+}
+
+body[data-theme="default"][data-widget-mode="ball"] .meter-host,
+body[data-theme="default"] .widget[data-widget-mode="ball"] .meter-host {
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 88px !important;
+  height: 88px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: grab;
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] {
+  position: relative !important;
+  width: 88px !important;
+  height: 88px !important;
+  margin: 0 !important;
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-body {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 88px !important;
+  height: 88px !important;
+  border-radius: 50% !important;
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-sphere {
+  background:
+    radial-gradient(circle 1.2px at 28% 25%, rgba(255, 255, 255, 0.65) 0%, transparent 100%),
+    radial-gradient(circle 1px at 70% 32%, rgba(255, 255, 255, 0.55) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 45% 42%, rgba(255, 255, 255, 0.45) 0%, transparent 100%),
+    linear-gradient(145deg, #111e2b 0%, #0a131c 55%, #050b11 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.18),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-glow {
+  display: none;
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-shine {
+  inset: 3px;
+  background:
+    radial-gradient(
+      ellipse 28px 15px at 24% 16%,
+      rgba(255, 255, 255, 0.82) 0%,
+      rgba(255, 255, 255, 0.48) 30%,
+      rgba(255, 255, 255, 0.12) 60%,
+      transparent 88%
+    ),
+    radial-gradient(
+      ellipse 15px 9px at 16% 24%,
+      rgba(255, 255, 255, 0.38) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 80%
+    );
+  filter: blur(0.8px);
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-shine::before {
+  display: none;
+}
+
+/* 88×88 悬浮球矢量流体微波等比动画 */
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-wave-one-group {
+  animation: default-fluid-wave-one-ball 6s linear infinite;
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-wave-two-group {
+  animation: default-fluid-wave-two-ball 8.5s linear infinite;
+}
+
+/* 88×88 悬浮球右下边缘对角月牙反光弧（同心同曲率，紧贴右下角外壳边缘） */
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-bottom-shine {
+  position: absolute;
+  inset: 2.5px;
   border-radius: 50%;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  overflow: hidden;
-  -webkit-clip-path: none;
-  clip-path: none;
+  border-bottom: 1.8px solid rgba(220, 255, 240, 0.9);
+  border-right: 1.8px solid rgba(130, 245, 190, 0.78);
+  border-top: 1.8px solid transparent;
+  border-left: 1.8px solid transparent;
+  box-shadow:
+    inset -1px -1px 3px rgba(255, 255, 255, 0.45),
+    0 0 6px rgba(var(--default-signature-rgb), 0.55);
+  background: radial-gradient(
+    ellipse 42px 20px at 86% 86%,
+    rgba(210, 255, 238, 0.35) 0%,
+    rgba(var(--default-signature-rgb), 0.12) 40%,
+    transparent 72%
+  );
+  filter: drop-shadow(0 0 2.5px rgba(34, 243, 125, 0.5));
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .widget::before {
-  display: none;
+/* 88×88 悬浮球外壳厚度 */
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-rim {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.55),
+    inset 0 0 0 2.2px rgba(6, 18, 26, 0.68),
+    inset 0 -1px 2.5px rgba(var(--default-signature-rgb), 0.45),
+    0 0 8px rgba(var(--default-signature-rgb), 0.15);
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .widget::after {
-  display: none;
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-copy strong {
+  font-size: 28px !important;
+  line-height: 30px !important;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .content {
-  width: 88px;
-  height: 88px;
+body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-copy span {
+  font-size: 11px !important;
+  line-height: 13px !important;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .meter-host {
-  display: grid;
-  place-items: center;
+/* 贴边吸附条 (Dock Bar) 效果 - 完美复现设计图吸附态 */
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="right"] .default-meter-body {
+  -webkit-clip-path: inset(0 0 0 0 round 44px 0 0 44px);
+  clip-path: inset(0 0 0 0 round 44px 0 0 44px);
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .default-meter {
-  margin-left: 0;
-  /* 直接绘制为 88px，避免安全边距在常见 Windows 缩放下落到半物理像素。 */
-  zoom: 0.67692308;
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="left"] .default-meter-body {
+  -webkit-clip-path: inset(0 0 0 0 round 0 44px 44px 0);
+  clip-path: inset(0 0 0 0 round 0 44px 44px 0);
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .default-meter-rim {
-  /* 小尺寸下阴影会生成第二条 Alpha 边缘，黑底尤其明显。 */
-  filter: none;
-}
-
-@supports not (zoom: 1) {
-  body[data-theme="default"][data-widget-mode="ball"] .meter-host {
-    display: block;
-  }
-
-  body[data-theme="default"][data-widget-mode="ball"] .default-meter {
-    top: 0;
-    left: 0;
-    transform: scale(0.676923);
-    transform-origin: top left;
-  }
-}
-
-body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy {
-  gap: 1px;
-}
-
-body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy span {
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="right"] .default-meter-dock-bar,
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="left"] .default-meter-dock-bar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  z-index: 10;
   display: block;
+  width: 3.5px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(180, 220, 245, 0.6) 40%, rgba(255, 255, 255, 0.95));
+  box-shadow:
+    0 0 6px rgba(255, 255, 255, 0.8),
+    0 0 12px rgba(180, 220, 250, 0.5);
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy strong {
-  font-size: 35px;
-  line-height: 36px;
+/* 右贴边 */
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="right"] .default-meter-dock-bar {
+  right: 0;
 }
 
-body[data-theme="default"][data-widget-mode="ball"] .default-meter-copy span {
-  font-size: 12px;
-  line-height: 14px;
+/* 左贴边 */
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="left"] .default-meter-dock-bar {
+  left: 0;
 }
 
-/* 吸附时窗口仅露出半球，文字镜像移入当前可视半圆。 */
-body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="right"] .default-meter-copy {
-  transform: translateX(-18%);
-}
-
-body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="left"] .default-meter-copy {
-  transform: translateX(25%);
-}
-
+/* 吸附态文字字号适度缩小与偏移微调，保证数字与百分号均完整清晰可见 */
 body[data-theme="default"] .default-meter[data-mode="ball"]:not([data-dock="none"]) .default-meter-copy strong {
-  font-size: 23px;
-  line-height: 28px;
+  font-size: 17px !important;
+  line-height: 19px !important;
+  letter-spacing: -0.3px;
 }
 
 body[data-theme="default"] .default-meter[data-mode="ball"]:not([data-dock="none"]) .default-meter-copy span {
-  display: none;
+  font-size: 9px !important;
+  line-height: 10px !important;
 }
 
-@keyframes default-water-surface {
-  0%,
+/* 吸附时文字微移到可视半球 */
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="right"] .default-meter-copy {
+  transform: translateX(-20px);
+}
+
+body[data-theme="default"] .default-meter[data-mode="ball"][data-dock="left"] .default-meter-copy {
+  transform: translateX(20px);
+}
+
+/* =========================================================
+   动效与微交互
+   ========================================================= */
+@keyframes default-fluid-wave-one {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
   100% {
-    opacity: 0.94;
-    filter: brightness(1);
-    transform: translate3d(-0.5px, 0, 0) scaleX(1.01) scaleY(0.98);
+    transform: translate3d(-100px, 0, 0);
   }
+}
 
-  32% {
-    opacity: 0.86;
-    filter: brightness(0.94);
-    transform: translate3d(1px, 0, 0) scaleX(0.99) scaleY(1.04);
+@keyframes default-fluid-wave-two {
+  0% {
+    transform: translate3d(-100px, 0, 0);
   }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
 
-  66% {
-    opacity: 0.98;
-    filter: brightness(1.07);
-    transform: translate3d(-1px, 1px, 0) scaleX(1.03) scaleY(0.95);
+@keyframes default-fluid-wave-one-ball {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-88px, 0, 0);
+  }
+}
+
+@keyframes default-fluid-wave-two-ball {
+  0% {
+    transform: translate3d(-88px, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body[data-theme="default"] .default-meter-fill::before {
+  body[data-theme="default"] .default-meter-wave-one-group,
+  body[data-theme="default"] .default-meter-wave-two-group {
     animation: none;
   }
 }

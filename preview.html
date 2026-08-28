@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codex 额度 UI 全档位设计图对标全景走查</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/themes.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 36px 24px;
+        background: #14181f;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #f1f5f9;
+      }
+      .preview-container {
+        display: flex;
+        flex-direction: column;
+        gap: 40px;
+        max-width: 860px;
+        margin: 0 auto;
+      }
+      .section-header {
+        margin-bottom: 18px;
+      }
+      .section-title {
+        font-size: 17px;
+        font-weight: 750;
+        color: #e2e8f0;
+        letter-spacing: 0.2px;
+      }
+      .section-desc {
+        font-size: 13px;
+        color: #94a3b8;
+        margin-top: 4px;
+      }
+      /* 2x2 面板网格对标新设计图上半部 */
+      .panels-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 390px);
+        gap: 28px;
+        justify-content: center;
+      }
+      /* 悬浮球横向排列对标新设计图下半部 */
+      .balls-row {
+        display: flex;
+        gap: 28px;
+        justify-content: center;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .ball-preview-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .ball-stage {
+        width: 104px;
+        height: 104px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle, #1c232d 0%, #10141a 100%);
+        border-radius: 20px;
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+      }
+      .ball-label-title {
+        font-size: 13.5px;
+        color: #f1f5f9;
+        font-weight: 650;
+      }
+      .ball-label-sub {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body data-theme="default">
+    <div class="preview-container">
+      <!-- Section 1: 主面板 4 个额度档位对标 -->
+      <div>
+        <div class="section-header">
+          <div class="section-title">1. 主面板 4 个额度档位 (390 × 236) - 对标新设计图</div>
+          <div class="section-desc">包含 100%（满额纯净翠绿）、90%（微隙弧形液面）、60%（半满高反光液面）、30%（低位星尘暗面）</div>
+        </div>
+
+        <div class="panels-grid">
+          <!-- 面板 1: 100% 满额 -->
+          <main class="widget">
+            <header class="titlebar">
+              <div class="brand">
+                <span class="traffic-light ready" aria-hidden="true"></span>
+                <div class="brand-copy">
+                  <span class="brand-name"><span class="brand-title">Codex 额度</span><button class="version-badge" type="button">v1.3.0</button></span>
+                  <span class="brand-state">额度正常</span>
+                </div>
+              </div>
+              <div class="window-actions">
+                <button class="icon-button" type="button" aria-label="悬浮球"><i data-lucide="circle-dot"></i></button>
+                <button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button>
+                <button class="icon-button active" type="button" aria-label="取消置顶"><i data-lucide="pin"></i></button>
+                <button class="icon-button" type="button" aria-label="刷新"><i data-lucide="refresh-cw"></i></button>
+                <button class="icon-button" type="button" aria-label="隐藏"><i data-lucide="minus"></i></button>
+                <button class="icon-button danger" type="button" aria-label="退出"><i data-lucide="x"></i></button>
+              </div>
+            </header>
+            <section class="content">
+              <div id="panel100MeterHost" class="meter-host"></div>
+              <div class="quota-panel">
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="clock-3"></i></span><span class="quota-copy"><span>5小时窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">14:04</span></small></span><strong>100%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><span class="quota-copy"><span>1周窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">7/8 22:35</span></small></span><strong>100%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reset-credit"><path d="M4.7 14.6a7.8 7.8 0 0 1 13.1-6.9"></path><path d="M18 4.6v3.2h-3.2"></path><path d="M19.3 9.4a7.8 7.8 0 0 1-13.1 6.9"></path><path d="M6 19.4v-3.2h3.2"></path><path d="M12 8.4l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z"></path><path d="M5.6 8.4h.01"></path></svg></span><span class="quota-copy"><span>重置次数</span><small class="quota-subtext"><span class="quota-sub-label">过期时间:</span><span class="quota-sub-value">11d/20d/25d</span></small></span><strong>3</strong></div>
+              </div>
+            </section>
+            <footer class="status"><span class="status-dot ready"></span><span>正在检查更新...</span></footer>
+          </main>
+
+          <!-- 面板 2: 90% 额度 -->
+          <main class="widget">
+            <header class="titlebar">
+              <div class="brand">
+                <span class="traffic-light ready" aria-hidden="true"></span>
+                <div class="brand-copy">
+                  <span class="brand-name"><span class="brand-title">Codex 额度</span><button class="version-badge" type="button">v1.3.0</button></span>
+                  <span class="brand-state">额度正常</span>
+                </div>
+              </div>
+              <div class="window-actions">
+                <button class="icon-button" type="button" aria-label="悬浮球"><i data-lucide="circle-dot"></i></button>
+                <button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button>
+                <button class="icon-button active" type="button" aria-label="取消置顶"><i data-lucide="pin"></i></button>
+                <button class="icon-button" type="button" aria-label="刷新"><i data-lucide="refresh-cw"></i></button>
+                <button class="icon-button" type="button" aria-label="隐藏"><i data-lucide="minus"></i></button>
+                <button class="icon-button danger" type="button" aria-label="退出"><i data-lucide="x"></i></button>
+              </div>
+            </header>
+            <section class="content">
+              <div id="panel90MeterHost" class="meter-host"></div>
+              <div class="quota-panel">
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="clock-3"></i></span><span class="quota-copy"><span>5小时窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">14:04</span></small></span><strong>90%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><span class="quota-copy"><span>1周窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">7/8 22:35</span></small></span><strong>90%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reset-credit"><path d="M4.7 14.6a7.8 7.8 0 0 1 13.1-6.9"></path><path d="M18 4.6v3.2h-3.2"></path><path d="M19.3 9.4a7.8 7.8 0 0 1-13.1 6.9"></path><path d="M6 19.4v-3.2h3.2"></path><path d="M12 8.4l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z"></path><path d="M5.6 8.4h.01"></path></svg></span><span class="quota-copy"><span>重置次数</span><small class="quota-subtext"><span class="quota-sub-label">过期时间:</span><span class="quota-sub-value">11d/20d/25d</span></small></span><strong>3</strong></div>
+              </div>
+            </section>
+            <footer class="status"><span class="status-dot ready"></span><span>正在检查更新...</span></footer>
+          </main>
+
+          <!-- 面板 3: 60% 额度 -->
+          <main class="widget">
+            <header class="titlebar">
+              <div class="brand">
+                <span class="traffic-light ready" aria-hidden="true"></span>
+                <div class="brand-copy">
+                  <span class="brand-name"><span class="brand-title">Codex 额度</span><button class="version-badge" type="button">v1.3.0</button></span>
+                  <span class="brand-state">额度正常</span>
+                </div>
+              </div>
+              <div class="window-actions">
+                <button class="icon-button" type="button" aria-label="悬浮球"><i data-lucide="circle-dot"></i></button>
+                <button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button>
+                <button class="icon-button active" type="button" aria-label="取消置顶"><i data-lucide="pin"></i></button>
+                <button class="icon-button" type="button" aria-label="刷新"><i data-lucide="refresh-cw"></i></button>
+                <button class="icon-button" type="button" aria-label="隐藏"><i data-lucide="minus"></i></button>
+                <button class="icon-button danger" type="button" aria-label="退出"><i data-lucide="x"></i></button>
+              </div>
+            </header>
+            <section class="content">
+              <div id="panel60MeterHost" class="meter-host"></div>
+              <div class="quota-panel">
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="clock-3"></i></span><span class="quota-copy"><span>5小时窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">14:04</span></small></span><strong>60%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><span class="quota-copy"><span>1周窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">7/8 22:35</span></small></span><strong>60%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reset-credit"><path d="M4.7 14.6a7.8 7.8 0 0 1 13.1-6.9"></path><path d="M18 4.6v3.2h-3.2"></path><path d="M19.3 9.4a7.8 7.8 0 0 1-13.1 6.9"></path><path d="M6 19.4v-3.2h3.2"></path><path d="M12 8.4l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z"></path><path d="M5.6 8.4h.01"></path></svg></span><span class="quota-copy"><span>重置次数</span><small class="quota-subtext"><span class="quota-sub-label">过期时间:</span><span class="quota-sub-value">11d/20d/25d</span></small></span><strong>3</strong></div>
+              </div>
+            </section>
+            <footer class="status"><span class="status-dot ready"></span><span>正在检查更新...</span></footer>
+          </main>
+
+          <!-- 面板 4: 30% 额度 -->
+          <main class="widget">
+            <header class="titlebar">
+              <div class="brand">
+                <span class="traffic-light ready" aria-hidden="true"></span>
+                <div class="brand-copy">
+                  <span class="brand-name"><span class="brand-title">Codex 额度</span><button class="version-badge" type="button">v1.3.0</button></span>
+                  <span class="brand-state">额度正常</span>
+                </div>
+              </div>
+              <div class="window-actions">
+                <button class="icon-button" type="button" aria-label="悬浮球"><i data-lucide="circle-dot"></i></button>
+                <button class="icon-button" type="button" aria-label="设置"><i data-lucide="settings"></i></button>
+                <button class="icon-button active" type="button" aria-label="取消置顶"><i data-lucide="pin"></i></button>
+                <button class="icon-button" type="button" aria-label="刷新"><i data-lucide="refresh-cw"></i></button>
+                <button class="icon-button" type="button" aria-label="隐藏"><i data-lucide="minus"></i></button>
+                <button class="icon-button danger" type="button" aria-label="退出"><i data-lucide="x"></i></button>
+              </div>
+            </header>
+            <section class="content">
+              <div id="panel30MeterHost" class="meter-host"></div>
+              <div class="quota-panel">
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="clock-3"></i></span><span class="quota-copy"><span>5小时窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">14:04</span></small></span><strong>30%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span><span class="quota-copy"><span>1周窗口</span><small class="quota-subtext"><span class="quota-sub-label">重置时间:</span><span class="quota-sub-value">7/8 22:35</span></small></span><strong>30%</strong></div>
+                <div class="quota-card"><span class="quota-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-reset-credit"><path d="M4.7 14.6a7.8 7.8 0 0 1 13.1-6.9"></path><path d="M18 4.6v3.2h-3.2"></path><path d="M19.3 9.4a7.8 7.8 0 0 1-13.1 6.9"></path><path d="M6 19.4v-3.2h3.2"></path><path d="M12 8.4l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z"></path><path d="M5.6 8.4h.01"></path></svg></span><span class="quota-copy"><span>重置次数</span><small class="quota-subtext"><span class="quota-sub-label">过期时间:</span><span class="quota-sub-value">11d/20d/25d</span></small></span><strong>3</strong></div>
+              </div>
+            </section>
+            <footer class="status"><span class="status-dot ready"></span><span>正在检查更新...</span></footer>
+          </main>
+        </div>
+      </div>
+
+      <!-- Section 2: 悬浮球模式 5 个球体对标 -->
+      <div>
+        <div class="section-header">
+          <div class="section-title">2. 悬浮球模式 (88 × 88) 与吸附效果 - 对标新设计图下半部</div>
+          <div class="section-desc">包含 100%、90%、60%、30% 独立悬浮球，以及 30% 右吸附效果</div>
+        </div>
+
+        <div class="balls-row">
+          <!-- 悬浮球 100% -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="ball100Host" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">100% 剩余</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+
+          <!-- 悬浮球 90% -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="ball90Host" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">90% 剩余</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+
+          <!-- 悬浮球 60% -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="ball60Host" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">60% 剩余</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+
+          <!-- 悬浮球 30% -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="ball30Host" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">30% 剩余</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+
+          <!-- 吸附效果 91% 左吸附 -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="dock91LeftHost" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">91% 左吸附</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+
+          <!-- 吸附效果 91% 右吸附 -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="dock91Host" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">91% 右吸附</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+
+          <!-- 吸附效果 100% 左吸附 -->
+          <div class="ball-preview-box">
+            <div class="ball-stage">
+              <div class="widget" data-widget-mode="ball">
+                <div class="content"><div id="dock100Host" class="meter-host"></div></div>
+              </div>
+            </div>
+            <div class="ball-label-title">100% 左吸附</div>
+            <div class="ball-label-sub">88×88</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { createIcons, CircleDot, Settings, Pin, RefreshCw, Minus, X, Clock3, CalendarDays } from "lucide";
+      import { mount as mountDefaultMeter } from "/src/components/meters/default-meter.js";
+
+      createIcons({
+        icons: {
+          CircleDot,
+          Settings,
+          Pin,
+          RefreshCw,
+          Minus,
+          X,
+          Clock3,
+          CalendarDays
+        }
+      });
+
+      // 挂载主面板水球（100%、90%、60%、30%）
+      const p100 = mountDefaultMeter(document.getElementById("panel100MeterHost"));
+      p100.update({ percent: 100, level: "ready", label: "剩余", mode: "panel", dock: "none" });
+
+      const p90 = mountDefaultMeter(document.getElementById("panel90MeterHost"));
+      p90.update({ percent: 90, level: "ready", label: "剩余", mode: "panel", dock: "none" });
+
+      const p60 = mountDefaultMeter(document.getElementById("panel60MeterHost"));
+      p60.update({ percent: 60, level: "ready", label: "剩余", mode: "panel", dock: "none" });
+
+      const p30 = mountDefaultMeter(document.getElementById("panel30MeterHost"));
+      p30.update({ percent: 30, level: "ready", label: "剩余", mode: "panel", dock: "none" });
+
+      // 挂载悬浮球（100%、90%、60%、30%、吸附30%）
+      const b100 = mountDefaultMeter(document.getElementById("ball100Host"));
+      b100.update({ percent: 100, level: "ready", label: "剩余", mode: "ball", dock: "none" });
+
+      const b90 = mountDefaultMeter(document.getElementById("ball90Host"));
+      b90.update({ percent: 90, level: "ready", label: "剩余", mode: "ball", dock: "none" });
+
+      const b60 = mountDefaultMeter(document.getElementById("ball60Host"));
+      b60.update({ percent: 60, level: "ready", label: "剩余", mode: "ball", dock: "none" });
+
+      const b30 = mountDefaultMeter(document.getElementById("ball30Host"));
+      b30.update({ percent: 30, level: "ready", label: "剩余", mode: "ball", dock: "none" });
+
+      const d91Left = mountDefaultMeter(document.getElementById("dock91LeftHost"));
+      d91Left.update({ percent: 91, level: "ready", label: "剩余", mode: "ball", dock: "left" });
+
+      const d91 = mountDefaultMeter(document.getElementById("dock91Host"));
+      d91.update({ percent: 91, level: "ready", label: "剩余", mode: "ball", dock: "right" });
+
+      const d100 = mountDefaultMeter(document.getElementById("dock100Host"));
+      d100.update({ percent: 100, level: "ready", label: "剩余", mode: "ball", dock: "left" });
+
+      const urlState = new URLSearchParams(window.location.search).get("state");
+      if (urlState) {
+        document.body.dataset.state = urlState;
+        // 如果是 loading 状态，同步更新状态栏文案展示
+        if (urlState === "loading") {
+          document.querySelectorAll(".brand-state").forEach(el => el.textContent = "读取中");
+          document.querySelectorAll(".status span:last-child").forEach(el => el.textContent = "正在通过 Codex CLI 读取额度...");
+        } else if (urlState === "error") {
+          document.querySelectorAll(".brand-state").forEach(el => el.textContent = "额度异常");
+          document.querySelectorAll(".status span:last-child").forEach(el => el.textContent = "读取额度失败");
+        }
+      }
+    </script>
+  </body>
+</html>
