@@ -6,6 +6,7 @@ use tauri::{AppHandle, State, WebviewWindow};
 
 use crate::app_state::AppState;
 use crate::autostart::{read_auto_start_enabled, sync_auto_start};
+use crate::dock::set_dock_icon_hidden;
 use crate::logging::{AppLogger, LogLevel};
 use crate::quota::{self, QuotaSnapshot, ResetCreditExpiries};
 use crate::settings::{AppSettings, SettingsService};
@@ -172,11 +173,20 @@ pub(crate) async fn save_settings(
     })?;
     let codex_cli_path_changed = previous.codex_cli_path != settings.codex_cli_path;
     let target_auto_start = settings.auto_start_enabled;
+    let previous_hide_dock_icon = previous.hide_dock_icon;
+    let target_hide_dock_icon = settings.hide_dock_icon;
     let saved = persist_with_auto_start(
         original_auto_start,
         target_auto_start,
         |enabled| sync_auto_start(&app, enabled),
-        || SettingsService::save(&app, settings).map_err(|error| error.to_string()),
+        || {
+            persist_with_dock_visibility(
+                previous_hide_dock_icon,
+                target_hide_dock_icon,
+                |hidden| set_dock_icon_hidden(&app, hidden),
+                || SettingsService::save(&app, settings).map_err(|error| error.to_string()),
+            )
+        },
     )
     .inspect_err(|error| {
         state
@@ -227,6 +237,35 @@ fn load_operational_settings(app: &AppHandle, state: &AppState, source: &str) ->
 fn persist_with_auto_start<T, Sync, Persist>(
     original: bool,
     target: bool,
+    sync: Sync,
+    persist: Persist,
+) -> Result<T, String>
+where
+    Sync: FnMut(bool) -> Result<(), String>,
+    Persist: FnOnce() -> Result<T, String>,
+{
+    persist_with_boolean_side_effect(original, target, false, "开机自启", sync, persist)
+}
+
+fn persist_with_dock_visibility<T, Sync, Persist>(
+    original: bool,
+    target: bool,
+    sync: Sync,
+    persist: Persist,
+) -> Result<T, String>
+where
+    Sync: FnMut(bool) -> Result<(), String>,
+    Persist: FnOnce() -> Result<T, String>,
+{
+    // Dock 没有可靠的跨版本读取接口，每次保存都重放目标值以修复运行状态漂移。
+    persist_with_boolean_side_effect(original, target, true, "Dock 图标显示", sync, persist)
+}
+
+fn persist_with_boolean_side_effect<T, Sync, Persist>(
+    original: bool,
+    target: bool,
+    apply_when_unchanged: bool,
+    rollback_name: &str,
     mut sync: Sync,
     persist: Persist,
 ) -> Result<T, String>
@@ -235,23 +274,33 @@ where
     Persist: FnOnce() -> Result<T, String>,
 {
     let changed = original != target;
-    if changed {
+    if changed || apply_when_unchanged {
         if let Err(error) = sync(target) {
-            return Err(append_rollback_error(error, sync(original)));
+            return if changed {
+                Err(append_rollback_error(error, sync(original), rollback_name))
+            } else {
+                Err(error)
+            };
         }
     }
 
     match persist() {
         Ok(value) => Ok(value),
-        Err(error) if changed => Err(append_rollback_error(error, sync(original))),
+        Err(error) if changed => Err(append_rollback_error(error, sync(original), rollback_name)),
         Err(error) => Err(error),
     }
 }
 
-fn append_rollback_error(error: String, rollback: Result<(), String>) -> String {
+fn append_rollback_error(
+    error: String,
+    rollback: Result<(), String>,
+    rollback_name: &str,
+) -> String {
     match rollback {
         Ok(()) => error,
-        Err(rollback_error) => format!("{error}；恢复原开机自启状态失败：{rollback_error}"),
+        Err(rollback_error) => {
+            format!("{error}；恢复{rollback_name}的原状态失败：{rollback_error}")
+        }
     }
 }
 
@@ -320,7 +369,7 @@ mod tests {
 
         assert_eq!(
             result.unwrap_err(),
-            "设置写入失败；恢复原开机自启状态失败：恢复失败"
+            "设置写入失败；恢复开机自启的原状态失败：恢复失败"
         );
     }
 
@@ -340,5 +389,152 @@ mod tests {
 
         assert_eq!(calls, 0);
         assert_eq!(result.unwrap(), "saved");
+    }
+
+    #[test]
+    fn dock_状态未变化时仍调用系统接口() {
+        let mut calls = Vec::new();
+
+        let result = persist_with_dock_visibility(
+            true,
+            true,
+            |hidden| {
+                calls.push(hidden);
+                Ok(())
+            },
+            || Ok("saved"),
+        );
+
+        assert_eq!(calls, vec![true]);
+        assert_eq!(result.unwrap(), "saved");
+    }
+
+    #[test]
+    fn dock_切换失败会恢复_dock_和自启且不写配置() {
+        use std::cell::{Cell, RefCell};
+
+        let calls = RefCell::new(Vec::new());
+        let persisted = Cell::new(false);
+        let mut dock_calls = 0;
+
+        let result = persist_with_auto_start(
+            false,
+            true,
+            |enabled| {
+                calls.borrow_mut().push(format!("自启:{enabled}"));
+                Ok(())
+            },
+            || {
+                persist_with_dock_visibility(
+                    false,
+                    true,
+                    |hidden| {
+                        dock_calls += 1;
+                        calls.borrow_mut().push(format!("Dock:{hidden}"));
+                        if dock_calls == 1 {
+                            Err("Dock 切换失败".to_string())
+                        } else {
+                            Ok(())
+                        }
+                    },
+                    || {
+                        persisted.set(true);
+                        Ok(())
+                    },
+                )
+            },
+        );
+
+        assert_eq!(
+            calls.into_inner(),
+            vec!["自启:true", "Dock:true", "Dock:false", "自启:false"]
+        );
+        assert!(!persisted.get());
+        assert_eq!(result.unwrap_err(), "Dock 切换失败");
+    }
+
+    #[test]
+    fn 设置失败按相反顺序恢复_dock_和自启() {
+        use std::cell::RefCell;
+
+        let calls = RefCell::new(Vec::new());
+
+        let result = persist_with_auto_start(
+            false,
+            true,
+            |enabled| {
+                calls.borrow_mut().push(format!("自启:{enabled}"));
+                Ok(())
+            },
+            || {
+                persist_with_dock_visibility(
+                    false,
+                    true,
+                    |hidden| {
+                        calls.borrow_mut().push(format!("Dock:{hidden}"));
+                        Ok(())
+                    },
+                    || {
+                        calls.borrow_mut().push("写配置".to_string());
+                        Err::<(), _>("设置写入失败".to_string())
+                    },
+                )
+            },
+        );
+
+        assert_eq!(
+            calls.into_inner(),
+            vec![
+                "自启:true",
+                "Dock:true",
+                "写配置",
+                "Dock:false",
+                "自启:false"
+            ]
+        );
+        assert_eq!(result.unwrap_err(), "设置写入失败");
+    }
+
+    #[test]
+    fn dock_恢复失败会合并错误并继续恢复自启() {
+        use std::cell::{Cell, RefCell};
+
+        let calls = RefCell::new(Vec::new());
+        let dock_calls = Cell::new(0);
+
+        let result = persist_with_auto_start(
+            false,
+            true,
+            |enabled| {
+                calls.borrow_mut().push(format!("自启:{enabled}"));
+                Ok(())
+            },
+            || {
+                persist_with_dock_visibility(
+                    false,
+                    true,
+                    |hidden| {
+                        calls.borrow_mut().push(format!("Dock:{hidden}"));
+                        let call_index = dock_calls.get();
+                        dock_calls.set(call_index + 1);
+                        if call_index == 1 {
+                            Err("Dock 恢复失败".to_string())
+                        } else {
+                            Ok(())
+                        }
+                    },
+                    || Err::<(), _>("设置写入失败".to_string()),
+                )
+            },
+        );
+
+        assert_eq!(
+            calls.into_inner(),
+            vec!["自启:true", "Dock:true", "Dock:false", "自启:false"]
+        );
+        assert_eq!(
+            result.unwrap_err(),
+            "设置写入失败；恢复Dock 图标显示的原状态失败：Dock 恢复失败"
+        );
     }
 }

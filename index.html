@@ -203,6 +203,23 @@
             </label>
           </div>
 
+          <div id="hideDockIconRow" class="settings-field settings-row" hidden>
+            <div class="settings-copy">
+              <span id="hideDockIconLabel">隐藏 Dock 图标</span>
+              <small id="hideDockIconHint">仅 macOS。开启后隐藏 Dock 图标，仅保留菜单栏图标作为入口。</small>
+            </div>
+            <label class="switch-control" data-no-drag>
+              <input
+                id="hideDockIconSwitch"
+                type="checkbox"
+                data-no-drag
+                aria-labelledby="hideDockIconLabel"
+                aria-describedby="hideDockIconHint"
+              />
+              <span class="switch-track" aria-hidden="true"></span>
+            </label>
+          </div>
+
           <label class="settings-field">
             <span id="refreshIntervalLabel">刷新分钟</span>
             <input id="refreshIntervalInput" class="settings-input" type="number" min="1" max="1440" step="1" data-no-drag />

@@ -19,6 +19,7 @@ describe("设置标准化", () => {
       meterWindow: "primary",
       dataBars: ["weekly", "weekly", "quotaEstimate"],
       logLevel: "debug",
+      hideDockIcon: true,
       widgetMode: "ball",
       panelPosition: { x: -10.6, y: 20.4 },
       ballDock: "right"
@@ -31,6 +32,7 @@ describe("设置标准化", () => {
       meterWindow: "primary",
       dataBars: ["weekly", "weekly", "quotaEstimate"],
       logLevel: "debug",
+      hideDockIcon: true,
       widgetMode: "ball",
       panelPosition: { x: -11, y: 20 },
       ballDock: "right"
@@ -40,6 +42,11 @@ describe("设置标准化", () => {
   it.each([0, 1441, Number.NaN])("无效刷新间隔 %s 回退默认值", (value) => {
     expect(normalizeSettings({ refreshIntervalMinutes: value }).refreshIntervalMinutes)
       .toBe(DEFAULT_SETTINGS.refreshIntervalMinutes);
+  });
+
+  it("旧配置和非法 Dock 设置回退显示图标", () => {
+    expect(normalizeSettings({}).hideDockIcon).toBe(false);
+    expect(normalizeSettings({ hideDockIcon: "true" }).hideDockIcon).toBe(false);
   });
 
   it("拒绝无效位置、停靠方向并清理空文本", () => {

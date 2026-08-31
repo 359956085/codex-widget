@@ -1,6 +1,7 @@
 mod app_state;
 mod autostart;
 mod commands;
+mod dock;
 mod logging;
 mod quota;
 mod settings;
@@ -16,6 +17,7 @@ use commands::{
     close_app, get_always_on_top, get_quota, get_reset_credit_expiries, get_settings, hide_window,
     open_codex, save_settings, set_always_on_top, write_frontend_log,
 };
+use dock::set_dock_icon_hidden;
 use logging::LogLevel;
 use settings::{AppSettings, SettingsService};
 use tray::{create_tray, load_app_icon};
@@ -78,7 +80,16 @@ pub fn run() {
                     "backend.settings",
                     &format!("启动设置读取失败，当前运行使用默认值：{error}"),
                 );
-            } else if startup_settings.should_sync_auto_start() {
+            }
+            if let Err(error) =
+                set_dock_icon_hidden(app.handle(), startup_settings.settings.hide_dock_icon)
+            {
+                // Dock 属于增强能力；应用失败时记录错误，主窗口和菜单栏入口仍需继续创建。
+                state
+                    .logger
+                    .write_best_effort(LogLevel::Error, "backend.dock", &error);
+            }
+            if startup_settings.should_sync_auto_start() {
                 if let Err(error) =
                     reconcile_auto_start(app.handle(), startup_settings.settings.auto_start_enabled)
                 {

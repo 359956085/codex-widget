@@ -14,6 +14,7 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 - Auto refresh: refreshes every 5 minutes by default and can refresh again after quota reset.
 - Auto update: enabled by default and uses GitHub Releases.
 - Start at login: disabled by default and can be enabled in settings for the current user.
+- macOS menu bar mode: optionally hide the Dock icon and keep the menu bar icon as the app entry point.
 - Theme switch: choose a theme in settings.
 - Language switch: supports Chinese and English, with Chinese as the default.
 
@@ -82,6 +83,7 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 - Auto update: when disabled, the app does not check, download, or install GitHub Releases updates. A local proxy may be required.
 - Update proxy: used for GitHub updates and the ChatGPT quota expiry API. It does not affect the main Codex CLI quota read. Supports `http://`, `https://`, and `socks5://`.
 - Start at login: launches the app after signing in. Current user only.
+- Hide Dock icon: available on macOS only. Saving applies the change immediately; the menu bar icon remains available to show the window or quit.
 - Refresh minutes: auto refresh interval, from `1` to `1440`.
 - Theme: choose Default theme, Basic theme 1, Basic theme 2, and Basic theme 3. The selection persists after restart.
 - Language: choose Chinese or English.

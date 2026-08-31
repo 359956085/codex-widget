@@ -22,6 +22,8 @@ export function normalizeSettings(settings) {
       typeof settings?.autoUpdateEnabled === "boolean" ? settings.autoUpdateEnabled : DEFAULT_SETTINGS.autoUpdateEnabled,
     autoStartEnabled:
       typeof settings?.autoStartEnabled === "boolean" ? settings.autoStartEnabled : DEFAULT_SETTINGS.autoStartEnabled,
+    hideDockIcon:
+      typeof settings?.hideDockIcon === "boolean" ? settings.hideDockIcon : DEFAULT_SETTINGS.hideDockIcon,
     onboardingSeen:
       typeof settings?.onboardingSeen === "boolean" ? settings.onboardingSeen : DEFAULT_SETTINGS.onboardingSeen,
     widgetMode,

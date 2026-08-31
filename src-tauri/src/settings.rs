@@ -97,6 +97,8 @@ pub struct AppSettings {
     #[serde(default = "default_auto_start_enabled")]
     pub auto_start_enabled: bool,
     #[serde(default)]
+    pub hide_dock_icon: bool,
+    #[serde(default)]
     pub onboarding_seen: bool,
     #[serde(default)]
     pub log_level: LogLevel,
@@ -123,6 +125,7 @@ impl Default for AppSettings {
             data_bars: None,
             auto_update_enabled: DEFAULT_AUTO_UPDATE_ENABLED,
             auto_start_enabled: DEFAULT_AUTO_START_ENABLED,
+            hide_dock_icon: false,
             onboarding_seen: false,
             log_level: LogLevel::default(),
             widget_mode: WidgetMode::default(),
@@ -431,6 +434,7 @@ mod tests {
             ]),
             auto_update_enabled: false,
             auto_start_enabled: true,
+            hide_dock_icon: true,
             onboarding_seen: true,
             log_level: LogLevel::Debug,
             widget_mode: WidgetMode::Ball,
@@ -467,6 +471,8 @@ mod tests {
         assert_eq!(loaded.log_level, LogLevel::Debug);
         assert!(!loaded.auto_update_enabled);
         assert!(loaded.auto_start_enabled);
+        assert!(loaded.hide_dock_icon);
+        assert_eq!(persisted["hideDockIcon"], true);
         assert!(loaded.onboarding_seen);
         assert_eq!(loaded.widget_mode, WidgetMode::Ball);
         assert_eq!(
@@ -523,6 +529,7 @@ mod tests {
 
         assert!(settings.auto_update_enabled);
         assert!(!settings.auto_start_enabled);
+        assert!(!settings.hide_dock_icon);
         assert!(!settings.onboarding_seen);
         assert_eq!(settings.theme, ThemeMode::Default);
         assert_eq!(settings.meter_window, MeterWindow::Secondary);

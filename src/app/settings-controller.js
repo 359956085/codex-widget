@@ -1,6 +1,7 @@
 import { DATA_BAR_CONTENTS, DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
 import { createCustomSelectController } from "./custom-select.js";
 import { createDialogFocusManager } from "./dialog-focus.js";
+import { detectMacOS } from "./platform.js";
 import { syncSettingsDraftFromSettings } from "./state.js";
 import {
   normalizeDataBarContent,
@@ -27,7 +28,8 @@ export function createSettingsController({
   refreshQuota,
   scheduleUpdateChecks,
   logger,
-  clearPanelClick
+  clearPanelClick,
+  isMacOS = detectMacOS()
 }) {
   const customSelects = createCustomSelectController({
     shells: els.customSelectShells,
@@ -80,6 +82,7 @@ export function createSettingsController({
     els.chooseCodexBtn.addEventListener("click", chooseCodexPath);
     els.autoUpdateSwitch.addEventListener("change", syncAutoUpdateDraft);
     els.autoStartSwitch.addEventListener("change", syncAutoStartDraft);
+    els.hideDockIconSwitch.addEventListener("change", syncHideDockIconDraft);
     customSelects.bindEvents();
   }
 
@@ -123,6 +126,8 @@ export function createSettingsController({
     els.autoUpdateHint.textContent = text.autoUpdateHint;
     els.autoStartLabel.textContent = text.autoStart;
     els.autoStartHint.textContent = text.autoStartHint;
+    els.hideDockIconLabel.textContent = text.hideDockIcon;
+    els.hideDockIconHint.textContent = text.hideDockIconHint;
     els.updateProxyLabel.textContent = text.updateProxy;
     els.updateProxyHint.textContent = text.updateProxyHint;
     els.refreshIntervalLabel.textContent = text.refreshInterval;
@@ -148,6 +153,9 @@ export function createSettingsController({
   function syncSettingsControls(locale) {
     els.autoUpdateSwitch.checked = Boolean(state.settingsDraft.autoUpdateEnabled);
     els.autoStartSwitch.checked = Boolean(state.settingsDraft.autoStartEnabled);
+    els.hideDockIconSwitch.checked = Boolean(state.settingsDraft.hideDockIcon);
+    els.hideDockIconRow.hidden = !isMacOS;
+    els.hideDockIconSwitch.disabled = !isMacOS;
     renderSelectOptionGroups(locale);
     els.localeSelect.value = state.settingsDraft.locale === "en" ? "en" : "zh";
     customSelects.sync();
@@ -164,6 +172,11 @@ export function createSettingsController({
 
   function syncAutoStartDraft() {
     state.settingsDraft.autoStartEnabled = els.autoStartSwitch.checked;
+    render();
+  }
+
+  function syncHideDockIconDraft() {
+    state.settingsDraft.hideDockIcon = els.hideDockIconSwitch.checked;
     render();
   }
 
@@ -259,6 +272,7 @@ export function createSettingsController({
       logLevel: normalizeLogLevel(els.logLevelSelect.value),
       autoUpdateEnabled: els.autoUpdateSwitch.checked,
       autoStartEnabled: els.autoStartSwitch.checked,
+      hideDockIcon: els.hideDockIconSwitch.checked,
       onboardingSeen: state.settings.onboardingSeen,
       widgetMode: state.widgetMode,
       panelPosition: state.settings.panelPosition,

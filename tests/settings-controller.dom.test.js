@@ -103,8 +103,54 @@ describe("设置面板", () => {
     expect(fixture.state.settingsDraft.dataBars).toBeNull();
   });
 
-  it("英文设置展示数据栏标签和选项", () => {
-    const fixture = createFixture(vi.fn().mockResolvedValue({}), { locale: "en" });
+  it("macOS 可预览并保存隐藏 Dock 图标设置", async () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}), { isMacOS: true });
+    fixture.state.settings.hideDockIcon = true;
+    fixture.open();
+
+    expect(fixture.els.hideDockIconRow.hidden).toBe(false);
+    expect(fixture.els.hideDockIconSwitch.disabled).toBe(false);
+    expect(fixture.els.hideDockIconSwitch.checked).toBe(true);
+    expect(fixture.els.hideDockIconLabel.textContent).toBe("隐藏 Dock 图标");
+
+    fixture.els.hideDockIconSwitch.checked = false;
+    fixture.els.hideDockIconSwitch.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(fixture.state.settingsDraft.hideDockIcon).toBe(false);
+
+    fixture.els.hideDockIconSwitch.checked = true;
+    fixture.els.hideDockIconSwitch.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(fixture.state.settingsDraft.hideDockIcon).toBe(true);
+
+    fixture.els.saveSettingsBtn.click();
+    await vi.waitFor(() => expect(fixture.persistSettings).toHaveBeenCalledOnce());
+    const [updateSettings] = fixture.persistSettings.mock.calls[0];
+    expect(updateSettings({ ...fixture.state.settings, hideDockIcon: false }).hideDockIcon).toBe(true);
+  });
+
+  it("取消设置会恢复隐藏 Dock 图标草稿", () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}), { isMacOS: true });
+    fixture.state.settings.hideDockIcon = true;
+    fixture.open();
+
+    fixture.els.hideDockIconSwitch.checked = false;
+    fixture.els.hideDockIconSwitch.dispatchEvent(new Event("change", { bubbles: true }));
+    fixture.els.cancelSettingsBtn.click();
+
+    expect(fixture.state.settingsDraft.hideDockIcon).toBe(true);
+  });
+
+  it("非 macOS 隐藏并禁用 Dock 设置", () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}), { isMacOS: false });
+    fixture.open();
+
+    expect(fixture.els.hideDockIconRow.hidden).toBe(true);
+    expect(fixture.els.hideDockIconSwitch.disabled).toBe(true);
+    fixture.els.hideDockIconSwitch.focus();
+    expect(document.activeElement).not.toBe(fixture.els.hideDockIconSwitch);
+  });
+
+  it("英文设置展示数据栏和 Dock 文案", () => {
+    const fixture = createFixture(vi.fn().mockResolvedValue({}), { locale: "en", isMacOS: true });
     fixture.state.settings.locale = "en";
     fixture.open();
 
@@ -112,6 +158,8 @@ describe("设置面板", () => {
       .toEqual(["Data bar 1", "Data bar 2", "Data bar 3"]);
     expect(Array.from(fixture.els.dataBarSelects[0].options, (option) => option.textContent))
       .toEqual(["5h window", "Weekly window", "Reset credits", "Quota estimate"]);
+    expect(fixture.els.hideDockIconLabel.textContent).toBe("Hide Dock icon");
+    expect(fixture.els.hideDockIconHint.textContent).toContain("macOS only");
   });
 
   it("Escape 关闭面板并恢复打开按钮焦点", () => {
@@ -130,7 +178,7 @@ describe("设置面板", () => {
   });
 });
 
-function createFixture(persistSettings, { locale = "zh" } = {}) {
+function createFixture(persistSettings, { locale = "zh", isMacOS = false } = {}) {
   loadApplicationMarkup();
   const els = createElements();
   const state = createAppState();
@@ -157,7 +205,8 @@ function createFixture(persistSettings, { locale = "zh" } = {}) {
     refreshQuota,
     scheduleUpdateChecks,
     logger: { error: vi.fn() },
-    clearPanelClick: vi.fn()
+    clearPanelClick: vi.fn(),
+    isMacOS
   });
   controller.bindEvents();
 
