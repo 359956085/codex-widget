@@ -84,10 +84,10 @@ pub async fn estimate_weekly_quota(current_reset_at: &str) -> Result<QuotaEstima
     let current_reset_at = DateTime::parse_from_rfc3339(current_reset_at)
         .context("周额度重置时间格式无效")?
         .timestamp();
-    let sessions_dir = resolve_codex_home()?.join("sessions");
+    let codex_home = resolve_codex_home()?;
 
     tokio::task::spawn_blocking(move || {
-        estimate_from_sessions(&sessions_dir, current_reset_at, Utc::now().timestamp())
+        estimate_from_codex_home(&codex_home, current_reset_at, Utc::now().timestamp())
     })
     .await
     .context("额度估算后台任务异常结束")?
@@ -125,13 +125,17 @@ fn non_empty_env(name: &str) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
-fn estimate_from_sessions(
-    sessions_dir: &Path,
+fn estimate_from_codex_home(
+    codex_home: &Path,
     current_reset_at: i64,
     now: i64,
 ) -> Result<QuotaEstimate> {
+    let session_dirs = [
+        codex_home.join("sessions"),
+        codex_home.join("archived_sessions"),
+    ];
     let cutoff = now.saturating_sub(LOOKBACK_SECONDS);
-    let files = collect_rollout_files(sessions_dir, cutoff)?;
+    let files = collect_rollout_files(&session_dirs, cutoff)?;
     let mut events = Vec::new();
 
     for file in files {
@@ -141,13 +145,23 @@ fn estimate_from_sessions(
     Ok(estimate_from_events(events, current_reset_at))
 }
 
-fn collect_rollout_files(sessions_dir: &Path, cutoff: i64) -> Result<Vec<PathBuf>> {
-    if !sessions_dir.is_dir() {
-        return Err(anyhow!("Codex 会话目录不存在：{}", sessions_dir.display()));
+fn collect_rollout_files(session_dirs: &[PathBuf], cutoff: i64) -> Result<Vec<PathBuf>> {
+    let existing_dirs = session_dirs
+        .iter()
+        .filter(|directory| directory.is_dir())
+        .collect::<Vec<_>>();
+    if existing_dirs.is_empty() {
+        return Err(anyhow!("Codex 活动及归档会话目录均不存在。"));
     }
 
     let mut candidates = Vec::new();
-    collect_directory_files(sessions_dir, 0, cutoff, &mut candidates)?;
+    for directory in existing_dirs {
+        collect_directory_files(directory, 0, cutoff, &mut candidates)?;
+    }
+    Ok(select_rollout_files(candidates))
+}
+
+fn select_rollout_files(mut candidates: Vec<FileCandidate>) -> Vec<PathBuf> {
     candidates.sort_by(|left, right| {
         right
             .modified
@@ -156,8 +170,19 @@ fn collect_rollout_files(sessions_dir: &Path, cutoff: i64) -> Result<Vec<PathBuf
     });
 
     let mut total_bytes = 0_u64;
+    let mut seen_file_names = HashSet::new();
     let mut selected = Vec::new();
-    for candidate in candidates.into_iter().take(MAX_FILE_COUNT) {
+    for candidate in candidates {
+        let Some(file_name) = candidate.path.file_name().map(ToOwned::to_owned) else {
+            continue;
+        };
+        // 归档移动期间同一 rollout 可能短暂存在于两个目录；排序后保留更新时间较新的副本。
+        if !seen_file_names.insert(file_name) {
+            continue;
+        }
+        if selected.len() >= MAX_FILE_COUNT {
+            break;
+        }
         let next_total = total_bytes.saturating_add(candidate.size);
         if next_total > MAX_TOTAL_BYTES {
             continue;
@@ -165,7 +190,7 @@ fn collect_rollout_files(sessions_dir: &Path, cutoff: i64) -> Result<Vec<PathBuf
         total_bytes = next_total;
         selected.push(candidate.path);
     }
-    Ok(selected)
+    selected
 }
 
 fn collect_directory_files(
@@ -862,6 +887,87 @@ mod tests {
     }
 
     #[test]
+    fn 活动和归档日志共同生成上下周期估值() {
+        let codex_home = tempfile::tempdir().unwrap();
+        let now = Utc::now().timestamp();
+        let current_reset = now + 3 * 24 * 60 * 60;
+        let previous_reset = current_reset - 7 * 24 * 60 * 60;
+        write_rollout_file(
+            codex_home.path(),
+            "sessions",
+            "rollout-current.jsonl",
+            now - 300,
+            current_reset,
+        );
+        write_rollout_file(
+            codex_home.path(),
+            "archived_sessions",
+            "rollout-previous.jsonl",
+            previous_reset - 300,
+            previous_reset,
+        );
+
+        let estimate = estimate_from_codex_home(codex_home.path(), current_reset, now).unwrap();
+        let previous = estimate.previous.unwrap();
+        let current = estimate.current.unwrap();
+
+        assert_eq!(previous.status, EstimateStatus::Ready);
+        assert_eq!(current.status, EstimateStatus::Ready);
+        assert!((previous.full_quota_usd.unwrap() - 40.0).abs() < 0.000_001);
+        assert!((current.full_quota_usd.unwrap() - 40.0).abs() < 0.000_001);
+    }
+
+    #[test]
+    fn 任一会话目录存在时都能独立估算() {
+        for directory in ["sessions", "archived_sessions"] {
+            let codex_home = tempfile::tempdir().unwrap();
+            let now = Utc::now().timestamp();
+            let current_reset = now + 3 * 24 * 60 * 60;
+            write_rollout_file(
+                codex_home.path(),
+                directory,
+                "rollout-current.jsonl",
+                now - 300,
+                current_reset,
+            );
+
+            let estimate = estimate_from_codex_home(codex_home.path(), current_reset, now).unwrap();
+
+            assert_eq!(estimate.current.unwrap().status, EstimateStatus::Ready);
+        }
+    }
+
+    #[test]
+    fn 同名日志优先保留更新时间较新的副本() {
+        let older = PathBuf::from("sessions").join("rollout-shared.jsonl");
+        let newer = PathBuf::from("archived_sessions").join("rollout-shared.jsonl");
+        let selected = select_rollout_files(vec![
+            FileCandidate {
+                path: older,
+                size: 10,
+                modified: 1,
+            },
+            FileCandidate {
+                path: newer.clone(),
+                size: 10,
+                modified: 2,
+            },
+        ]);
+
+        assert_eq!(selected, vec![newer]);
+    }
+
+    #[test]
+    fn 活动和归档目录都不存在时返回错误() {
+        let codex_home = tempfile::tempdir().unwrap();
+        let error = estimate_from_codex_home(codex_home.path(), 10_000, 1_000)
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("活动及归档会话目录均不存在"));
+    }
+
+    #[test]
     fn 日志解析关联模型并按累计用量去重() {
         let mut file = tempfile::NamedTempFile::new().unwrap();
         writeln!(
@@ -1329,6 +1435,77 @@ mod tests {
         assert!(result.previous.is_some());
         assert!(result.current.is_some());
         assert!(result.current.unwrap().cycle_ends_at.contains("1970-01-01"));
+    }
+
+    fn write_rollout_file(
+        codex_home: &Path,
+        directory: &str,
+        file_name: &str,
+        start_at: i64,
+        reset_at: i64,
+    ) -> PathBuf {
+        let directory = codex_home.join(directory);
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join(file_name);
+        let mut file = File::create(&path).unwrap();
+        let start_timestamp = Utc
+            .timestamp_opt(start_at, 0)
+            .single()
+            .unwrap()
+            .to_rfc3339_opts(SecondsFormat::Secs, true);
+        writeln!(
+            file,
+            "{}",
+            json!({
+                "timestamp": start_timestamp,
+                "type": "turn_context",
+                "payload": { "model": "gpt-5.6-sol" }
+            })
+        )
+        .unwrap();
+
+        for (index, used_percent) in [0.0, 1.0, 2.0, 3.0].into_iter().enumerate() {
+            let timestamp = Utc
+                .timestamp_opt(start_at + i64::try_from(index).unwrap(), 0)
+                .single()
+                .unwrap()
+                .to_rfc3339_opts(SecondsFormat::Secs, true);
+            let last_input_tokens = if index == 0 { 0 } else { 100_000 };
+            let total_input_tokens = u64::try_from(index).unwrap() * 100_000;
+            writeln!(
+                file,
+                "{}",
+                json!({
+                    "timestamp": timestamp,
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "last_token_usage": {
+                                "input_tokens": last_input_tokens,
+                                "output_tokens": 0,
+                                "total_tokens": last_input_tokens
+                            },
+                            "total_token_usage": {
+                                "input_tokens": total_input_tokens,
+                                "output_tokens": 0,
+                                "total_tokens": total_input_tokens
+                            }
+                        },
+                        "rate_limits": {
+                            "primary": {
+                                "used_percent": used_percent,
+                                "window_minutes": WEEKLY_WINDOW_MINS,
+                                "resets_at": reset_at
+                            }
+                        }
+                    }
+                })
+            )
+            .unwrap();
+        }
+
+        path
     }
 
     fn test_event(

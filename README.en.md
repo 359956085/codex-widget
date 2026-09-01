@@ -97,7 +97,7 @@ The quota estimate is the Token API equivalent value of 100% weekly quota. It is
 
 #### Data and cycle selection
 
-The app streams local session logs from the latest 16 days under `CODEX_HOME/sessions`. It extracts only model, Token usage, weekly quota percentage, and reset time. Cumulative Token fingerprints deduplicate events. A weekly window is identified as `10080` minutes; reset times drifting by no more than 30 minutes belong to one cycle. The current cycle may differ from the live reset time by up to 2 hours, and the previous cycle is the nearest valid earlier cycle.
+The app streams local session logs from the latest 16 days under `CODEX_HOME/sessions` and `CODEX_HOME/archived_sessions`. It extracts only model, Token usage, weekly quota percentage, and reset time. If the same rollout briefly exists in both locations during an archive move, only the newer copy is read; cumulative Token fingerprints continue to deduplicate events within each file. A weekly window is identified as `10080` minutes; reset times drifting by no more than 30 minutes belong to one cycle. The current cycle may differ from the live reset time by up to 2 hours, and the previous cycle is the nearest valid earlier cycle.
 
 `codex-auto-review` is estimated using GPT-5.4 pricing and participates normally in cost accumulation and candidate calculation. Other models without public pricing are not guessed and terminate the current sample segment. A new clean segment starts from a new quota-percentage and cost baseline, preventing unknown models from contaminating later estimates.
 
