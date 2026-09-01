@@ -99,7 +99,7 @@ The quota estimate is the Token API equivalent value of 100% weekly quota. It is
 
 The app streams local session logs from the latest 16 days under `CODEX_HOME/sessions`. It extracts only model, Token usage, weekly quota percentage, and reset time. Cumulative Token fingerprints deduplicate events. A weekly window is identified as `10080` minutes; reset times drifting by no more than 30 minutes belong to one cycle. The current cycle may differ from the live reset time by up to 2 hours, and the previous cycle is the nearest valid earlier cycle.
 
-`codex-auto-review` is estimated using GPT-5.4 pricing and participates normally in cost accumulation and regression. Other models without public pricing are not guessed and terminate the current sample segment. A new clean segment starts from a new quota-percentage and cumulative-cost baseline, preventing unknown models from contaminating later regression.
+`codex-auto-review` is estimated using GPT-5.4 pricing and participates normally in cost accumulation and candidate calculation. Other models without public pricing are not guessed and terminate the current sample segment. A new clean segment starts from a new quota-percentage and cost baseline, preventing unknown models from contaminating later estimates.
 
 #### Built-in price table
 
@@ -137,16 +137,18 @@ Cost = [m_in × (U × P_in + C × P_cached + W × P_write)
 
 Cached input and cache-write Tokens are deducted from input Tokens first. Reasoning Tokens are not added again. Tool-call fees are excluded.
 
-#### Weekly quota regression
+#### Robust weekly quota estimate
 
-Each clean sample segment starts from zero. Let `X` be cumulative priced USD within the segment and `Y` be the increase in weekly quota used percentage from the segment baseline. The app uses an origin-constrained least-squares regression. Effective span is the union length of percentage intervals actually covered by all clean segments; overlaps count once and unobserved gaps are not filled.
+The app builds an incremental candidate for each adjacent percentage increase. Let `C_i` be cumulative locally priced USD in the interval and `ΔP_i` be the weekly quota used-percentage increase:
 
 ```text
-k = Σ(X × Y) / Σ(X²)
-100% weekly quota API equivalent = 100 / k
+E_i = 100 × C_i / ΔP_i
+100% weekly quota API equivalent = weightedMedian(E_i, weight = ΔP_i)
 ```
 
-An amount is shown only when all gates pass: at least `3` valid percentage samples, at least `2%` unique covered span, and a positive finite slope. Changes in model mix, long-context share, cache hits, and sample distribution can change the estimate.
+When adjacent local events are at least `15` minutes apart and the account percentage increases, the boundary delta cannot be separated into local and other-device usage. The app isolates that delta and starts from a new baseline. Remaining candidates are sorted, and the largest consistent cluster satisfying `maximum candidate / minimum candidate ≤ 1.5` is selected. Ties prefer greater total percentage span, then the higher amount. Candidates outside the cluster are reported as suspected cross-device intervals.
+
+Effective span is the union length of percentage intervals covered by the consistent cluster; overlaps count once and unobserved gaps are not filled. An amount is shown only when the cluster contains at least `3` samples, covers at least `2%` unique span, and has a positive finite weighted median. Changes in model mix, long-context share, cache hits, and sample distribution can still change the estimate.
 
 ### Privacy
 

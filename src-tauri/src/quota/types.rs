@@ -40,6 +40,7 @@ pub struct CycleQuotaEstimate {
     pub sample_count: u32,
     pub percent_span: u8,
     pub unpriced_event_count: u32,
+    pub suspected_remote_interval_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]

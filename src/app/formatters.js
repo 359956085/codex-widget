@@ -146,6 +146,9 @@ function formatEstimateCycleDetails(label, estimate, text, locale) {
     `${text.estimateSpan} ${formatEstimateMetric(estimate.percentSpan)}%`
   ];
   details.push(`${text.estimateUnpriced} ${formatEstimateMetric(estimate.unpricedEventCount)}`);
+  details.push(
+    `${text.estimateSuspectedRemote} ${formatEstimateMetric(estimate.suspectedRemoteIntervalCount)}`
+  );
 
   if (estimate.status === "unavailable") {
     return `${label}${delimiter}${text.estimateUnavailable} (${details.join(", ")})`;

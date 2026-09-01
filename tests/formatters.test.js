@@ -68,6 +68,7 @@ describe("展示格式化", () => {
       estimateSamples: "样本",
       estimateSpan: "跨度",
       estimateUnpriced: "未计价",
+      estimateSuspectedRemote: "疑似跨设备区间",
       estimateCollecting: "仍在收集",
       estimateLoading: "正在获取数据",
       estimateUnavailable: "不可用"
@@ -79,19 +80,23 @@ describe("展示格式化", () => {
         fullQuotaUsd: 104.6,
         sampleCount: 39,
         percentSpan: 40,
-        unpricedEventCount: 3
+        unpricedEventCount: 3,
+        suspectedRemoteIntervalCount: 2
       },
       current: {
         status: "collecting",
         sampleCount: 10,
         percentSpan: 10,
-        unpricedEventCount: 70
+        unpricedEventCount: 70,
+        suspectedRemoteIntervalCount: 4
       }
     }, text, "zh");
 
     expect(tooltip).toContain("上周：$105");
     expect(tooltip).not.toContain("R²");
     expect(tooltip).toContain("本周：仍在收集");
+    expect(tooltip).toContain("疑似跨设备区间 2");
+    expect(tooltip).toContain("疑似跨设备区间 4");
     expect(tooltip).toContain("价格表 2026-08-25");
     const loadingTooltip = formatQuotaEstimateTooltip(null, text, "zh", { loading: true });
     expect(loadingTooltip).toContain("上周：正在获取数据");
@@ -104,8 +109,9 @@ describe("展示格式化", () => {
         status: "unavailable",
         sampleCount: 0,
         percentSpan: 0,
-        unpricedEventCount: 8
+        unpricedEventCount: 8,
+        suspectedRemoteIntervalCount: 1
       }
-    }, text, "zh")).toContain("跨度 0%, 未计价 8");
+    }, text, "zh")).toContain("跨度 0%, 未计价 8, 疑似跨设备区间 1");
   });
 });

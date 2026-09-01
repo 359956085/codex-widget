@@ -182,6 +182,8 @@ describe("界面渲染", () => {
     expect(estimateCard.querySelectorAll(".estimate-value")[0].textContent).toBe("$105");
     expect(estimateCard.querySelectorAll(".estimate-value")[1].textContent).toBe("--");
     expect(estimateCard.dataset.tooltip).toContain("样本或跨度不足");
+    expect(estimateCard.dataset.tooltip).toContain("疑似跨设备区间 2");
+    expect(estimateCard.dataset.tooltip).toContain("疑似跨设备区间 4");
     expect(estimateCard.dataset.tooltip).not.toContain("R²");
     expect(estimateCard.getAttribute("aria-label")).toContain("不等于实际账单");
     expect(els.dataBarCards[1].querySelector("strong").textContent).toBe("97%");
@@ -217,6 +219,16 @@ describe("界面渲染", () => {
     expect(estimateCard.dataset.tooltip).toContain("Last: Fetching data");
     expect(estimateCard.dataset.tooltip).toContain("Current: Fetching data");
     expect(estimateCard.dataset.tooltip).not.toContain("No usable local session data");
+  });
+
+  it("英文额度估算提示展示疑似跨设备区间", () => {
+    locale = "en";
+    state.quota = createQuotaFixture();
+
+    renderer.render();
+
+    expect(els.dataBarCards[0].dataset.tooltip).toContain("Suspected cross-device intervals 2");
+    expect(els.dataBarCards[0].dataset.tooltip).toContain("Suspected cross-device intervals 4");
   });
 
   it("后台刷新保留已有估算且不显示获取中", () => {
@@ -307,14 +319,16 @@ function createQuotaFixture(planType = "unknown") {
         fullQuotaUsd: 104.6,
         sampleCount: 39,
         percentSpan: 40,
-        unpricedEventCount: 3
+        unpricedEventCount: 3,
+        suspectedRemoteIntervalCount: 2
       },
       current: {
         status: "collecting",
         fullQuotaUsd: null,
         sampleCount: 10,
         percentSpan: 10,
-        unpricedEventCount: 70
+        unpricedEventCount: 70,
+        suspectedRemoteIntervalCount: 4
       }
     }
   };
