@@ -343,7 +343,7 @@ body[data-theme="default"] .default-meter-particles {
   opacity: 0.85;
 }
 
-/* 顶部镜面高光区：精准收拢至左上角 10:30 局部玻璃光带，消除向中右方散开的白雾，还原深邃纯净暗穹 */
+/* 顶部镜面高光区：仅扩大左上角 10:30 的局部玻璃光斑，保持与右下反光之间的暗区 */
 body[data-theme="default"] .default-meter-shine {
   position: absolute;
   inset: 4px;
@@ -353,14 +353,14 @@ body[data-theme="default"] .default-meter-shine {
   overflow: hidden;
   background:
     radial-gradient(
-      ellipse 38px 20px at 24% 16%,
+      ellipse 46px 26px at 24% 16%,
       rgba(255, 255, 255, 0.82) 0%,
       rgba(255, 255, 255, 0.48) 30%,
       rgba(255, 255, 255, 0.12) 60%,
       transparent 88%
     ),
     radial-gradient(
-      ellipse 20px 12px at 16% 24%,
+      ellipse 25px 16px at 16% 24%,
       rgba(255, 255, 255, 0.38) 0%,
       rgba(255, 255, 255, 0.08) 50%,
       transparent 80%
@@ -731,14 +731,14 @@ body[data-theme="default"] .default-meter[data-mode="ball"] .default-meter-shine
   inset: 3px;
   background:
     radial-gradient(
-      ellipse 28px 15px at 24% 16%,
+      ellipse 31px 18px at 24% 16%,
       rgba(255, 255, 255, 0.82) 0%,
       rgba(255, 255, 255, 0.48) 30%,
       rgba(255, 255, 255, 0.12) 60%,
       transparent 88%
     ),
     radial-gradient(
-      ellipse 15px 9px at 16% 24%,
+      ellipse 17px 11px at 16% 24%,
       rgba(255, 255, 255, 0.38) 0%,
       rgba(255, 255, 255, 0.08) 50%,
       transparent 80%
