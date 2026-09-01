@@ -32,7 +32,13 @@ export function formatQuotaEstimateTooltip(estimate, text, locale, { loading = f
     return parts.join(separator);
   }
   parts.push(formatEstimateCycleDetails(text.estimatePrevious, estimate?.previous, text, locale));
-  parts.push(formatEstimateCycleDetails(text.estimateCurrent, estimate?.current, text, locale));
+  parts.push(formatEstimateCycleDetails(
+    text.estimateCurrent,
+    estimate?.current,
+    text,
+    locale,
+    text.estimateWaitingCurrentUsage
+  ));
   if (estimate?.priceTableAsOf) {
     parts.push(`${text.estimatePriceTable} ${estimate.priceTableAsOf}`);
   }
@@ -135,10 +141,16 @@ function formatRemainingDuration(time) {
   return `${totalMinutes}m`;
 }
 
-function formatEstimateCycleDetails(label, estimate, text, locale) {
+function formatEstimateCycleDetails(
+  label,
+  estimate,
+  text,
+  locale,
+  missingText = text.estimateUnavailable
+) {
   const delimiter = locale === "zh" ? "：" : ": ";
   if (!estimate) {
-    return `${label}${delimiter}${text.estimateUnavailable}`;
+    return `${label}${delimiter}${missingText}`;
   }
 
   const details = [

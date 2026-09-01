@@ -243,16 +243,25 @@ describe("界面渲染", () => {
     expect(estimateCard.dataset.tooltip).not.toContain("正在获取数据");
   });
 
-  it("加载结束但估算缺失时恢复无可用数据", () => {
+  it("加载结束但估算缺失时区分上周无数据和本周等待使用", () => {
     state.settings.dataBars = ["quotaEstimate", "weekly", "resetCredits"];
     state.loading = false;
 
     renderer.render();
-    expect(els.dataBarCards[0].dataset.tooltip).toContain("上周：无可用本地会话数据");
+    let tooltip = els.dataBarCards[0].dataset.tooltip;
+    expect(tooltip).toContain("上周：无可用本地会话数据");
+    expect(tooltip).toContain("本周：等待本周期本地使用数据");
 
     state.quota = { ...createQuotaFixture(), quotaEstimate: null };
     renderer.render();
-    expect(els.dataBarCards[0].dataset.tooltip).toContain("本周：无可用本地会话数据");
+    tooltip = els.dataBarCards[0].dataset.tooltip;
+    expect(tooltip).toContain("本周：等待本周期本地使用数据");
+
+    locale = "en";
+    renderer.render();
+    tooltip = els.dataBarCards[0].dataset.tooltip;
+    expect(tooltip).toContain("Last: No usable local session data");
+    expect(tooltip).toContain("Current: Waiting for local usage data in this cycle");
   });
 
   it("四套主题都能挂载套餐默认和重复布局", () => {
