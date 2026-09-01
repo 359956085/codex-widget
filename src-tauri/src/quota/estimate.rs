@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader};
-use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -25,7 +24,6 @@ const MAX_DIRECTORY_DEPTH: usize = 8;
 const MIN_SAMPLE_COUNT: usize = 3;
 const MIN_PERCENT_SPAN: f64 = 2.0;
 const ACTIVITY_GAP_SECONDS: i64 = 15 * 60;
-const MAX_CONSISTENT_ESTIMATE_RATIO: f64 = 1.5;
 const LONG_CONTEXT_INPUT_TOKENS: u64 = 272_000;
 
 #[derive(Debug, Clone, Copy)]
@@ -609,6 +607,7 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
     let mut priced_event_count = 0_usize;
     let mut unpriced_event_count = 0_u32;
     let mut suspected_remote_interval_count = 0_u32;
+    let mut initial_interval_excluded = false;
 
     for event in events {
         let Some(cost) = event
@@ -636,29 +635,29 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
             continue;
         }
 
-        let activity_gap = last_timestamp.is_some_and(|timestamp| {
-            event.timestamp.saturating_sub(timestamp) >= ACTIVITY_GAP_SECONDS
-        });
-        if activity_gap && event.used_percent > previous_percent + f64::EPSILON {
-            // 空闲后首次百分比跳变无法拆分为本机和远端消耗；丢弃边界事件比错误归因更保守。
-            suspected_remote_interval_count = suspected_remote_interval_count.saturating_add(1);
-            last_percent = Some(event.used_percent);
-            last_timestamp = Some(event.timestamp);
-            interval_cost = 0.0;
-            continue;
-        }
-
         interval_cost += cost;
         if event.used_percent > previous_percent + f64::EPSILON {
             let delta_percent = event.used_percent - previous_percent;
-            if let Some(candidate) = estimate_candidate(
+            let candidate = estimate_candidate(
                 interval_cost,
                 delta_percent,
                 (previous_percent, event.used_percent),
-            ) {
-                candidates.push(candidate);
-            } else {
+            );
+            let activity_gap = last_timestamp.is_some_and(|timestamp| {
+                event.timestamp.saturating_sub(timestamp) >= ACTIVITY_GAP_SECONDS
+            });
+
+            if candidate.is_none() {
+                unpriced_event_count = unpriced_event_count.saturating_add(1);
+            } else if !initial_interval_excluded {
+                // 周期首个区间缺少完整费用基线，统一按未计价处理，且优先于跨设备推断。
+                initial_interval_excluded = true;
+                unpriced_event_count = unpriced_event_count.saturating_add(1);
+            } else if activity_gap {
+                // 仅依据本机活动空档推断跨设备使用；候选金额高低不参与判断。
                 suspected_remote_interval_count = suspected_remote_interval_count.saturating_add(1);
+            } else if let Some(candidate) = candidate {
+                candidates.push(candidate);
             }
             last_percent = Some(event.used_percent);
             interval_cost = 0.0;
@@ -667,18 +666,13 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
     }
 
     candidates.sort_by(|left, right| left.full_quota_usd.total_cmp(&right.full_quota_usd));
-    let consistent_range = largest_consistent_candidate_range(&candidates);
-    let accepted = &candidates[consistent_range.clone()];
-    suspected_remote_interval_count = suspected_remote_interval_count.saturating_add(
-        u32::try_from(candidates.len().saturating_sub(accepted.len())).unwrap_or(u32::MAX),
-    );
-    let covered_percent_intervals = accepted
+    let covered_percent_intervals = candidates
         .iter()
         .map(|candidate| candidate.percent_interval)
         .collect::<Vec<_>>();
     let percent_span = unique_percent_span(&covered_percent_intervals);
-    let full_quota_usd = weighted_median_estimate(accepted);
-    let ready = accepted.len() >= MIN_SAMPLE_COUNT
+    let full_quota_usd = weighted_median_estimate(&candidates);
+    let ready = candidates.len() >= MIN_SAMPLE_COUNT
         && percent_span >= MIN_PERCENT_SPAN
         && full_quota_usd.is_some();
     let status = if ready {
@@ -697,7 +691,7 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
             .unwrap_or_default(),
         status,
         full_quota_usd: ready.then_some(full_quota_usd).flatten(),
-        sample_count: u32::try_from(accepted.len()).unwrap_or(u32::MAX),
+        sample_count: u32::try_from(candidates.len()).unwrap_or(u32::MAX),
         percent_span: percent_span.round().clamp(0.0, 100.0) as u8,
         unpriced_event_count,
         suspected_remote_interval_count,
@@ -722,45 +716,6 @@ fn estimate_candidate(
         delta_percent,
         percent_interval,
     })
-}
-
-fn largest_consistent_candidate_range(candidates: &[EstimateCandidate]) -> Range<usize> {
-    if candidates.is_empty() {
-        return 0..0;
-    }
-
-    let mut left = 0_usize;
-    let mut window_weight = 0.0;
-    let mut best_range = 0..1;
-    let mut best_weight = candidates[0].delta_percent;
-    let mut best_median = candidates[0].full_quota_usd;
-
-    for right in 0..candidates.len() {
-        window_weight += candidates[right].delta_percent;
-        while candidates[right].full_quota_usd / candidates[left].full_quota_usd
-            > MAX_CONSISTENT_ESTIMATE_RATIO
-        {
-            window_weight -= candidates[left].delta_percent;
-            left += 1;
-        }
-
-        let candidate_range = left..right + 1;
-        let candidate_count = candidate_range.len();
-        let best_count = best_range.len();
-        let candidate_median = candidates[left + (candidate_count - 1) / 2].full_quota_usd;
-        let better = candidate_count > best_count
-            || (candidate_count == best_count
-                && (window_weight > best_weight + f64::EPSILON
-                    || ((window_weight - best_weight).abs() <= f64::EPSILON
-                        && candidate_median > best_median)));
-        if better {
-            best_range = candidate_range;
-            best_weight = window_weight;
-            best_median = candidate_median;
-        }
-    }
-
-    best_range
 }
 
 fn weighted_median_estimate(candidates: &[EstimateCandidate]) -> Option<f64> {
@@ -1083,7 +1038,7 @@ mod tests {
     }
 
     #[test]
-    fn 稳定样本恢复满额估值() {
+    fn 稳定样本排除周期首段后恢复满额估值() {
         let reset_at = 10_000;
         let mut events = Vec::new();
         for percent in 0..=12 {
@@ -1100,12 +1055,34 @@ mod tests {
         let current = result.current.unwrap();
         assert_eq!(current.status, EstimateStatus::Ready);
         assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);
-        assert_eq!(current.percent_span, 12);
+        assert_eq!(current.sample_count, 11);
+        assert_eq!(current.percent_span, 11);
+        assert_eq!(current.unpriced_event_count, 1);
         assert_eq!(current.suspected_remote_interval_count, 0);
     }
 
     #[test]
-    fn 十五分钟空闲后的百分比跳变会被隔离() {
+    fn 周期首个有效候选优先于空闲跨设备判断() {
+        let reset_at = 10_000;
+        let events = vec![
+            test_event(1_000, reset_at, 0.0, Some(0.0)),
+            test_event(1_900, reset_at, 1.0, Some(1.0)),
+            test_event(1_901, reset_at, 2.0, Some(1.0)),
+            test_event(1_902, reset_at, 3.0, Some(1.0)),
+            test_event(1_903, reset_at, 4.0, Some(1.0)),
+        ];
+
+        let current = estimate_from_events(events, reset_at).current.unwrap();
+        assert_eq!(current.status, EstimateStatus::Ready);
+        assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 3);
+        assert_eq!(current.unpriced_event_count, 1);
+        assert_eq!(current.suspected_remote_interval_count, 0);
+    }
+
+    #[test]
+    fn 首段后的十五分钟空闲边界会被隔离() {
         let reset_at = 10_000;
         let events = vec![
             test_event(1_000, reset_at, 0.0, Some(0.0)),
@@ -1114,117 +1091,92 @@ mod tests {
             test_event(1_902, reset_at, 22.0, Some(1.0)),
             test_event(1_903, reset_at, 23.0, Some(1.0)),
             test_event(1_904, reset_at, 24.0, Some(1.0)),
-            test_event(1_905, reset_at, 25.0, Some(1.0)),
         ];
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
         assert_eq!(current.status, EstimateStatus::Ready);
         assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);
-        assert_eq!(current.sample_count, 5);
-        assert_eq!(current.percent_span, 5);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 3);
+        assert_eq!(current.unpriced_event_count, 1);
         assert_eq!(current.suspected_remote_interval_count, 1);
     }
 
     #[test]
-    fn 十五分钟以内不会触发空闲隔离() {
+    fn 高低成本短时突发和模型切换全部进入估值() {
         let reset_at = 10_000;
-        let events = vec![
-            test_event(1_000, reset_at, 0.0, Some(0.0)),
-            test_event(1_001, reset_at, 1.0, Some(1.0)),
-            test_event(1_900, reset_at, 21.0, Some(20.0)),
-            test_event(1_901, reset_at, 22.0, Some(1.0)),
-            test_event(1_902, reset_at, 23.0, Some(1.0)),
-        ];
+        let sol_cost = price_token_usage("gpt-5.6-sol", usage(100_000, 0, 0, 0)).unwrap();
+        let luna_cost = price_token_usage("gpt-5.6-luna", usage(100_000, 0, 0, 0)).unwrap();
+        let costs = [0.0, sol_cost, sol_cost, luna_cost, 5.0, 0.01, luna_cost];
+        let events = costs
+            .into_iter()
+            .enumerate()
+            .map(|(index, cost)| {
+                test_event(
+                    1_000 + i64::try_from(index).unwrap(),
+                    reset_at,
+                    index as f64,
+                    Some(cost),
+                )
+            })
+            .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
         assert_eq!(current.status, EstimateStatus::Ready);
-        assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);
-        assert_eq!(current.sample_count, 4);
+        assert_eq!(current.sample_count, 5);
+        assert_eq!(current.percent_span, 5);
+        assert_eq!(current.unpriced_event_count, 1);
         assert_eq!(current.suspected_remote_interval_count, 0);
     }
 
     #[test]
-    fn 十五分钟以内的快速切换由一致簇剔除() {
+    fn 无效候选计入未计价且不占用首个有效候选() {
         let reset_at = 10_000;
         let events = vec![
             test_event(1_000, reset_at, 0.0, Some(0.0)),
-            test_event(1_001, reset_at, 1.0, Some(1.0)),
-            test_event(1_002, reset_at, 2.0, Some(1.0)),
-            test_event(1_003, reset_at, 22.0, Some(1.0)),
-            test_event(1_004, reset_at, 23.0, Some(1.0)),
-            test_event(1_005, reset_at, 24.0, Some(1.0)),
-            test_event(1_006, reset_at, 25.0, Some(1.0)),
-            test_event(1_007, reset_at, 26.0, Some(1.0)),
+            test_event(1_900, reset_at, 1.0, Some(0.0)),
+            test_event(1_901, reset_at, 2.0, Some(1.0)),
+            test_event(1_902, reset_at, 3.0, Some(1.0)),
+            test_event(1_903, reset_at, 4.0, Some(1.0)),
+            test_event(1_904, reset_at, 5.0, Some(1.0)),
         ];
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
         assert_eq!(current.status, EstimateStatus::Ready);
-        assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);
-        assert_eq!(current.sample_count, 6);
-        assert_eq!(current.percent_span, 6);
-        assert_eq!(current.suspected_remote_interval_count, 1);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 3);
+        assert_eq!(current.unpriced_event_count, 2);
+        assert_eq!(current.suspected_remote_interval_count, 0);
     }
 
     #[test]
-    fn 设备顺序切换和提前重置后估值保持接近() {
-        let previous_reset = 20_000;
-        let current_reset = 30_000;
-        let device_a_events = vec![
-            test_event(1_000, previous_reset, 0.0, Some(0.0)),
-            test_event(1_001, previous_reset, 5.0, Some(5.0)),
-            test_event(1_002, previous_reset, 10.0, Some(5.0)),
-            test_event(2_000, previous_reset, 30.0, Some(5.0)),
-            test_event(2_001, previous_reset, 40.0, Some(10.0)),
-            test_event(2_002, previous_reset, 50.0, Some(10.0)),
-            test_event(2_003, previous_reset, 60.0, Some(10.0)),
-            test_event(21_000, current_reset, 0.0, Some(0.0)),
-            test_event(21_001, current_reset, 5.0, Some(5.0)),
-            test_event(21_002, current_reset, 10.0, Some(5.0)),
-            test_event(21_003, current_reset, 15.0, Some(5.0)),
-            test_event(21_004, current_reset, 20.0, Some(5.0)),
-        ];
-        let device_b_events = vec![
-            test_event(1_100, previous_reset, 10.0, Some(0.0)),
-            test_event(1_101, previous_reset, 15.0, Some(5.0)),
-            test_event(1_102, previous_reset, 20.0, Some(5.0)),
-            test_event(1_103, previous_reset, 25.0, Some(5.0)),
-            test_event(1_104, previous_reset, 30.0, Some(5.0)),
-            test_event(22_000, current_reset, 20.0, Some(0.0)),
-            test_event(22_001, current_reset, 22.5, Some(2.5)),
-            test_event(22_002, current_reset, 25.0, Some(2.5)),
-            test_event(22_003, current_reset, 27.5, Some(2.5)),
-            test_event(22_004, current_reset, 30.0, Some(2.5)),
-        ];
-
-        let device_a = estimate_from_events(device_a_events, current_reset);
-        let device_b = estimate_from_events(device_b_events, current_reset);
-        let values = [
-            device_a.previous.unwrap().full_quota_usd.unwrap(),
-            device_a.current.unwrap().full_quota_usd.unwrap(),
-            device_b.previous.unwrap().full_quota_usd.unwrap(),
-            device_b.current.unwrap().full_quota_usd.unwrap(),
-        ];
-
-        assert!(values
-            .iter()
-            .all(|value| (*value - 100.0).abs() < 0.000_001));
-    }
-
-    #[test]
-    fn 无法形成一致簇时不回退旧算法() {
+    fn 固定本周样本取消成本离群后得到预期估值() {
         let reset_at = 10_000;
-        let events = vec![
-            test_event(1_000, reset_at, 0.0, Some(0.0)),
-            test_event(1_001, reset_at, 1.0, Some(0.5)),
-            test_event(1_002, reset_at, 2.0, Some(1.0)),
-            test_event(1_003, reset_at, 3.0, Some(2.0)),
+        let full_quota_values = [
+            44.602, 166.919, 161.708, 138.49, 79.2, 90.501, 95.0, 96.0, 97.1092, 98.56, 100.0,
         ];
+        let mut events = vec![test_event(1_000, reset_at, 0.0, Some(0.0))];
+        events.extend(
+            full_quota_values
+                .into_iter()
+                .enumerate()
+                .map(|(index, full_quota_usd)| {
+                    test_event(
+                        1_001 + i64::try_from(index).unwrap(),
+                        reset_at,
+                        (index + 1) as f64,
+                        Some(full_quota_usd / 100.0),
+                    )
+                }),
+        );
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.status, EstimateStatus::Collecting);
-        assert_eq!(current.full_quota_usd, None);
-        assert_eq!(current.sample_count, 1);
-        assert_eq!(current.suspected_remote_interval_count, 2);
+        assert_eq!(current.status, EstimateStatus::Ready);
+        assert!((current.full_quota_usd.unwrap() - 97.1092).abs() < 0.000_001);
+        assert_eq!(current.sample_count, 10);
+        assert_eq!(current.percent_span, 10);
+        assert_eq!(current.unpriced_event_count, 1);
+        assert_eq!(current.suspected_remote_interval_count, 0);
     }
 
     #[test]
@@ -1252,7 +1204,7 @@ mod tests {
     #[test]
     fn 样本和跨度恰好达到门槛时展示估值() {
         let reset_at = 10_000;
-        let events = [(0.0, 0.0), (0.5, 0.5), (1.0, 0.5), (2.0, 1.0)]
+        let events = [(0.0, 0.0), (0.5, 0.5), (1.0, 0.5), (1.5, 0.5), (2.5, 1.0)]
             .into_iter()
             .enumerate()
             .map(|(index, (percent, cost))| {
@@ -1289,8 +1241,9 @@ mod tests {
             .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.sample_count, 2);
         assert_eq!(current.percent_span, 1);
+        assert_eq!(current.unpriced_event_count, 1);
         assert_eq!(current.status, EstimateStatus::Collecting);
         assert_eq!(current.full_quota_usd, None);
     }
@@ -1310,8 +1263,9 @@ mod tests {
             .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.sample_count, 2);
-        assert_eq!(current.percent_span, 2);
+        assert_eq!(current.sample_count, 1);
+        assert_eq!(current.percent_span, 1);
+        assert_eq!(current.unpriced_event_count, 1);
         assert_eq!(current.status, EstimateStatus::Collecting);
         assert_eq!(current.full_quota_usd, None);
     }
@@ -1340,9 +1294,9 @@ mod tests {
         }));
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.unpriced_event_count, 1);
-        assert_eq!(current.sample_count, 10);
-        assert_eq!(current.percent_span, 10);
+        assert_eq!(current.unpriced_event_count, 2);
+        assert_eq!(current.sample_count, 9);
+        assert_eq!(current.percent_span, 9);
     }
 
     #[test]
@@ -1356,7 +1310,9 @@ mod tests {
         ];
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.percent_span, 60);
+        assert_eq!(current.sample_count, 1);
+        assert_eq!(current.percent_span, 27);
+        assert_eq!(current.unpriced_event_count, 1);
     }
 
     #[test]
@@ -1371,8 +1327,8 @@ mod tests {
         ];
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.percent_span, 15);
-        assert_eq!(current.unpriced_event_count, 1);
+        assert_eq!(current.percent_span, 5);
+        assert_eq!(current.unpriced_event_count, 2);
     }
 
     #[test]
@@ -1406,8 +1362,8 @@ mod tests {
             .collect();
 
         let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.unpriced_event_count, 0);
-        assert_eq!(current.sample_count, 12);
+        assert_eq!(current.unpriced_event_count, 1);
+        assert_eq!(current.sample_count, 11);
         assert_eq!(current.status, EstimateStatus::Ready);
     }
 
@@ -1464,7 +1420,7 @@ mod tests {
         )
         .unwrap();
 
-        for (index, used_percent) in [0.0, 1.0, 2.0, 3.0].into_iter().enumerate() {
+        for (index, used_percent) in [0.0, 1.0, 2.0, 3.0, 4.0].into_iter().enumerate() {
             let timestamp = Utc
                 .timestamp_opt(start_at + i64::try_from(index).unwrap(), 0)
                 .single()

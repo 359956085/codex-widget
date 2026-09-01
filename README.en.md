@@ -146,9 +146,9 @@ E_i = 100 × C_i / ΔP_i
 100% weekly quota API equivalent = weightedMedian(E_i, weight = ΔP_i)
 ```
 
-When adjacent local events are at least `15` minutes apart and the account percentage increases, the boundary delta cannot be separated into local and other-device usage. The app isolates that delta and starts from a new baseline. Remaining candidates are sorted, and the largest consistent cluster satisfying `maximum candidate / minimum candidate ≤ 1.5` is selected. Ties prefer greater total percentage span, then the higher amount. Candidates outside the cluster are reported as suspected cross-device intervals.
+The first valid percentage increase in each weekly cycle lacks a complete cost baseline, so it is reported as unpriced and excluded from the estimate. This rule takes precedence over cross-device inference. After that, only an account-percentage increase following at least `15` minutes without a local metering event is reported as a suspected cross-device interval. That boundary is excluded and sampling resumes from a new baseline. Cross-device inference does not use candidate cost. Valid high-cost, low-cost, short-burst, and model-switch candidates all participate in the weighted median. Invalid candidates are reported only as unpriced.
 
-Effective span is the union length of percentage intervals covered by the consistent cluster; overlaps count once and unobserved gaps are not filled. An amount is shown only when the cluster contains at least `3` samples, covers at least `2%` unique span, and has a positive finite weighted median. Changes in model mix, long-context share, cache hits, and sample distribution can still change the estimate.
+Effective span is the union length of percentage intervals covered by all valid candidates; overlaps count once and unobserved gaps are not filled. An amount is shown only when there are at least `3` samples, at least `2%` unique span, and a positive finite weighted median. Changes in model mix, long-context share, cache hits, and sample distribution can still change the estimate.
 
 ### Privacy
 
