@@ -175,9 +175,3 @@ function formatEstimateMetric(value) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? String(Math.round(number)) : "0";
 }
-
-// 预存兼容代码暂不删除，仅排除未使用检查。
-// eslint-disable-next-line no-unused-vars
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}

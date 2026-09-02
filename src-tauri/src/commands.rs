@@ -40,7 +40,7 @@ pub(crate) async fn get_quota(
         .as_ref()
         .and_then(|window| window.resets_at.as_deref())
     {
-        match quota::estimate_weekly_quota(reset_at).await {
+        match state.quota_estimator.estimate_weekly_quota(reset_at).await {
             Ok(estimate) => snapshot.quota_estimate = Some(estimate),
             Err(error) => state.logger.write_best_effort(
                 LogLevel::Warn,

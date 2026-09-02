@@ -1,9 +1,6 @@
-use std::collections::HashSet;
 use std::env;
-use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
@@ -11,16 +8,16 @@ use serde_json::Value;
 
 use super::types::{CycleQuotaEstimate, EstimateStatus, QuotaEstimate};
 
+mod cache;
+
+use cache::EstimateCache;
+
 const PRICE_TABLE_AS_OF: &str = "2026-08-25";
 const WEEKLY_WINDOW_MINS: i64 = 10_080;
 const LOOKBACK_SECONDS: i64 = 16 * 24 * 60 * 60;
 const MAX_RESET_DISTANCE_SECONDS: i64 = 8 * 24 * 60 * 60;
 const RESET_CLUSTER_SECONDS: i64 = 30 * 60;
 const CURRENT_RESET_MATCH_SECONDS: i64 = 2 * 60 * 60;
-const MAX_FILE_COUNT: usize = 5_000;
-const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
-const MAX_LINE_BYTES: usize = 1024 * 1024;
-const MAX_DIRECTORY_DEPTH: usize = 8;
 const MIN_SAMPLE_COUNT: usize = 3;
 const MIN_PERCENT_SPAN: f64 = 2.0;
 const ACTIVITY_GAP_SECONDS: i64 = 15 * 60;
@@ -44,7 +41,7 @@ struct TokenUsage {
     total: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct UsageEvent {
     timestamp: i64,
     reset_at: i64,
@@ -65,30 +62,44 @@ struct CycleCluster {
     events: Vec<UsageEvent>,
 }
 
-#[derive(Debug)]
-struct FileCandidate {
-    path: PathBuf,
-    size: u64,
-    modified: u64,
+#[derive(Debug, Default)]
+pub(crate) struct QuotaEstimator {
+    cache: Arc<Mutex<EstimateCache>>,
 }
 
-enum BoundedLine {
-    Eof,
-    Line,
-    Oversized,
-}
+impl QuotaEstimator {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
 
-pub async fn estimate_weekly_quota(current_reset_at: &str) -> Result<QuotaEstimate> {
-    let current_reset_at = DateTime::parse_from_rfc3339(current_reset_at)
-        .context("周额度重置时间格式无效")?
-        .timestamp();
-    let codex_home = resolve_codex_home()?;
+    pub(crate) async fn estimate_weekly_quota(
+        &self,
+        current_reset_at: &str,
+    ) -> Result<QuotaEstimate> {
+        let current_reset_at = DateTime::parse_from_rfc3339(current_reset_at)
+            .context("周额度重置时间格式无效")?
+            .timestamp();
+        let codex_home = resolve_codex_home()?;
+        self.estimate_from_codex_home(codex_home, current_reset_at, Utc::now().timestamp())
+            .await
+    }
 
-    tokio::task::spawn_blocking(move || {
-        estimate_from_codex_home(&codex_home, current_reset_at, Utc::now().timestamp())
-    })
-    .await
-    .context("额度估算后台任务异常结束")?
+    async fn estimate_from_codex_home(
+        &self,
+        codex_home: PathBuf,
+        current_reset_at: i64,
+        now: i64,
+    ) -> Result<QuotaEstimate> {
+        let cache = Arc::clone(&self.cache);
+        tokio::task::spawn_blocking(move || {
+            let mut cache = cache
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            estimate_from_codex_home(&codex_home, current_reset_at, now, &mut cache)
+        })
+        .await
+        .context("额度估算后台任务异常结束")?
+    }
 }
 
 fn resolve_codex_home() -> Result<PathBuf> {
@@ -127,237 +138,20 @@ fn estimate_from_codex_home(
     codex_home: &Path,
     current_reset_at: i64,
     now: i64,
+    cache: &mut EstimateCache,
 ) -> Result<QuotaEstimate> {
-    let session_dirs = [
-        codex_home.join("sessions"),
-        codex_home.join("archived_sessions"),
-    ];
     let cutoff = now.saturating_sub(LOOKBACK_SECONDS);
-    let files = collect_rollout_files(&session_dirs, cutoff)?;
-    let mut events = Vec::new();
-
-    for file in files {
-        read_rollout_events(&file, cutoff, now, &mut events);
-    }
-
-    Ok(estimate_from_events(events, current_reset_at))
+    let collected = cache.collect_events(codex_home, cutoff, now)?;
+    let _stats = collected.stats;
+    Ok(estimate_from_events(collected.events, current_reset_at))
 }
 
-fn collect_rollout_files(session_dirs: &[PathBuf], cutoff: i64) -> Result<Vec<PathBuf>> {
-    let existing_dirs = session_dirs
-        .iter()
-        .filter(|directory| directory.is_dir())
-        .collect::<Vec<_>>();
-    if existing_dirs.is_empty() {
-        return Err(anyhow!("Codex 活动及归档会话目录均不存在。"));
-    }
-
-    let mut candidates = Vec::new();
-    for directory in existing_dirs {
-        collect_directory_files(directory, 0, cutoff, &mut candidates)?;
-    }
-    Ok(select_rollout_files(candidates))
-}
-
-fn select_rollout_files(mut candidates: Vec<FileCandidate>) -> Vec<PathBuf> {
-    candidates.sort_by(|left, right| {
-        right
-            .modified
-            .cmp(&left.modified)
-            .then_with(|| left.path.cmp(&right.path))
-    });
-
-    let mut total_bytes = 0_u64;
-    let mut seen_file_names = HashSet::new();
-    let mut selected = Vec::new();
-    for candidate in candidates {
-        let Some(file_name) = candidate.path.file_name().map(ToOwned::to_owned) else {
-            continue;
-        };
-        // 归档移动期间同一 rollout 可能短暂存在于两个目录；排序后保留更新时间较新的副本。
-        if !seen_file_names.insert(file_name) {
-            continue;
-        }
-        if selected.len() >= MAX_FILE_COUNT {
-            break;
-        }
-        let next_total = total_bytes.saturating_add(candidate.size);
-        if next_total > MAX_TOTAL_BYTES {
-            continue;
-        }
-        total_bytes = next_total;
-        selected.push(candidate.path);
-    }
-    selected
-}
-
-fn collect_directory_files(
-    directory: &Path,
-    depth: usize,
-    cutoff: i64,
-    candidates: &mut Vec<FileCandidate>,
-) -> Result<()> {
-    if depth > MAX_DIRECTORY_DEPTH {
-        return Ok(());
-    }
-
-    let entries = fs::read_dir(directory)
-        .with_context(|| format!("无法读取 Codex 会话目录：{}", directory.display()))?;
-    for entry in entries.flatten() {
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
-        let path = entry.path();
-        if file_type.is_dir() {
-            // 不跟随符号链接，避免会话目录把扫描范围引向外部路径。
-            let _ = collect_directory_files(&path, depth + 1, cutoff, candidates);
-            continue;
-        }
-        let file_name = path.file_name().and_then(|value| value.to_str());
-        if !file_type.is_file()
-            || path.extension().and_then(|value| value.to_str()) != Some("jsonl")
-            || !file_name.is_some_and(|value| value.starts_with("rollout-"))
-        {
-            continue;
-        }
-
-        let Ok(metadata) = entry.metadata() else {
-            continue;
-        };
-        let modified = system_time_seconds(metadata.modified().unwrap_or(UNIX_EPOCH));
-        if modified < cutoff.max(0) as u64 {
-            continue;
-        }
-        candidates.push(FileCandidate {
-            path,
-            size: metadata.len(),
-            modified,
-        });
-    }
-    Ok(())
-}
-
-fn system_time_seconds(value: SystemTime) -> u64 {
-    value
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |duration| duration.as_secs())
-}
-
-fn read_rollout_events(path: &Path, cutoff: i64, now: i64, events: &mut Vec<UsageEvent>) {
-    let Ok(file) = File::open(path) else {
-        return;
-    };
-    let mut reader = BufReader::new(file);
-    let mut line = Vec::new();
-    let mut model = None;
-    let mut total_usage_fingerprints = HashSet::new();
-
-    loop {
-        match read_bounded_line(&mut reader, &mut line) {
-            Ok(BoundedLine::Eof) | Err(_) => break,
-            Ok(BoundedLine::Oversized) => continue,
-            Ok(BoundedLine::Line) => {}
-        }
-
-        let Ok(text) = std::str::from_utf8(&line) else {
-            continue;
-        };
-        // 先按记录类型过滤，避免把提示词和工具输出反序列化进内存。
-        if !text.contains("\"turn_context\"") && !text.contains("\"token_count\"") {
-            continue;
-        }
-        let Ok(record) = serde_json::from_str::<Value>(text) else {
-            if text.contains("\"turn_context\"") {
-                // 损坏的上下文可能正好位于模型切换点；清空关联比沿用旧模型更保守。
-                model = None;
-            }
-            continue;
-        };
-
-        if record.get("type").and_then(Value::as_str) == Some("turn_context") {
-            model = record
-                .pointer("/payload/model")
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            continue;
-        }
-        if record.get("type").and_then(Value::as_str) != Some("event_msg")
-            || record.pointer("/payload/type").and_then(Value::as_str) != Some("token_count")
-        {
-            continue;
-        }
-
-        let total_usage = record
-            .pointer("/payload/info/total_token_usage")
-            .and_then(read_token_usage);
-        if total_usage.is_some_and(|usage| !total_usage_fingerprints.insert(usage)) {
-            continue;
-        }
-
-        if let Some(event) = parse_usage_event(&record, model.as_deref(), cutoff, now) {
-            events.push(event);
-        }
-    }
-}
-
-fn read_bounded_line<R: BufRead>(reader: &mut R, output: &mut Vec<u8>) -> io::Result<BoundedLine> {
-    output.clear();
-    let mut oversized = false;
-    let mut read_any = false;
-
-    loop {
-        let available = reader.fill_buf()?;
-        if available.is_empty() {
-            return if !read_any {
-                Ok(BoundedLine::Eof)
-            } else if oversized {
-                Ok(BoundedLine::Oversized)
-            } else {
-                Ok(BoundedLine::Line)
-            };
-        }
-
-        let newline = available.iter().position(|byte| *byte == b'\n');
-        let take = newline.map_or(available.len(), |index| index + 1);
-        if !oversized {
-            if output.len().saturating_add(take) > MAX_LINE_BYTES {
-                output.clear();
-                oversized = true;
-            } else {
-                output.extend_from_slice(&available[..take]);
-            }
-        }
-        reader.consume(take);
-        read_any = true;
-
-        if newline.is_some() {
-            while matches!(output.last(), Some(b'\n' | b'\r')) {
-                output.pop();
-            }
-            return if oversized {
-                Ok(BoundedLine::Oversized)
-            } else {
-                Ok(BoundedLine::Line)
-            };
-        }
-    }
-}
-
-fn parse_usage_event(
-    record: &Value,
-    model: Option<&str>,
-    cutoff: i64,
-    now: i64,
-) -> Option<UsageEvent> {
+fn parse_usage_event(record: &Value, model: Option<&str>) -> Option<UsageEvent> {
     let timestamp = record
         .get("timestamp")
         .and_then(Value::as_str)
         .and_then(|value| DateTime::parse_from_rfc3339(value).ok())?
         .timestamp();
-    if timestamp < cutoff || timestamp > now.saturating_add(5 * 60) {
-        return None;
-    }
-
     let rate_limits = record.pointer("/payload/rate_limits")?;
     let weekly = [rate_limits.get("primary"), rate_limits.get("secondary")]
         .into_iter()
@@ -777,7 +571,7 @@ fn unique_percent_span(intervals: &[(f64, f64)]) -> f64 {
 mod tests {
     use super::*;
     use serde_json::json;
-    use std::io::Cursor;
+    use std::fs::{self, File};
     use std::io::Write;
 
     fn usage(input: u64, cached: u64, cache_write: u64, output: u64) -> TokenUsage {
@@ -789,6 +583,19 @@ mod tests {
             reasoning_output: output / 2,
             total: input + output,
         }
+    }
+
+    fn estimate_from_home(
+        codex_home: &Path,
+        current_reset_at: i64,
+        now: i64,
+    ) -> Result<QuotaEstimate> {
+        estimate_from_codex_home(
+            codex_home,
+            current_reset_at,
+            now,
+            &mut EstimateCache::default(),
+        )
     }
 
     #[test]
@@ -862,7 +669,7 @@ mod tests {
             previous_reset,
         );
 
-        let estimate = estimate_from_codex_home(codex_home.path(), current_reset, now).unwrap();
+        let estimate = estimate_from_home(codex_home.path(), current_reset, now).unwrap();
         let previous = estimate.previous.unwrap();
         let current = estimate.current.unwrap();
 
@@ -886,78 +693,44 @@ mod tests {
                 current_reset,
             );
 
-            let estimate = estimate_from_codex_home(codex_home.path(), current_reset, now).unwrap();
+            let estimate = estimate_from_home(codex_home.path(), current_reset, now).unwrap();
 
             assert_eq!(estimate.current.unwrap().status, EstimateStatus::Ready);
         }
     }
 
-    #[test]
-    fn 同名日志优先保留更新时间较新的副本() {
-        let older = PathBuf::from("sessions").join("rollout-shared.jsonl");
-        let newer = PathBuf::from("archived_sessions").join("rollout-shared.jsonl");
-        let selected = select_rollout_files(vec![
-            FileCandidate {
-                path: older,
-                size: 10,
-                modified: 1,
-            },
-            FileCandidate {
-                path: newer.clone(),
-                size: 10,
-                modified: 2,
-            },
-        ]);
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn 并发估算共享缓存且结果一致() {
+        let codex_home = tempfile::tempdir().unwrap();
+        let now = Utc::now().timestamp();
+        let current_reset = now + 3 * 24 * 60 * 60;
+        write_rollout_file(
+            codex_home.path(),
+            "sessions",
+            "rollout-concurrent.jsonl",
+            now - 300,
+            current_reset,
+        );
+        let estimator = QuotaEstimator::new();
+        let first_home = codex_home.path().to_path_buf();
+        let second_home = first_home.clone();
 
-        assert_eq!(selected, vec![newer]);
+        let (first, second) = tokio::join!(
+            estimator.estimate_from_codex_home(first_home, current_reset, now),
+            estimator.estimate_from_codex_home(second_home, current_reset, now)
+        );
+
+        assert_eq!(first.unwrap(), second.unwrap());
     }
 
     #[test]
     fn 活动和归档目录都不存在时返回错误() {
         let codex_home = tempfile::tempdir().unwrap();
-        let error = estimate_from_codex_home(codex_home.path(), 10_000, 1_000)
+        let error = estimate_from_home(codex_home.path(), 10_000, 1_000)
             .unwrap_err()
             .to_string();
 
         assert!(error.contains("活动及归档会话目录均不存在"));
-    }
-
-    #[test]
-    fn 日志解析关联模型并按累计用量去重() {
-        let mut file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(
-            file,
-            "{}",
-            json!({
-                "timestamp": "2026-08-24T00:00:00Z",
-                "type": "turn_context",
-                "payload": { "model": "gpt-5.6-sol" }
-            })
-        )
-        .unwrap();
-        writeln!(file, "损坏记录").unwrap();
-        let event = json!({
-            "timestamp": "2026-08-24T00:01:00Z",
-            "type": "event_msg",
-            "payload": {
-                "type": "token_count",
-                "info": {
-                    "last_token_usage": { "input_tokens": 1000, "output_tokens": 100 },
-                    "total_token_usage": { "input_tokens": 1000, "output_tokens": 100, "total_tokens": 1100 }
-                },
-                "rate_limits": {
-                    "primary": { "used_percent": 1, "window_minutes": 10080, "resets_at": 1788134400_i64 }
-                }
-            }
-        });
-        writeln!(file, "{event}").unwrap();
-        writeln!(file, "{event}").unwrap();
-
-        let mut events = Vec::new();
-        read_rollout_events(file.path(), 1_787_000_000, 1_788_000_000, &mut events);
-
-        assert_eq!(events.len(), 1);
-        assert!(events[0].cost_usd.is_some());
     }
 
     #[test]
@@ -978,8 +751,7 @@ mod tests {
             }
         });
 
-        let event =
-            parse_usage_event(&base, Some("gpt-5.6-sol"), 1_787_000_000, 1_788_134_000).unwrap();
+        let event = parse_usage_event(&base, Some("gpt-5.6-sol")).unwrap();
         assert_eq!(event.used_percent, 5.0);
     }
 
@@ -1000,28 +772,7 @@ mod tests {
             }
         });
 
-        assert!(
-            parse_usage_event(&record, Some("gpt-5.6-sol"), 1_787_000_000, 1_788_134_000,)
-                .is_none()
-        );
-    }
-
-    #[test]
-    fn 超长行被消费且下一行仍可读取() {
-        let mut input = vec![b'x'; MAX_LINE_BYTES + 1];
-        input.extend_from_slice(b"\nok\n");
-        let mut reader = Cursor::new(input);
-        let mut output = Vec::new();
-
-        assert!(matches!(
-            read_bounded_line(&mut reader, &mut output).unwrap(),
-            BoundedLine::Oversized
-        ));
-        assert!(matches!(
-            read_bounded_line(&mut reader, &mut output).unwrap(),
-            BoundedLine::Line
-        ));
-        assert_eq!(output, b"ok");
+        assert!(parse_usage_event(&record, Some("gpt-5.6-sol")).is_none());
     }
 
     #[test]

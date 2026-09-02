@@ -114,7 +114,7 @@ export function mount(root) {
   root.replaceChildren(meter);
 
   function update({ percent: nextPercent, level, label: nextLabel, mode = "panel", dock = "none" }) {
-    const value = typeof nextPercent === "number" ? clamp(nextPercent, 0, 100) : null;
+    const value = Number.isFinite(nextPercent) ? clamp(nextPercent, 0, 100) : null;
     const displayText = value === null ? "--%" : `${Math.round(value)}%`;
     meter.dataset.level = level || "unknown";
     meter.dataset.mode = mode === "ball" ? "ball" : "panel";

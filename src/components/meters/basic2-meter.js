@@ -47,7 +47,7 @@ export function mount(root) {
   let layoutKey = "";
 
   function update({ percent: nextPercent, angle = 0, level, label: nextLabel, mode = "panel", dock = "none" }) {
-    const value = typeof nextPercent === "number" ? clamp(nextPercent, 0, 100) : null;
+    const value = Number.isFinite(nextPercent) ? clamp(nextPercent, 0, 100) : null;
     const displayText = value === null ? "--%" : `${Math.round(value)}%`;
     const gaugeMode = mode === "ball" ? "ball" : "panel";
     const gaugeDock = dock === "left" || dock === "right" ? dock : "none";

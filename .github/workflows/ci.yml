@@ -12,6 +12,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  rust-audit:
+    name: Rust 依赖安全审计
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: 审计 Rust 依赖
+        uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: src-tauri
+
   check:
     name: 检查 ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
@@ -52,9 +71,6 @@ jobs:
 
       - name: 运行格式、Lint 和测试
         run: npm run check
-
-      - name: 构建 Rust 应用
-        run: cargo build --locked --manifest-path src-tauri/Cargo.toml
 
       - name: 检查 Tauri 构建
         run: npm run tauri:check
