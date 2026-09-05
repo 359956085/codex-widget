@@ -103,17 +103,18 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 #### 内置价格表
 
-价格表日期：`2026-08-25`。价格单位均为“美元 / 百万 Token”，列顺序为输入、缓存输入、输出。
+价格表日期：`2026-09-05`。价格单位均为“美元 / 百万 Token”，列顺序为输入、缓存输入、输出。
 
 | 模型 | 输入 | 缓存输入 | 输出 |
 |---|---:|---:|---:|
+| [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) | 10 | 1 | 50 |
 | [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol) | 4 | 0.4 | 20 |
 | [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) | 2 | 0.2 | 12 |
 | [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) | 0.2 | 0.02 | 1.2 |
 | [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
 | [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
 
-GPT-5.6 缓存写入按输入价格的 `1.25×` 计算。GPT-5.4（包括 `codex-auto-review`）没有独立缓存写入费率，因此按普通输入价格计算；`0.25` 仅用于缓存命中读取。GPT-5.5 没有内置公开缓存写入价格；出现缓存写入 Token 时，该事件不计价。
+GPT-6 Astra 仅匹配正式模型名 `gpt-6-astra`，缓存写入价格为 `12.50`。GPT-6 Astra 和 GPT-5.6 缓存写入均按输入价格的 `1.25×` 计算。GPT-5.4（包括 `codex-auto-review`）没有独立缓存写入费率，因此按普通输入价格计算；`0.25` 仅用于缓存命中读取。GPT-5.5 没有内置公开缓存写入价格；出现缓存写入 Token 时，该事件不计价。
 
 #### 单次事件费用
 

@@ -12,7 +12,7 @@ mod cache;
 
 use cache::EstimateCache;
 
-const PRICE_TABLE_AS_OF: &str = "2026-08-25";
+const PRICE_TABLE_AS_OF: &str = "2026-09-05";
 const WEEKLY_WINDOW_MINS: i64 = 10_080;
 const LOOKBACK_SECONDS: i64 = 16 * 24 * 60 * 60;
 const MAX_RESET_DISTANCE_SECONDS: i64 = 8 * 24 * 60 * 60;
@@ -286,6 +286,12 @@ fn model_price(model: &str) -> Option<ModelPrice> {
     };
 
     match model {
+        "gpt-6-astra" => Some(ModelPrice {
+            input: 10.0,
+            cached_input: 1.0,
+            output: 50.0,
+            cache_write_multiplier: Some(1.25),
+        }),
         "gpt-5.6" | "gpt-5.6-sol" => Some(gpt_56(4.0, 0.4, 20.0)),
         "gpt-5.6-terra" => Some(gpt_56(2.0, 0.2, 12.0)),
         "gpt-5.6-luna" => Some(gpt_56(0.2, 0.02, 1.2)),
@@ -607,6 +613,45 @@ mod tests {
     }
 
     #[test]
+    fn gpt_6_astra混合计价不会重复计算缓存和推理输出() {
+        let cost =
+            price_token_usage("gpt-6-astra", usage(200_000, 80_000, 20_000, 20_000)).unwrap();
+
+        assert!((cost - 2.33).abs() < 0.000_001);
+    }
+
+    #[test]
+    fn gpt_6_astra长上下文对输入缓存和输出应用倍率() {
+        let cost =
+            price_token_usage("gpt-6-astra", usage(300_000, 80_000, 20_000, 10_000)).unwrap();
+
+        assert!((cost - 5.41).abs() < 0.000_001);
+    }
+
+    #[test]
+    fn gpt_6_astra仅在超过长上下文阈值时应用倍率() {
+        for (input, expected) in [(272_000, 3.22), (272_001, 6.190_02)] {
+            let cost = price_token_usage("gpt-6-astra", usage(input, 0, 0, 10_000)).unwrap();
+
+            assert!((cost - expected).abs() < 0.000_001, "input={input}");
+        }
+    }
+
+    #[test]
+    fn gpt_6_astra仅识别正式模型名() {
+        assert!(model_price("gpt-6-astra").is_some());
+        for model in [
+            "gpt6",
+            "gpt-6",
+            "gpt-6-astra-pro",
+            "gpt-6-astra-fast",
+            "gpt-6-astra-2026-09-05",
+        ] {
+            assert_eq!(price_token_usage(model, usage(1000, 0, 0, 100)), None);
+        }
+    }
+
+    #[test]
     fn 长上下文应用输入和输出倍率() {
         let cost = price_token_usage("gpt-5.5", usage(300_000, 0, 0, 10_000)).unwrap();
 
@@ -802,7 +847,7 @@ mod tests {
         }
 
         let result = estimate_from_events(events, reset_at);
-        assert_eq!(result.price_table_as_of, "2026-08-25");
+        assert_eq!(result.price_table_as_of, "2026-09-05");
         let current = result.current.unwrap();
         assert_eq!(current.status, EstimateStatus::Ready);
         assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);
@@ -1094,6 +1139,53 @@ mod tests {
             serialized.get("suspectedRemoteIntervalCount"),
             Some(&json!(0))
         );
+    }
+
+    #[test]
+    fn gpt_6_astra含缓存写入的日志用量可生成周额度估值() {
+        let reset_at = 10_000;
+        let events = (0..=4)
+            .map(|percent| {
+                let timestamp = Utc
+                    .timestamp_opt(1_000 + i64::from(percent), 0)
+                    .single()
+                    .unwrap()
+                    .to_rfc3339_opts(SecondsFormat::Secs, true);
+                let record = json!({
+                    "timestamp": timestamp,
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "last_token_usage": {
+                                "input_tokens": 200_000,
+                                "cached_input_tokens": 80_000,
+                                "cache_write_input_tokens": 20_000,
+                                "output_tokens": 20_000,
+                                "reasoning_output_tokens": 10_000,
+                                "total_tokens": 220_000
+                            }
+                        },
+                        "rate_limits": {
+                            "secondary": {
+                                "used_percent": percent,
+                                "window_minutes": WEEKLY_WINDOW_MINS,
+                                "resets_at": reset_at
+                            }
+                        }
+                    }
+                });
+                parse_usage_event(&record, Some("gpt-6-astra")).unwrap()
+            })
+            .collect();
+
+        let current = estimate_from_events(events, reset_at).current.unwrap();
+        assert_eq!(current.status, EstimateStatus::Ready);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 3);
+        // 仅保留原有周期首段排除，缓存写入事件均正常计价。
+        assert_eq!(current.unpriced_event_count, 1);
+        assert!((current.full_quota_usd.unwrap() - 233.0).abs() < 0.000_001);
     }
 
     #[test]
