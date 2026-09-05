@@ -11,7 +11,7 @@
     "build": "npm run build:frontend",
     "build:frontend": "vite build",
     "lint": "eslint src scripts tests vite.config.js eslint.config.js",
-    "audit": "npm audit --audit-level=high --registry=https://registry.npmjs.org",
+    "audit": "node scripts/npm-audit.mjs",
     "test": "vitest run",
     "check:frontend": "npm run lint && npm run test && npm run build:frontend && npm run audit",
     "check:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check && cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --locked --manifest-path src-tauri/Cargo.toml",
