@@ -43,7 +43,7 @@ struct TokenUsage {
 
 #[derive(Debug, Clone, PartialEq)]
 struct UsageEvent {
-    timestamp: i64,
+    timestamp: DateTime<Utc>,
     reset_at: i64,
     used_percent: f64,
     cost_usd: Option<f64>,
@@ -151,7 +151,7 @@ fn parse_usage_event(record: &Value, model: Option<&str>) -> Option<UsageEvent> 
         .get("timestamp")
         .and_then(Value::as_str)
         .and_then(|value| DateTime::parse_from_rfc3339(value).ok())?
-        .timestamp();
+        .with_timezone(&Utc);
     let rate_limits = record.pointer("/payload/rate_limits")?;
     let weekly = [rate_limits.get("primary"), rate_limits.get("secondary")]
         .into_iter()
@@ -161,7 +161,7 @@ fn parse_usage_event(record: &Value, model: Option<&str>) -> Option<UsageEvent> 
         })?;
     let used_percent = read_f64(weekly, &["used_percent", "usedPercent"])?;
     let reset_at = read_i64(weekly, &["resets_at", "resetsAt"])?;
-    let reset_distance = reset_at.saturating_sub(timestamp);
+    let reset_distance = reset_at.saturating_sub(timestamp.timestamp());
     if !used_percent.is_finite()
         || !(0..=MAX_RESET_DISTANCE_SECONDS).contains(&reset_distance)
         || reset_distance == 0
@@ -322,9 +322,18 @@ fn estimate_from_events(events: Vec<UsageEvent>, current_reset_at: i64) -> Quota
         .map(|(index, _)| index);
 
     let Some(current_index) = current_index else {
+        // 新周期尚无本地事件时，仍可展示此前最近的有效周期。
+        let previous = clusters
+            .iter()
+            .filter(|cluster| {
+                cluster.representative_reset_at()
+                    < current_reset_at.saturating_sub(CURRENT_RESET_MATCH_SECONDS)
+            })
+            .max_by_key(|cluster| cluster.last_event_at())
+            .map(|cluster| analyze_cluster(cluster, cluster.representative_reset_at()));
         return QuotaEstimate {
             price_table_as_of: PRICE_TABLE_AS_OF.to_string(),
-            previous: None,
+            previous,
             current: None,
         };
     };
@@ -379,7 +388,7 @@ impl CycleCluster {
         resets[resets.len() / 2]
     }
 
-    fn first_event_at(&self) -> i64 {
+    fn first_event_at(&self) -> DateTime<Utc> {
         self.events
             .iter()
             .map(|event| event.timestamp)
@@ -387,7 +396,7 @@ impl CycleCluster {
             .unwrap_or_default()
     }
 
-    fn last_event_at(&self) -> i64 {
+    fn last_event_at(&self) -> DateTime<Utc> {
         self.events
             .iter()
             .map(|event| event.timestamp)
@@ -444,7 +453,8 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
                 (previous_percent, event.used_percent),
             );
             let activity_gap = last_timestamp.is_some_and(|timestamp| {
-                event.timestamp.saturating_sub(timestamp) >= ACTIVITY_GAP_SECONDS
+                event.timestamp.signed_duration_since(timestamp)
+                    >= chrono::Duration::seconds(ACTIVITY_GAP_SECONDS)
             });
 
             if candidate.is_none() {
@@ -602,6 +612,87 @@ mod tests {
             now,
             &mut EstimateCache::default(),
         )
+    }
+
+    #[test]
+    fn 亚秒事件跨文件乱序仍得到一致估值() {
+        for nanos_step in [1, 100_000_000] {
+            let events = (0..8)
+                .map(|index| {
+                    let timestamp = Utc
+                        .timestamp_opt(1_000, index * nanos_step)
+                        .single()
+                        .unwrap();
+                    let record = json!({
+                        "timestamp": timestamp.to_rfc3339_opts(SecondsFormat::Nanos, true),
+                        "payload": {
+                            "info": { "last_token_usage": { "input_tokens": 100_000 } },
+                            "rate_limits": { "primary": {
+                                "window_minutes": WEEKLY_WINDOW_MINS,
+                                "used_percent": index,
+                                "resets_at": 10_000
+                            } }
+                        }
+                    });
+                    parse_usage_event(&record, Some("gpt-6-astra")).unwrap()
+                })
+                .collect::<Vec<_>>();
+            let expected = estimate_from_events(events.clone(), 10_000);
+            let shuffled = [1, 3, 5, 7, 0, 2, 4, 6].map(|index| events[index].clone());
+            assert_eq!(estimate_from_events(shuffled.into(), 10_000), expected);
+            let current = expected.current.unwrap();
+            assert_eq!(current.status, EstimateStatus::Ready);
+            assert_eq!(current.full_quota_usd, Some(100.0));
+        }
+    }
+
+    #[test]
+    fn 活动空档按实际亚秒时间判断十五分钟边界() {
+        for (nanos, remote_count) in [(899_999_999, 0), (900_000_000, 1)] {
+            let mut events = (0..5)
+                .map(|index| test_event(1_000 + index, 10_000, index as f64, Some(1.0)))
+                .collect::<Vec<_>>();
+            events[3].timestamp = Utc.timestamp_opt(1_003, 900_000_000).single().unwrap();
+            events[4].timestamp = Utc.timestamp_opt(1_903, nanos).single().unwrap();
+            let current = estimate_from_events(events, 10_000).current.unwrap();
+            assert_eq!(current.suspected_remote_interval_count, remote_count);
+            assert_eq!(current.sample_count, 3 - remote_count);
+        }
+    }
+
+    #[test]
+    fn 新周期没有本地事件时仍展示最近上周期() {
+        let current_reset = 2_000_000;
+        let mut events = Vec::new();
+        for weeks_ago in [1, 2] {
+            let reset = current_reset - weeks_ago * 7 * 24 * 60 * 60;
+            events.extend((0..5).map(|index| {
+                test_event(
+                    reset - 100 + index,
+                    reset,
+                    index as f64,
+                    Some(weeks_ago as f64),
+                )
+            }));
+        }
+        let result = estimate_from_events(events, current_reset);
+        assert!(result.current.is_none());
+        let previous = result.previous.unwrap();
+        assert_eq!(previous.status, EstimateStatus::Ready);
+        assert_eq!(previous.full_quota_usd, Some(100.0));
+    }
+
+    #[test]
+    fn 周期缺失与两小时匹配边界不会误选未来周期() {
+        let reset = 100_000;
+        let empty = estimate_from_events(Vec::new(), reset);
+        assert!(empty.current.is_none() && empty.previous.is_none());
+        for offset in [-7_201, -7_200, 7_200, 7_201] {
+            let events = vec![test_event(10_000, reset + offset, 1.0, Some(1.0))];
+            let result = estimate_from_events(events, reset);
+            assert_eq!(result.current.is_some(), offset.abs() <= 7_200);
+            assert_eq!(result.previous.is_some(), offset < -7_200);
+        }
     }
 
     #[test]
@@ -1314,7 +1405,7 @@ mod tests {
         cost_usd: Option<f64>,
     ) -> UsageEvent {
         UsageEvent {
-            timestamp,
+            timestamp: Utc.timestamp_opt(timestamp, 0).single().unwrap(),
             reset_at,
             used_percent,
             cost_usd,

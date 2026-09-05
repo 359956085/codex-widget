@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::hash::{DefaultHasher, Hasher};
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -26,6 +27,7 @@ struct CachedRollout {
     size: u64,
     modified: u128,
     append_safe: bool,
+    content_fingerprint: u64,
     state: RolloutParserState,
     events: Vec<UsageEvent>,
 }
@@ -33,7 +35,14 @@ struct CachedRollout {
 #[derive(Debug, Clone, Default)]
 struct RolloutParserState {
     model: Option<String>,
-    total_usage_fingerprints: HashSet<TokenUsage>,
+    total_usage_fingerprints: HashMap<TokenUsage, AcceptedUsage>,
+}
+
+#[derive(Debug, Clone)]
+struct AcceptedUsage {
+    priced: bool,
+    reset_at: i64,
+    used_percent: f64,
 }
 
 #[derive(Debug)]
@@ -63,7 +72,7 @@ struct ParsedChunk {
     events: Vec<UsageEvent>,
     state: RolloutParserState,
     append_safe: bool,
-    bytes_read: u64,
+    content_fingerprint: u64,
 }
 
 enum RefreshMode {
@@ -71,6 +80,7 @@ enum RefreshMode {
     Append {
         offset: u64,
         state: RolloutParserState,
+        content_fingerprint: u64,
     },
     Full,
 }
@@ -116,8 +126,8 @@ impl EstimateCache {
                         .events
                         .iter()
                         .filter(|event| {
-                            event.timestamp >= cutoff
-                                && event.timestamp <= now.saturating_add(5 * 60)
+                            event.timestamp.timestamp() >= cutoff
+                                && event.timestamp.timestamp() <= now.saturating_add(5 * 60)
                         })
                         .cloned(),
                 );
@@ -144,6 +154,7 @@ impl EstimateCache {
                 RefreshMode::Append {
                     offset: cached.size,
                     state: cached.state.clone(),
+                    content_fingerprint: cached.content_fingerprint,
                 }
             }
             _ => RefreshMode::Full,
@@ -154,17 +165,48 @@ impl EstimateCache {
             return true;
         }
 
-        let (offset, state, is_append) = match mode {
-            RefreshMode::Append { offset, state } => (offset, state, true),
-            RefreshMode::Full => (0, RolloutParserState::default(), false),
-            RefreshMode::Reuse => unreachable!(),
-        };
-        let parsed = match parse_rollout_segment(&candidate.path, offset, candidate.size, state) {
-            Ok(parsed) => parsed,
+        let mut file = match File::open(&candidate.path) {
+            Ok(file) => file,
             Err(_) => return false,
         };
+        let (offset, state, digest, is_append) = match mode {
+            RefreshMode::Append {
+                offset,
+                state,
+                content_fingerprint,
+            } => {
+                let digest = match fingerprint_prefix(&mut file, offset, stats) {
+                    Ok(digest) => digest,
+                    Err(_) => return false,
+                };
+                if digest.finish() == content_fingerprint {
+                    (offset, state, digest, true)
+                } else {
+                    if file.seek(SeekFrom::Start(0)).is_err() {
+                        return false;
+                    }
+                    (
+                        0,
+                        RolloutParserState::default(),
+                        DefaultHasher::new(),
+                        false,
+                    )
+                }
+            }
+            RefreshMode::Full => (
+                0,
+                RolloutParserState::default(),
+                DefaultHasher::new(),
+                false,
+            ),
+            RefreshMode::Reuse => unreachable!(),
+        };
+        let parsed =
+            match parse_rollout_segment(&mut file, candidate.size - offset, state, digest, stats) {
+                Ok(parsed) => parsed,
+                Err(_) => return false,
+            };
 
-        stats.bytes_read = stats.bytes_read.saturating_add(parsed.bytes_read);
         if is_append {
             stats.appended_files += 1;
         } else {
@@ -180,6 +222,7 @@ impl EstimateCache {
             cached.size = candidate.size;
             cached.modified = candidate.modified;
             cached.append_safe = parsed.append_safe;
+            cached.content_fingerprint = parsed.content_fingerprint;
         } else {
             self.files.insert(
                 candidate.file_name.clone(),
@@ -187,6 +230,7 @@ impl EstimateCache {
                     size: candidate.size,
                     modified: candidate.modified,
                     append_safe: parsed.append_safe,
+                    content_fingerprint: parsed.content_fingerprint,
                     state: parsed.state,
                     events: parsed.events,
                 },
@@ -300,41 +344,86 @@ fn system_time_nanos(value: SystemTime) -> u128 {
         .map_or(0, |duration| duration.as_nanos())
 }
 
+// 摘要覆盖全部原始字节，包括被跳过的非计量记录和超长行。
+struct FingerprintReader<R> {
+    inner: R,
+    digest: DefaultHasher,
+}
+
+impl<R: Read> Read for FingerprintReader<R> {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        let count = self.inner.read(buffer)?;
+        self.digest.write(&buffer[..count]);
+        Ok(count)
+    }
+}
+
+fn fingerprint_prefix(
+    file: &mut File,
+    size: u64,
+    stats: &mut CacheStats,
+) -> io::Result<DefaultHasher> {
+    let mut reader = FingerprintReader {
+        inner: file.take(size),
+        digest: DefaultHasher::new(),
+    };
+    let result = io::copy(&mut reader, &mut io::sink());
+    stats.bytes_read = stats.bytes_read.saturating_add(size - reader.inner.limit());
+    result?;
+    if reader.inner.limit() != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "日志旧内容未读取完整",
+        ));
+    }
+    Ok(reader.digest)
+}
+
 fn parse_rollout_segment(
-    path: &Path,
-    offset: u64,
-    snapshot_size: u64,
+    file: &mut File,
+    segment_size: u64,
     mut state: RolloutParserState,
+    digest: DefaultHasher,
+    stats: &mut CacheStats,
 ) -> io::Result<ParsedChunk> {
-    let segment_size = snapshot_size
-        .checked_sub(offset)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "日志增量偏移超过文件大小"))?;
-    let mut file = File::open(path)?;
-    file.seek(SeekFrom::Start(offset))?;
-    let mut reader = BufReader::new(file.take(segment_size));
+    let mut reader = BufReader::new(FingerprintReader {
+        inner: file.take(segment_size),
+        digest,
+    });
     let mut line = Vec::new();
     let mut events = Vec::new();
     let mut append_safe = true;
 
-    loop {
-        match read_bounded_line(&mut reader, &mut line)? {
-            BoundedLine::Eof => break,
-            BoundedLine::Oversized { terminated } => append_safe = terminated,
-            BoundedLine::Line { terminated } => {
-                append_safe = terminated;
-                if let Some(event) = parse_rollout_line(&line, &mut state) {
-                    events.push(event);
+    let result = (|| -> io::Result<()> {
+        loop {
+            match read_bounded_line(&mut reader, &mut line)? {
+                BoundedLine::Eof => break,
+                BoundedLine::Oversized { terminated } => append_safe = terminated,
+                BoundedLine::Line { terminated } => {
+                    append_safe = terminated;
+                    if let Some(event) = parse_rollout_line(&line, &mut state) {
+                        events.push(event);
+                    }
                 }
             }
         }
-    }
+        Ok(())
+    })();
 
-    let bytes_read = segment_size.saturating_sub(reader.get_ref().limit());
+    let remaining = reader.get_ref().inner.limit();
+    stats.bytes_read = stats.bytes_read.saturating_add(segment_size - remaining);
+    result?;
+    if remaining != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "日志新增内容未读取完整",
+        ));
+    }
     Ok(ParsedChunk {
         events,
         state,
         append_safe,
-        bytes_read,
+        content_fingerprint: reader.get_ref().digest.finish(),
     })
 }
 
@@ -371,10 +460,29 @@ fn parse_rollout_line(line: &[u8], state: &mut RolloutParserState) -> Option<Usa
     let total_usage = record
         .pointer("/payload/info/total_token_usage")
         .and_then(read_token_usage);
-    if total_usage.is_some_and(|usage| !state.total_usage_fingerprints.insert(usage)) {
-        return None;
+    let mut event = parse_usage_event(&record, state.model.as_deref())?;
+    if let Some(usage) = total_usage {
+        if let Some(accepted) = state.total_usage_fingerprints.get_mut(&usage) {
+            if accepted.reset_at == event.reset_at && accepted.used_percent == event.used_percent {
+                return None;
+            }
+            // 额度快照可延后更新；保留观测，但同一用量只能计费一次。
+            // 原费用未知时继续切断样本段，不能用零费用掩盖缺失数据。
+            event.cost_usd = accepted.priced.then_some(0.0);
+            accepted.reset_at = event.reset_at;
+            accepted.used_percent = event.used_percent;
+        } else {
+            state.total_usage_fingerprints.insert(
+                usage,
+                AcceptedUsage {
+                    priced: event.cost_usd.is_some(),
+                    reset_at: event.reset_at,
+                    used_percent: event.used_percent,
+                },
+            );
+        }
     }
-    parse_usage_event(&record, state.model.as_deref())
+    Some(event)
 }
 
 pub(super) fn read_bounded_line<R: BufRead>(
@@ -463,7 +571,7 @@ mod tests {
     }
 
     #[test]
-    fn 增长日志只读取新增字节() {
+    fn 增长日志校验旧内容后只解析新增事件() {
         let codex_home = tempfile::tempdir().unwrap();
         let now = Utc::now().timestamp();
         let reset_at = now + 3 * 24 * 60 * 60;
@@ -479,7 +587,6 @@ mod tests {
         let first = cache
             .collect_events(codex_home.path(), now - 16 * 24 * 60 * 60, now)
             .unwrap();
-        let old_size = fs::metadata(&path).unwrap().len();
         append_event(&path, now + 10, reset_at, 2.0, 200_000, true);
         let new_size = fs::metadata(&path).unwrap().len();
 
@@ -487,9 +594,19 @@ mod tests {
             .collect_events(codex_home.path(), now - 16 * 24 * 60 * 60, now + 10)
             .unwrap();
 
-        assert_eq!(second.stats.bytes_read, new_size - old_size);
+        assert_eq!(second.stats.bytes_read, new_size);
         assert_eq!(second.stats.appended_files, 1);
         assert_eq!(second.events.len(), first.events.len() + 1);
+        // 再次追加，确认保存的摘要覆盖旧内容和上次新增内容。
+        append_event(&path, now + 20, reset_at, 3.0, 300_000, false);
+        let third = cache
+            .collect_events(codex_home.path(), now - 100, now + 20)
+            .unwrap();
+        let cold = EstimateCache::default()
+            .collect_events(codex_home.path(), now - 100, now + 20)
+            .unwrap();
+        assert_eq!(third.stats.appended_files, 1);
+        assert_eq!(third.events, cold.events);
     }
 
     #[test]
@@ -742,11 +859,218 @@ mod tests {
         writeln!(file, "{event}").unwrap();
         let size = file.as_file().metadata().unwrap().len();
 
-        let parsed =
-            parse_rollout_segment(file.path(), 0, size, RolloutParserState::default()).unwrap();
+        let parsed = parse_rollout_segment(
+            &mut File::open(file.path()).unwrap(),
+            size,
+            RolloutParserState::default(),
+            DefaultHasher::new(),
+            &mut CacheStats::default(),
+        )
+        .unwrap();
 
         assert_eq!(parsed.events.len(), 1);
         assert!(parsed.events[0].cost_usd.is_some());
+    }
+
+    #[test]
+    fn 较大重写与旧内容中段修改都与冷缓存一致() {
+        for middle_only in [false, true] {
+            let home = tempfile::tempdir().unwrap();
+            let now = Utc::now().timestamp();
+            let reset = now + 10_000;
+            let path = write_rollout(
+                home.path(),
+                "sessions",
+                "rollout-rewrite.jsonl",
+                now,
+                reset,
+                true,
+            );
+            for index in 2..=5 {
+                append_event(
+                    &path,
+                    now + index,
+                    reset,
+                    index as f64,
+                    index as u64 * 100_000,
+                    false,
+                );
+            }
+            // 足够长的头尾，确保中段变化不能仅靠头尾抽样检测。
+            let original = fs::read_to_string(&path).unwrap();
+            let padding = format!("{}\n", "x".repeat(MAX_LINE_BYTES + 1));
+            fs::write(&path, format!("{padding}{original}{padding}")).unwrap();
+            let mut cache = EstimateCache::default();
+            cache
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            let old_size = fs::metadata(&path).unwrap().len();
+            let replacement = if middle_only {
+                original.replace("gpt-5.6-sol", "gpt-6-astra")
+            } else {
+                format!(
+                    "{}\n{original}",
+                    json!({"type": "turn_context", "payload": {"model": "unknown"}})
+                )
+                .replace("gpt-5.6-sol", "gpt-6-astra")
+            };
+            fs::write(&path, format!("{padding}{replacement}{padding}")).unwrap();
+            append_event(&path, now + 6, reset, 6.0, 600_000, false);
+            assert!(fs::metadata(&path).unwrap().len() > old_size);
+            let warm = cache
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            let cold = EstimateCache::default()
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            assert_eq!(warm.stats.full_parse_files, 1);
+            assert_eq!(warm.stats.appended_files, 0);
+            assert_eq!(warm.events, cold.events);
+            let estimate = super::super::estimate_from_events(warm.events, reset);
+            assert_eq!(estimate.current.unwrap().full_quota_usd, Some(100.0));
+        }
+    }
+
+    #[test]
+    fn 额度缺失或时间无效不会提前消耗去重指纹() {
+        for invalid_timestamp in [false, true] {
+            let valid = quota_event(1_000, 10_000, 1.0, 100_000);
+            let mut invalid = valid.clone();
+            if invalid_timestamp {
+                invalid["timestamp"] = json!("invalid");
+            } else {
+                invalid["payload"]["rate_limits"] = Value::Null;
+            }
+            let mut state = RolloutParserState {
+                model: Some("gpt-6-astra".into()),
+                ..Default::default()
+            };
+            assert!(parse_rollout_line(invalid.to_string().as_bytes(), &mut state).is_none());
+            let event = parse_rollout_line(valid.to_string().as_bytes(), &mut state).unwrap();
+            assert_eq!(event.cost_usd, Some(1.0));
+            assert!(parse_rollout_line(valid.to_string().as_bytes(), &mut state).is_none());
+        }
+    }
+
+    #[test]
+    fn 重复用量保留额度变化且未知费用不会变为零() {
+        for model in ["gpt-6-astra", "unknown"] {
+            let mut state = RolloutParserState {
+                model: Some(model.into()),
+                ..Default::default()
+            };
+            let first = quota_event(1_000, 10_000, 1.0, 100_000);
+            let original = parse_rollout_line(first.to_string().as_bytes(), &mut state).unwrap();
+            assert_eq!(original.cost_usd, (model != "unknown").then_some(1.0));
+            // 后续上下文不能把原先未知的用量重新归价。
+            state.model = Some("gpt-6-astra".into());
+            for (reset, percent) in [(10_000, 2.0), (10_001, 2.0)] {
+                let updated = quota_event(1_001, reset, percent, 100_000);
+                let event = parse_rollout_line(updated.to_string().as_bytes(), &mut state).unwrap();
+                assert_eq!(event.used_percent, percent);
+                assert_eq!(event.reset_at, reset);
+                assert_eq!(event.cost_usd, (model != "unknown").then_some(0.0));
+                assert!(parse_rollout_line(updated.to_string().as_bytes(), &mut state).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn 后补额度跨增量读取仍只计费一次并生成正确估值() {
+        let home = tempfile::tempdir().unwrap();
+        let now = Utc::now().timestamp();
+        let reset = now + 10_000;
+        let path = write_rollout(
+            home.path(),
+            "sessions",
+            "rollout-quota.jsonl",
+            now,
+            reset,
+            true,
+        );
+        let mut cache = EstimateCache::default();
+        for index in 2..=5 {
+            // 用量先到，百分比延迟到达；第二条必须携带零新增费用。
+            append_event(
+                &path,
+                now + index * 2,
+                reset,
+                (index - 1) as f64,
+                index as u64 * 100_000,
+                false,
+            );
+            cache
+                .collect_events(home.path(), now - 100, now + 20)
+                .unwrap();
+            append_event(
+                &path,
+                now + index * 2 + 1,
+                reset,
+                index as f64,
+                index as u64 * 100_000,
+                false,
+            );
+        }
+        let warm = cache
+            .collect_events(home.path(), now - 100, now + 20)
+            .unwrap();
+        let cold = EstimateCache::default()
+            .collect_events(home.path(), now - 100, now + 20)
+            .unwrap();
+        assert_eq!(warm.events, cold.events);
+        assert_eq!(warm.events.len(), 9);
+        assert!(
+            (warm
+                .events
+                .iter()
+                .map(|event| event.cost_usd.unwrap())
+                .sum::<f64>()
+                - 2.0)
+                .abs()
+                < 1e-9
+        );
+        let current = super::super::estimate_from_events(warm.events, reset)
+            .current
+            .unwrap();
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.full_quota_usd, Some(40.0));
+    }
+
+    #[test]
+    fn 提前结束读取不提交部分缓存且下次可恢复() {
+        let home = tempfile::tempdir().unwrap();
+        let now = Utc::now().timestamp();
+        let path = write_rollout(
+            home.path(),
+            "sessions",
+            "rollout-short.jsonl",
+            now,
+            now + 10_000,
+            true,
+        );
+        let metadata = fs::metadata(&path).unwrap();
+        let mut candidate = FileCandidate {
+            file_name: OsString::from("rollout-short.jsonl"),
+            path: path.clone(),
+            size: metadata.len() + 100,
+            modified: system_time_nanos(metadata.modified().unwrap()),
+        };
+        let mut cache = EstimateCache::default();
+        let mut stats = CacheStats::default();
+        assert!(!cache.refresh_candidate(&candidate, &mut stats));
+        assert!(cache.files.is_empty());
+        candidate.size = metadata.len();
+        assert!(cache.refresh_candidate(&candidate, &mut stats));
+        let original = cache.files[&candidate.file_name].events.clone();
+        candidate.size += 100;
+        assert!(!cache.refresh_candidate(&candidate, &mut stats));
+        assert_eq!(cache.files[&candidate.file_name].events, original);
+        fs::write(&path, b"{}\n").unwrap();
+        assert!(!cache.refresh_candidate(&candidate, &mut stats));
+        assert_eq!(cache.files[&candidate.file_name].size, metadata.len());
+        candidate.size = 3;
+        assert!(cache.refresh_candidate(&candidate, &mut stats));
+        assert!(cache.files[&candidate.file_name].events.is_empty());
     }
 
     #[test]
