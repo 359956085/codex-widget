@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 236" fill="none">
+  <defs>
+    <linearGradient id="ribbon" x1="0" y1="195" x2="390" y2="235" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff72ad" stop-opacity=".56"/>
+      <stop offset=".38" stop-color="#db367a" stop-opacity=".025"/>
+      <stop offset=".58" stop-color="#db367a" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#ff86bf" stop-opacity=".72"/>
+    </linearGradient>
+    <radialGradient id="light"><stop stop-color="#ffd5ec" stop-opacity=".8"/><stop offset=".16" stop-color="#ff5da6" stop-opacity=".5"/><stop offset="1" stop-color="#ff3b8b" stop-opacity="0"/></radialGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence baseFrequency=".78" numOctaves="2" seed="7" type="fractalNoise"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+  <ellipse cx="386" cy="228" rx="96" ry="33" fill="url(#light)"/>
+  <ellipse cx="2" cy="4" rx="64" ry="47" fill="url(#light)" opacity=".65"/>
+  <path d="M-10 202C39 153 79 229 151 217S258 176 301 189 358 225 400 194L400 208C354 237 328 203 296 199S210 227 153 229 41 176-10 215Z" fill="url(#ribbon)" opacity=".28"/>
+  <path d="M-10 211C41 165 94 235 156 222S264 191 319 214 373 206 400 200L400 220C352 242 318 215 279 216S189 241 147 232 35 192-10 223Z" fill="url(#ribbon)" opacity=".19"/>
+  <path d="M140 242C222 205 242 240 297 218S361 208 401 216V230C360 211 333 243 292 232S212 224 173 249Z" fill="url(#ribbon)" opacity=".33"/>
+  <g stroke="url(#ribbon)">
+    <path d="M-8 199C48 159 77 225 154 214S264 183 296 189 364 220 398 195"/>
+    <path d="M-8 205C45 165 78 230 153 219S265 179 299 192 363 221 398 203"/>
+    <path d="M-8 212C39 173 92 228 150 221S272 186 307 201 360 219 397 208" opacity=".6" stroke-width=".5"/>
+    <path d="M115 244C180 194 234 234 282 216S348 195 398 215" opacity=".5"/>
+    <path d="M160 247C232 209 258 239 308 221S353 209 398 223" opacity=".5"/>
+  </g>
+  <rect width="390" height="236" filter="url(#grain)" opacity=".06"/>
+  <g fill="#ff8ec3">
+    <circle cx="14" cy="42" r=".5"/><circle cx="27" cy="66" r=".65"/><circle cx="9" cy="82" r=".4"/>
+    <circle cx="34" cy="49" r=".4"/><circle cx="52" cy="59" r=".6"/><circle cx="46" cy="33" r=".3"/>
+    <circle cx="20" cy="97" r=".7"/><circle cx="29" cy="137" r=".45"/><circle cx="12" cy="156" r=".55"/>
+    <circle cx="34" cy="173" r=".5"/><circle cx="65" cy="193" r=".35"/><circle cx="155" cy="83" r=".6"/>
+    <circle cx="141" cy="48" r=".45"/><circle cx="122" cy="184" r=".7"/><circle cx="166" cy="147" r=".45"/>
+    <circle cx="373" cy="37" r=".5"/><circle cx="383" cy="64" r=".6"/><circle cx="367" cy="121" r=".4"/>
+    <circle cx="342" cy="175" r=".6"/><circle cx="362" cy="196" r=".4"/><circle cx="345" cy="220" r=".8"/>
+    <circle cx="303" cy="226" r=".6"/><circle cx="253" cy="214" r=".5"/><circle cx="276" cy="233" r=".4"/>
+  </g>
+  <g fill="#ffc4df" opacity=".36">
+    <circle cx="19" cy="55" r=".3"/><circle cx="37" cy="81" r=".25"/><circle cx="9" cy="120" r=".35"/>
+    <circle cx="58" cy="44" r=".3"/><circle cx="132" cy="57" r=".25"/><circle cx="151" cy="117" r=".35"/>
+    <circle cx="379" cy="94" r=".3"/><circle cx="354" cy="43" r=".25"/><circle cx="375" cy="166" r=".35"/>
+    <circle cx="296" cy="213" r=".35"/><circle cx="321" cy="227" r=".25"/><circle cx="350" cy="212" r=".3"/>
+  </g>
+</svg>

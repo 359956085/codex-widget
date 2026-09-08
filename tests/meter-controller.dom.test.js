@@ -156,7 +156,7 @@ describe("仪表主题", () => {
     expect(inner.getAttribute("transform")).toBe("");
   });
 
-  it("Basic3 独立维护双环、刻度、折射和贴边布局", () => {
+  it("Basic3 独立维护液位、刻度、折射和贴边布局", () => {
     const { root, controller } = createHarness();
     update(controller, { theme: "basic3", percent: 25 });
     const inner = root.querySelector(".basic3-gauge-inner");
@@ -164,26 +164,82 @@ describe("仪表主题", () => {
     const percent = root.querySelector(".basic3-gauge-percent");
     const label = root.querySelector(".basic3-gauge-label");
 
-    expect(root.querySelector(".basic3-gauge-progress").style.strokeDashoffset).toBe("75");
-    expect(root.querySelector(".basic3-gauge-outer-progress").style.strokeDashoffset).toBe("75");
+    expect(root.querySelector(".basic3-liquid").getAttribute("d")).not.toBe("");
     expect(root.querySelector(".basic3-gauge-ticks")).not.toBeNull();
     expect(root.querySelector(".basic3-gauge-refraction")).not.toBeNull();
     expect(inner.getAttribute("transform")).toBe("");
     expect(mark.style.display).toBe("none");
-    expect(percent.getAttribute("y")).toBe("75");
-    expect(label.getAttribute("y")).toBe("96");
+    expect(percent.getAttribute("y")).toBe("74");
+    expect(label.getAttribute("y")).toBe("90");
 
     update(controller, { theme: "basic3", mode: "ball", dock: "left" });
     const leftTransform = inner.getAttribute("transform");
     expect(leftTransform).not.toBe("");
     expect(mark.style.display).toBe("");
-    expect(percent.getAttribute("y")).toBe("96");
+    expect(percent.getAttribute("y")).toBe("99");
     expect(label.style.display).toBe("none");
 
     update(controller, { theme: "basic3", mode: "ball", dock: "right" });
     expect(inner.getAttribute("transform")).not.toBe(leftTransform);
     update(controller, { theme: "basic3", mode: "ball", dock: "none" });
     expect(inner.getAttribute("transform")).toBe("");
+  });
+
+  it("Basic3 液位连续下降，空额和无数据不留下液体，满额不留液面", () => {
+    const { root, controller } = createHarness();
+    let previousY = -Infinity;
+    for (const percent of [100, 90, 60, 30, 10, 0]) {
+      update(controller, { theme: "basic3", percent });
+      const surface = root.querySelector(".basic3-liquid-surface");
+      const y = Number(surface.dataset.levelY);
+      expect(y).toBeGreaterThan(previousY);
+      previousY = y;
+      expect(surface.style.display).toBe(percent === 100 || percent === 0 ? "none" : "");
+      expect(root.querySelector(".basic3-liquid").getAttribute("d") === "").toBe(percent === 0);
+    }
+    update(controller, { theme: "basic3", percent: null });
+    expect(root.querySelector(".basic3-liquid").getAttribute("d")).toBe("");
+    expect(root.querySelector(".basic3-liquid-surface").style.display).toBe("none");
+    expect(findMeter(root, "basic3").dataset.percent).toBe("unknown");
+  });
+
+  it("Basic3 多实例的渐变与裁切引用各自独立，销毁一个不影响另一个", () => {
+    const first = createHarness();
+    const second = createHarness();
+    update(first.controller, { theme: "basic3", percent: 30 });
+    update(second.controller, { theme: "basic3", percent: 90 });
+    const ids = [...first.root.querySelectorAll("[id]"), ...second.root.querySelectorAll("[id]")].map((node) => node.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const { root } of [first, second]) {
+      for (const node of root.querySelectorAll("[fill], [stroke], [filter], [clip-path]")) {
+        for (const name of ["fill", "stroke", "filter", "clip-path"]) {
+          const match = node.getAttribute(name)?.match(/^url\(#(.+)\)$/);
+          if (match) expect(root.querySelector(`[id="${match[1]}"]`)).not.toBeNull();
+        }
+      }
+    }
+    first.controller.destroy();
+    expect(accessibleMeter(second.root).getAttribute("aria-label")).toBe("剩余 90%");
+    expect(second.root.querySelector(".basic3-liquid").getAttribute("d")).not.toBe("");
+  });
+
+  it("Basic3 液体轮廓与亮线无接缝，波幅在边界收敛且不越出球内高度", () => {
+    const { root, controller } = createHarness();
+    for (const percent of [0.001, 1, 5, 10, 30, 60, 90, 95, 99, 99.999]) {
+      update(controller, { theme: "basic3", percent });
+      const front = root.querySelector(".basic3-liquid-surface").getAttribute("d");
+      const rear = root.querySelector(".basic3-liquid-rear");
+      expect(root.querySelector(".basic3-liquid").getAttribute("d")).toBe(`${front} V 115 H 16 Z`);
+      expect(rear.getAttribute("d")).toBe(front);
+      const coordinates = front.match(/-?\d+(?:\.\d+)?/g).map(Number);
+      const heights = coordinates.filter((_, index) => index % 2 === 1);
+      const y = heights[0];
+      const maxDeviation = Math.max(...heights.map((height) => Math.abs(height - y)));
+      expect(maxDeviation).toBeLessThanOrEqual(1.800001);
+      if (percent < 10 || percent > 90) expect(maxDeviation).toBeLessThan(1.8);
+      expect(Math.min(...heights)).toBeGreaterThanOrEqual(16);
+      expect(Math.max(...heights)).toBeLessThanOrEqual(114);
+    }
   });
 
   it("同主题复用节点，切换主题时替换节点", () => {
