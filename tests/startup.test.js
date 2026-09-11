@@ -39,7 +39,7 @@ describe("应用启动容错", () => {
       listenRuntimeEvent(successfulListen, "success", vi.fn(), onError)
     ]);
 
-    expect(results).toEqual([false, true]);
+    expect(results).toEqual([null, expect.any(Function)]);
     expect(successfulListen).toHaveBeenCalledOnce();
     expect(onError).toHaveBeenCalledWith(error);
   });

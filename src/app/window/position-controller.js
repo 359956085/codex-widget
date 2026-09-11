@@ -1,3 +1,4 @@
+import { createLifecycle } from "../lifecycle.js";
 import { POSITION_SAVE_DEBOUNCE_MS, WIDGET_MODES } from "../constants.js";
 import { normalizeBallDock, normalizeWindowPosition } from "../settings-model.js";
 
@@ -8,21 +9,34 @@ export function createPositionController({
   showError,
   logWindowError
 }) {
-  async function registerWindowMoveSave() {
+  const lifecycle = createLifecycle();
+  let registration = null;
+
+  function registerWindowMoveSave() {
+    if (!registration && !lifecycle.destroyed) {
+      registration = registerMoveListener().finally(() => { registration = null; });
+    }
+    return registration ?? Promise.resolve();
+  }
+
+  async function registerMoveListener() {
     if (!service.isAvailable() || state.windowMoveUnlisten) return;
 
     try {
-      state.windowMoveUnlisten = await service.window.onMoved(() => {
+      const unlisten = await service.window.onMoved(() => {
+        if (lifecycle.destroyed) return;
         if (state.isApplyingWindowMode || state.ballDrag) return;
         scheduleSaveCurrentWindowPosition();
       });
+      if (!lifecycle.destroyed) state.windowMoveUnlisten = unlisten;
+      lifecycle.add(unlisten);
     } catch (error) {
       logWindowError("监听窗口移动失败", error);
     }
   }
 
   function scheduleSaveCurrentWindowPosition() {
-    if (!service.isAvailable() || state.isApplyingWindowMode) return;
+    if (lifecycle.destroyed || !service.isAvailable() || state.isApplyingWindowMode) return;
     if (state.positionSaveTimer) {
       window.clearTimeout(state.positionSaveTimer);
     }
@@ -40,7 +54,7 @@ export function createPositionController({
 
   async function saveCurrentWindowPosition({ silent = true } = {}) {
     clearPositionSaveTimer();
-    if (!service.isAvailable() || state.isApplyingWindowMode) return;
+    if (lifecycle.destroyed || !service.isAvailable() || state.isApplyingWindowMode) return;
 
     try {
       const position = await readCurrentWindowPosition();
@@ -71,7 +85,7 @@ export function createPositionController({
 
   async function readCurrentWindowPosition() {
     clearPositionSaveTimer();
-    if (!service.isAvailable() || state.isApplyingWindowMode) return null;
+    if (lifecycle.destroyed || !service.isAvailable() || state.isApplyingWindowMode) return null;
 
     try {
       return normalizeWindowPosition(await service.window.outerPosition());
@@ -94,7 +108,15 @@ export function createPositionController({
     return nextSettings;
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    clearPositionSaveTimer();
+    state.windowMoveUnlisten = null;
+  }
+
   return {
+    destroy,
     clearPositionSaveTimer,
     mergeWindowPosition,
     persistWindowPosition,

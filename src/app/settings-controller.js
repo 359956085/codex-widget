@@ -1,3 +1,5 @@
+import { setAttribute, setText } from "./dom-utils.js";
+import { createLifecycle } from "./lifecycle.js";
 import { DATA_BAR_CONTENTS, DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
 import { createCustomSelectController } from "./custom-select.js";
 import { createDialogFocusManager } from "./dialog-focus.js";
@@ -31,6 +33,8 @@ export function createSettingsController({
   clearPanelClick,
   isMacOS = detectMacOS()
 }) {
+  const lifecycle = createLifecycle();
+  render = lifecycle.guard(render);
   const customSelects = createCustomSelectController({
     shells: els.customSelectShells,
     onChange: handleCustomSelectChange
@@ -74,19 +78,21 @@ export function createSettingsController({
   ];
 
   function bindEvents() {
+    if (!lifecycle.bind()) return;
     focusManager.bindEvents();
-    els.settingsBtn.addEventListener("click", openSettingsPanel);
-    els.settingsCloseBtn.addEventListener("click", closeSettingsPanel);
-    els.cancelSettingsBtn.addEventListener("click", closeSettingsPanel);
-    els.saveSettingsBtn.addEventListener("click", saveSettings);
-    els.chooseCodexBtn.addEventListener("click", chooseCodexPath);
-    els.autoUpdateSwitch.addEventListener("change", syncAutoUpdateDraft);
-    els.autoStartSwitch.addEventListener("change", syncAutoStartDraft);
-    els.hideDockIconSwitch.addEventListener("change", syncHideDockIconDraft);
+    lifecycle.listen(els.settingsBtn, "click", openSettingsPanel);
+    lifecycle.listen(els.settingsCloseBtn, "click", closeSettingsPanel);
+    lifecycle.listen(els.cancelSettingsBtn, "click", closeSettingsPanel);
+    lifecycle.listen(els.saveSettingsBtn, "click", saveSettings);
+    lifecycle.listen(els.chooseCodexBtn, "click", chooseCodexPath);
+    lifecycle.listen(els.autoUpdateSwitch, "change", syncAutoUpdateDraft);
+    lifecycle.listen(els.autoStartSwitch, "change", syncAutoStartDraft);
+    lifecycle.listen(els.hideDockIconSwitch, "change", syncHideDockIconDraft);
     customSelects.bindEvents();
   }
 
   function openSettingsPanel() {
+    if (lifecycle.destroyed) return;
     clearPanelClick();
     syncSettingsDraftFromSettings(state);
     state.settingsOpen = true;
@@ -111,6 +117,7 @@ export function createSettingsController({
   }
 
   function renderSettingsPanel(text) {
+    if (lifecycle.destroyed) return;
     els.settingsPanel.hidden = !state.settingsOpen;
     if (!state.settingsOpen) return;
 
@@ -120,33 +127,33 @@ export function createSettingsController({
   }
 
   function renderSettingsLabels(text) {
-    els.settingsTitle.textContent = text.settings;
-    els.codexPathLabel.textContent = text.codexPath;
-    els.autoUpdateLabel.textContent = text.autoUpdate;
-    els.autoUpdateHint.textContent = text.autoUpdateHint;
-    els.autoStartLabel.textContent = text.autoStart;
-    els.autoStartHint.textContent = text.autoStartHint;
-    els.hideDockIconLabel.textContent = text.hideDockIcon;
-    els.hideDockIconHint.textContent = text.hideDockIconHint;
-    els.updateProxyLabel.textContent = text.updateProxy;
-    els.updateProxyHint.textContent = text.updateProxyHint;
-    els.refreshIntervalLabel.textContent = text.refreshInterval;
-    els.themeLabel.textContent = text.theme;
-    els.languageLabel.textContent = text.language;
-    els.meterWindowLabel.textContent = text.meterWindow;
+    setText(els.settingsTitle, text.settings);
+    setText(els.codexPathLabel, text.codexPath);
+    setText(els.autoUpdateLabel, text.autoUpdate);
+    setText(els.autoUpdateHint, text.autoUpdateHint);
+    setText(els.autoStartLabel, text.autoStart);
+    setText(els.autoStartHint, text.autoStartHint);
+    setText(els.hideDockIconLabel, text.hideDockIcon);
+    setText(els.hideDockIconHint, text.hideDockIconHint);
+    setText(els.updateProxyLabel, text.updateProxy);
+    setText(els.updateProxyHint, text.updateProxyHint);
+    setText(els.refreshIntervalLabel, text.refreshInterval);
+    setText(els.themeLabel, text.theme);
+    setText(els.languageLabel, text.language);
+    setText(els.meterWindowLabel, text.meterWindow);
     els.dataBarLabels.forEach((label, index) => {
-      label.textContent = text[`dataBar${index + 1}`];
+      setText(label, text[`dataBar${index + 1}`]);
     });
-    els.logLevelLabel.textContent = text.logLevel;
-    els.codexPathInput.placeholder = text.codexPathPlaceholder;
-    els.updateProxyInput.placeholder = text.updateProxyPlaceholder;
-    els.cancelSettingsBtn.textContent = text.cancel;
+    setText(els.logLevelLabel, text.logLevel);
+    setAttribute(els.codexPathInput, "placeholder", text.codexPathPlaceholder);
+    setAttribute(els.updateProxyInput, "placeholder", text.updateProxyPlaceholder);
+    setText(els.cancelSettingsBtn, text.cancel);
   }
 
   function renderSettingsSaveState(text) {
-    els.saveSettingsText.textContent = state.savingSettings ? text.loading : text.save;
+    setText(els.saveSettingsText, state.savingSettings ? text.loading : text.save);
     els.saveSettingsBtn.disabled = state.savingSettings;
-    els.settingsError.textContent = state.errors.settings;
+    setText(els.settingsError, state.errors.settings);
     els.settingsError.hidden = !state.errors.settings;
   }
 
@@ -211,10 +218,11 @@ export function createSettingsController({
   }
 
   async function chooseCodexPath() {
-    if (!service.isAvailable()) return;
+    if (lifecycle.destroyed || !service.isAvailable()) return;
 
     try {
       const selected = await service.dialog.chooseCodexPath();
+      if (lifecycle.destroyed) return;
       if (typeof selected === "string") {
         els.codexPathInput.value = selected;
         state.settingsDraft.codexCliPath = selected;
@@ -227,7 +235,7 @@ export function createSettingsController({
   }
 
   async function saveSettings() {
-    if (state.savingSettings) return;
+    if (lifecycle.destroyed || state.savingSettings) return;
 
     state.savingSettings = true;
     render();
@@ -243,6 +251,7 @@ export function createSettingsController({
         ballPosition: currentSettings.ballPosition,
         ballDock: currentSettings.ballDock
       }, currentPosition), { syncDraft: false });
+      if (lifecycle.destroyed) return;
       state.settingsOpen = false;
       state.errors.settings = "";
       setUpdateStatus({ type: "saved" });
@@ -308,7 +317,16 @@ export function createSettingsController({
     select.value = currentValue;
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    customSelects.destroy();
+    focusManager.destroy();
+    els.settingsPanel.hidden = true;
+  }
+
   return {
+    destroy,
     bindEvents,
     closeSettingsPanel,
     openSettingsPanel,

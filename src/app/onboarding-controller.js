@@ -1,3 +1,4 @@
+import { createLifecycle } from "./lifecycle.js";
 import { WIDGET_MODES } from "./constants.js";
 import { createDialogFocusManager } from "./dialog-focus.js";
 
@@ -33,6 +34,7 @@ export function createOnboardingController({
   saveCurrentSettings,
   i18n
 }) {
+  const lifecycle = createLifecycle();
   let initialized = false;
   let completed = false;
   let currentStepIndex = 0;
@@ -43,20 +45,21 @@ export function createOnboardingController({
   });
 
   function bindEvents() {
+    if (!lifecycle.bind()) return;
     focusManager.bindEvents();
-    els.onboardingCloseBtn?.addEventListener("click", (event) => {
+    lifecycle.listen(els.onboardingCloseBtn, "click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       void completeOnboarding();
     });
 
-    els.onboardingNextBtn?.addEventListener("click", (event) => {
+    lifecycle.listen(els.onboardingNextBtn, "click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       goToNextStep();
     });
 
-    els.onboardingPrevBtn?.addEventListener("click", (event) => {
+    lifecycle.listen(els.onboardingPrevBtn, "click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       goToPreviousStep();
@@ -64,7 +67,7 @@ export function createOnboardingController({
   }
 
   async function runInitialOnboarding() {
-    if (initialized || state.settings.onboardingSeen) return;
+    if (lifecycle.destroyed || initialized || state.settings.onboardingSeen) return;
     initialized = true;
 
     if (state.widgetMode !== WIDGET_MODES.PANEL || renderTheme() !== "default") {
@@ -162,7 +165,7 @@ export function createOnboardingController({
   }
 
   async function completeOnboarding({ show = true } = {}) {
-    if (completed) return;
+    if (lifecycle.destroyed || completed) return;
     completed = true;
     if (show) hideOnboarding();
     applyNormalizedSettings({ ...state.settings, onboardingSeen: true }, { syncDraft: !state.settingsOpen });
@@ -176,7 +179,15 @@ export function createOnboardingController({
     focusManager.deactivate();
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    hideOnboarding();
+    focusManager.destroy();
+  }
+
   return {
+    destroy,
     bindEvents,
     runInitialOnboarding
   };

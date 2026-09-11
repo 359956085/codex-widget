@@ -1,3 +1,5 @@
+import { normalizeError } from "./errors.js";
+import { createLifecycle } from "./lifecycle.js";
 import { DEFAULT_SETTINGS, i18n } from "./constants.js";
 import { createElements } from "./dom.js";
 import { initializeActionIcons } from "./icons.js";
@@ -15,6 +17,16 @@ import { createUpdateController } from "./update-controller.js";
 import { createWindowController } from "./window-controller.js";
 
 export function createApp(dependencies = {}) {
+  const lifecycle = createLifecycle();
+  try {
+    return initializeApp(dependencies, lifecycle);
+  } catch (error) {
+    lifecycle.destroy();
+    throw error;
+  }
+}
+
+function initializeApp(dependencies, lifecycle) {
   const els = dependencies.els || createElements();
   const state = dependencies.state || createAppState();
   const service = dependencies.service || createTauriService();
@@ -22,6 +34,7 @@ export function createApp(dependencies = {}) {
   const factories = dependencies.factories || {};
   const initializeIcons = dependencies.initializeActionIcons || initializeActionIcons;
   const tooltipController = (factories.createTooltipController || createTooltipController)({ root: els.body });
+  lifecycle.add(() => tooltipController.destroy?.());
   let render = () => {};
 
   function applySettings(settings) {
@@ -64,27 +77,15 @@ export function createApp(dependencies = {}) {
     render();
   }
 
-  function normalizeError(error) {
-    if (typeof error === "string") return error;
-    if (error?.message) return error.message;
-    try {
-      return JSON.stringify(error) || "未知错误";
-    } catch {
-      return String(error ?? "未知错误");
-    }
-  }
-
   const windowController = (factories.createWindowController || createWindowController)({
     els,
     state,
     service,
     render: () => render(),
-    applyNormalizedSettings,
     persistSettings,
-    saveCurrentSettings,
-    showError: showWindowError,
     logger
   });
+  lifecycle.add(() => windowController.destroy?.());
 
   const quotaController = (factories.createQuotaController || createQuotaController)({
     state,
@@ -93,6 +94,7 @@ export function createApp(dependencies = {}) {
     normalizeError,
     logger
   });
+  lifecycle.add(() => quotaController.destroy?.());
 
   const updateController = (factories.createUpdateController || createUpdateController)({
     state,
@@ -100,6 +102,7 @@ export function createApp(dependencies = {}) {
     render: () => render(),
     logger
   });
+  lifecycle.add(() => updateController.destroy?.());
 
   const onboardingController = (factories.createOnboardingController || createOnboardingController)({
     els,
@@ -110,6 +113,7 @@ export function createApp(dependencies = {}) {
     saveCurrentSettings,
     i18n
   });
+  lifecycle.add(() => onboardingController.destroy?.());
 
   const settingsController = (factories.createSettingsController || createSettingsController)({
     els,
@@ -128,6 +132,7 @@ export function createApp(dependencies = {}) {
     logger,
     clearPanelClick: windowController.clearPanelClick
   });
+  lifecycle.add(() => settingsController.destroy?.());
 
   const renderer = (factories.createRenderer || createRenderer)({
     els,
@@ -137,16 +142,19 @@ export function createApp(dependencies = {}) {
     onVersionClick: triggerManualUpdateCheck,
     settingsView: settingsController
   });
-  render = renderer.render;
+  lifecycle.add(() => renderer.destroy?.());
+  render = lifecycle.guard(renderer.render);
+  let startPromise = null;
 
   function bindEvents() {
+    if (!lifecycle.bind()) return;
     windowController.bindEvents();
     settingsController.bindEvents();
     onboardingController.bindEvents();
     tooltipController.bindEvents();
-    document.addEventListener("contextmenu", (event) => event.preventDefault());
-    els.pinBtn.addEventListener("click", toggleAlwaysOnTop);
-    els.refreshBtn.addEventListener("click", () => quotaController.refreshQuota());
+    lifecycle.listen(document, "contextmenu", (event) => event.preventDefault());
+    lifecycle.listen(els.pinBtn, "click", toggleAlwaysOnTop);
+    lifecycle.listen(els.refreshBtn, "click", () => quotaController.refreshQuota());
   }
 
   async function toggleAlwaysOnTop() {
@@ -161,18 +169,36 @@ export function createApp(dependencies = {}) {
     }
   }
 
-  async function start() {
-    initializeIcons(els, logger);
-    bindEvents();
-    await initialize();
+  function start() {
+    if (lifecycle.destroyed) return startPromise ?? Promise.resolve();
+    if (!startPromise) {
+      startPromise = Promise.resolve().then(async () => {
+        if (lifecycle.destroyed) return;
+        initializeIcons(els, logger);
+        bindEvents();
+        await initialize();
+      }).catch((error) => {
+        destroy();
+        throw error;
+      });
+    }
+    return startPromise;
+  }
+
+  function destroy() {
+    lifecycle.destroy();
   }
 
   async function initialize() {
     render();
     await loadSettings();
+    if (lifecycle.destroyed) return;
     await windowController.applyWidgetModeWindow();
+    if (lifecycle.destroyed) return;
     await onboardingController.runInitialOnboarding();
+    if (lifecycle.destroyed) return;
     await windowController.registerWindowMoveSave();
+    if (lifecycle.destroyed) return;
 
     try {
       state.alwaysOnTop = await service.commands.getAlwaysOnTop();
@@ -182,6 +208,7 @@ export function createApp(dependencies = {}) {
       showWindowError(error);
     }
 
+    if (lifecycle.destroyed) return;
     const runtimeEventRegistrations = [
       listenRuntimeEvent(
         service.events.listen,
@@ -192,13 +219,13 @@ export function createApp(dependencies = {}) {
       listenRuntimeEvent(
         service.events.listen,
         "window:always-on-top-changed",
-        (event) => {
+        lifecycle.guard((event) => {
           state.alwaysOnTop = Boolean(event.payload);
           render();
-        },
+        }),
         (error) => logger.error("监听窗口置顶事件失败", error, "frontend.events")
       )
-    ];
+    ].map((registration) => registration.then(lifecycle.add));
 
     // 事件监听属于增强能力，不能阻塞核心刷新与定时任务启动。
     void quotaController.refreshQuota();
@@ -215,7 +242,7 @@ export function createApp(dependencies = {}) {
 
     try {
       const settings = await service.commands.getSettings();
-      applySettings(settings);
+      if (!lifecycle.destroyed) applySettings(settings);
     } catch (error) {
       logger.error("读取设置失败", error, "frontend.settings");
       applySettings(DEFAULT_SETTINGS);
@@ -229,5 +256,5 @@ export function createApp(dependencies = {}) {
     updateController.checkForUpdates({ manual: true });
   }
 
-  return { start };
+  return { start, destroy };
 }

@@ -79,7 +79,6 @@ enum RefreshMode {
     Reuse,
     Append {
         offset: u64,
-        state: RolloutParserState,
         content_fingerprint: u64,
     },
     Full,
@@ -153,7 +152,6 @@ impl EstimateCache {
             {
                 RefreshMode::Append {
                     offset: cached.size,
-                    state: cached.state.clone(),
                     content_fingerprint: cached.content_fingerprint,
                 }
             }
@@ -172,7 +170,6 @@ impl EstimateCache {
         let (offset, state, digest, is_append) = match mode {
             RefreshMode::Append {
                 offset,
-                state,
                 content_fingerprint,
             } => {
                 let digest = match fingerprint_prefix(&mut file, offset, stats) {
@@ -180,6 +177,11 @@ impl EstimateCache {
                     Err(_) => return false,
                 };
                 if digest.finish() == content_fingerprint {
+                    // 确认确实追加后才复制去重状态，校验失败保留原缓存。
+                    let Some(cached) = self.files.get(&candidate.file_name) else {
+                        return false;
+                    };
+                    let state = cached.state.clone();
                     (offset, state, digest, true)
                 } else {
                     if file.seek(SeekFrom::Start(0)).is_err() {
@@ -250,8 +252,11 @@ fn collect_rollout_files(session_dirs: &[PathBuf], cutoff: i64) -> Result<Vec<Fi
     }
 
     let mut candidates = Vec::new();
+    let cutoff_nanos = u128::try_from(cutoff.max(0))
+        .unwrap_or_default()
+        .saturating_mul(1_000_000_000);
     for directory in existing_dirs {
-        collect_directory_files(directory, 0, cutoff, &mut candidates)?;
+        collect_directory_files(directory, 0, cutoff_nanos, &mut candidates)?;
     }
     Ok(select_rollout_files(candidates))
 }
@@ -287,7 +292,7 @@ pub(super) fn select_rollout_files(mut candidates: Vec<FileCandidate>) -> Vec<Fi
 fn collect_directory_files(
     directory: &Path,
     depth: usize,
-    cutoff: i64,
+    cutoff_nanos: u128,
     candidates: &mut Vec<FileCandidate>,
 ) -> Result<()> {
     if depth > MAX_DIRECTORY_DEPTH {
@@ -303,7 +308,7 @@ fn collect_directory_files(
         let path = entry.path();
         if file_type.is_dir() {
             // 不跟随符号链接，避免会话目录把扫描范围引向外部路径。
-            let _ = collect_directory_files(&path, depth + 1, cutoff, candidates);
+            let _ = collect_directory_files(&path, depth + 1, cutoff_nanos, candidates);
             continue;
         }
         let Some(file_name) = path.file_name().map(ToOwned::to_owned) else {
@@ -322,9 +327,6 @@ fn collect_directory_files(
             continue;
         };
         let modified = system_time_nanos(metadata.modified().unwrap_or(UNIX_EPOCH));
-        let cutoff_nanos = u128::try_from(cutoff.max(0))
-            .unwrap_or_default()
-            .saturating_mul(1_000_000_000);
         if modified < cutoff_nanos {
             continue;
         }

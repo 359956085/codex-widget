@@ -9,6 +9,40 @@ import { createAppState } from "../src/app/state.js";
 import { loadApplicationMarkup } from "./dom-test-utils.js";
 
 describe("设置面板", () => {
+  it("保存期间销毁仍完成写入，不恢复焦点或重启后台任务", async () => {
+    let finishSave;
+    const fixture = createFixture(vi.fn(() => new Promise((resolve) => { finishSave = resolve; })));
+    fixture.open();
+    fixture.els.saveSettingsBtn.click();
+    await vi.waitFor(() => expect(fixture.persistSettings).toHaveBeenCalledOnce());
+    fixture.controller.destroy();
+    finishSave({});
+    await vi.waitFor(() => expect(fixture.state.savingSettings).toBe(false));
+    expect(fixture.els.settingsPanel.hidden).toBe(true);
+    expect(fixture.scheduleAutoRefresh).not.toHaveBeenCalled();
+    expect(fixture.refreshQuota).not.toHaveBeenCalled();
+    expect(fixture.scheduleUpdateChecks).not.toHaveBeenCalled();
+    fixture.els.settingsBtn.click();
+    expect(fixture.els.settingsPanel.hidden).toBe(true);
+  });
+
+  it("重复渲染保持输入选择、焦点和下拉节点", () => {
+    const fixture = createFixture(vi.fn());
+    fixture.open();
+    const input = fixture.els.codexPathInput;
+    input.value = "C:/工具/codex.exe";
+    input.focus();
+    input.setSelectionRange(3, 7);
+    const option = fixture.els.themeSelect.options[0];
+    const labelNode = fixture.els.settingsTitle.firstChild;
+    for (let index = 0; index < 10; index++) fixture.controller.renderSettingsPanel(i18n.zh);
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(3);
+    expect(input.selectionEnd).toBe(7);
+    expect(fixture.els.themeSelect.options[0]).toBe(option);
+    expect(fixture.els.settingsTitle.firstChild).toBe(labelNode);
+    fixture.controller.destroy();
+  });
   it("保存成功后关闭面板并启动最新调度", async () => {
     const fixture = createFixture(vi.fn().mockResolvedValue({}));
     fixture.open();

@@ -1,3 +1,4 @@
+import { createLifecycle } from "./lifecycle.js";
 const FOCUSABLE_SELECTOR = [
   "button:not([disabled])",
   "input:not([disabled])",
@@ -8,10 +9,12 @@ const FOCUSABLE_SELECTOR = [
 ].join(",");
 
 export function createDialogFocusManager({ dialog, initialFocus, onEscape }) {
+  const lifecycle = createLifecycle();
   let restoreTarget = null;
 
   function bindEvents() {
-    dialog?.addEventListener("keydown", handleKeyDown);
+    if (!lifecycle.bind()) return;
+    lifecycle.listen(dialog, "keydown", handleKeyDown);
   }
 
   function activate() {
@@ -50,7 +53,12 @@ export function createDialogFocusManager({ dialog, initialFocus, onEscape }) {
     focusable[shouldWrapBackward ? focusable.length - 1 : 0].focus();
   }
 
-  return { activate, bindEvents, deactivate };
+  function destroy() {
+    lifecycle.destroy();
+    restoreTarget = null;
+  }
+
+  return { activate: lifecycle.guard(activate), bindEvents, deactivate: lifecycle.guard(deactivate), destroy };
 }
 
 function resolveElement(elementOrFactory) {

@@ -1,10 +1,15 @@
+import { createLifecycle } from "./lifecycle.js";
 import { UPDATE_CHECK_INTERVAL_MS } from "./constants.js";
 
 const TRANSIENT_STATUS_DURATION_MS = 1800;
 const TRANSIENT_STATUS_TYPES = new Set(["latest", "saved", "checkFailed", "updateFailed"]);
 
 export function createUpdateController({ state, service, render, logger }) {
+  const lifecycle = createLifecycle();
+  render = lifecycle.guard(render);
+
   function scheduleUpdateChecks() {
+    if (lifecycle.destroyed) return;
     if (state.updateTimer) window.clearInterval(state.updateTimer);
     state.updateTimer = null;
     if (!state.settings.autoUpdateEnabled) {
@@ -17,13 +22,15 @@ export function createUpdateController({ state, service, render, logger }) {
   }
 
   async function checkForUpdates({ manual = false } = {}) {
-    if (!service.isAvailable() || state.updateChecking || (!manual && !state.settings.autoUpdateEnabled)) return;
+    if (lifecycle.destroyed || !service.isAvailable() || state.updateChecking || (!manual && !state.settings.autoUpdateEnabled)) return;
 
     state.updateChecking = true;
     setUpdateStatus({ type: "checking" });
 
+    let update;
     try {
-      const update = await readAvailableUpdate();
+      update = await readAvailableUpdate();
+      if (lifecycle.destroyed) return;
       if (!update) {
         if (manual) {
           setUpdateStatus({ type: "latest" });
@@ -46,6 +53,11 @@ export function createUpdateController({ state, service, render, logger }) {
       logger?.error("获取版本失败", error, "frontend.update");
       setUpdateStatus({ type: "checkFailed" });
     } finally {
+      try {
+        await update?.close();
+      } catch (error) {
+        logger?.error("释放更新资源失败", error, "frontend.update");
+      }
       state.updateChecking = false;
     }
   }
@@ -80,6 +92,7 @@ export function createUpdateController({ state, service, render, logger }) {
   }
 
   function setUpdateStatus(nextStatus) {
+    if (lifecycle.destroyed) return;
     if (isSameUpdateStatus(state.updateStatus, nextStatus)) {
       if (isTransientStatus(nextStatus)) {
         scheduleTransientStatusClear(nextStatus.type);
@@ -138,7 +151,16 @@ export function createUpdateController({ state, service, render, logger }) {
     return proxy ? { proxy } : undefined;
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    window.clearInterval(state.updateTimer);
+    state.updateTimer = null;
+    clearTransientStatusTimer();
+  }
+
   return {
+    destroy,
     checkForUpdates,
     scheduleUpdateChecks,
     setUpdateStatus

@@ -1,3 +1,5 @@
+import { normalizeError } from "./errors.js";
+import { createLifecycle } from "./lifecycle.js";
 import { BALL_SIZE, PANEL_SIZE, WIDGET_MODES } from "./constants.js";
 import {
   clampBallPositionToWorkArea,
@@ -23,6 +25,8 @@ export function createWindowController({
   persistSettings,
   logger
 }) {
+  const lifecycle = createLifecycle();
+  render = lifecycle.guard(render);
   let requestedWidgetMode = null;
   let widgetModeTransition = null;
   let windowModeGeneration = 0;
@@ -33,7 +37,7 @@ export function createWindowController({
   }
 
   function setWindowError(error) {
-    state.errors.window = normalizeWindowError(error);
+    state.errors.window = normalizeError(error, "未知窗口错误");
     render();
   }
 
@@ -70,14 +74,15 @@ export function createWindowController({
   });
 
   function bindEvents() {
-    els.widget.addEventListener("pointerdown", panelController.startWindowDrag);
-    els.widget.addEventListener("pointermove", ballController.moveBallDrag);
-    els.widget.addEventListener("pointerup", ballController.finishBallDrag);
-    els.widget.addEventListener("pointercancel", ballController.finishBallDrag);
-    els.widget.addEventListener("keydown", handleWidgetKeyDown);
-    els.modeBtn.addEventListener("click", () => setWidgetMode(WIDGET_MODES.BALL));
-    els.minimizeBtn.addEventListener("click", hideWindow);
-    els.closeBtn.addEventListener("click", closeApp);
+    if (!lifecycle.bind()) return;
+    lifecycle.listen(els.widget, "pointerdown", panelController.startWindowDrag);
+    lifecycle.listen(els.widget, "pointermove", ballController.moveBallDrag);
+    lifecycle.listen(els.widget, "pointerup", ballController.finishBallDrag);
+    lifecycle.listen(els.widget, "pointercancel", ballController.finishBallDrag);
+    lifecycle.listen(els.widget, "keydown", handleWidgetKeyDown);
+    lifecycle.listen(els.modeBtn, "click", () => setWidgetMode(WIDGET_MODES.BALL));
+    lifecycle.listen(els.minimizeBtn, "click", hideWindow);
+    lifecycle.listen(els.closeBtn, "click", closeApp);
   }
 
   async function hideWindow() {
@@ -102,6 +107,7 @@ export function createWindowController({
   }
 
   function setWidgetMode(nextMode) {
+    if (lifecycle.destroyed) return Promise.resolve();
     if (nextMode !== WIDGET_MODES.BALL && nextMode !== WIDGET_MODES.PANEL) {
       return Promise.resolve();
     }
@@ -116,7 +122,7 @@ export function createWindowController({
   }
 
   async function applyWidgetModeWindow({ keepPosition = false } = {}) {
-    if (!service.isAvailable()) return;
+    if (lifecycle.destroyed || !service.isAvailable()) return;
 
     const generation = beginWindowModeApplication();
     try {
@@ -144,9 +150,13 @@ export function createWindowController({
   }
 
   async function drainWidgetModeTransitions() {
+    if (lifecycle.destroyed) {
+      widgetModeTransition = null;
+      return;
+    }
     const generation = beginWindowModeApplication();
     try {
-      while (requestedWidgetMode && requestedWidgetMode !== state.widgetMode) {
+      while (!lifecycle.destroyed && requestedWidgetMode && requestedWidgetMode !== state.widgetMode) {
         const targetMode = requestedWidgetMode;
         const succeeded = await transitionWidgetMode(targetMode);
         if (!succeeded && requestedWidgetMode === targetMode) {
@@ -349,7 +359,7 @@ export function createWindowController({
   }
 
   function finishWindowModeApplication(generation) {
-    if (generation !== windowModeGeneration) return;
+    if (lifecycle.destroyed || generation !== windowModeGeneration) return;
     if (windowModeSettleTimer) window.clearTimeout(windowModeSettleTimer);
     windowModeSettleTimer = window.setTimeout(() => {
       if (generation !== windowModeGeneration) return;
@@ -369,7 +379,19 @@ export function createWindowController({
     return monitor?.workArea || null;
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    window.clearTimeout(windowModeSettleTimer);
+    windowModeSettleTimer = null;
+    state.isApplyingWindowMode = false;
+    panelController.clearPanelClick();
+    ballController.destroy();
+    positionController.destroy();
+  }
+
   return {
+    destroy,
     applyWidgetModeWindow,
     bindEvents,
     clearPanelClick: panelController.clearPanelClick,
@@ -385,14 +407,4 @@ function normalizeRequiredPosition(position) {
   const normalized = normalizeWindowPosition(position);
   if (!normalized) throw new Error("读取到无效窗口位置。");
   return normalized;
-}
-
-function normalizeWindowError(error) {
-  if (typeof error === "string") return error;
-  if (error?.message) return error.message;
-  try {
-    return JSON.stringify(error) || "未知窗口错误";
-  } catch {
-    return String(error ?? "未知窗口错误");
-  }
 }

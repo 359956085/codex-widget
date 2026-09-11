@@ -1,3 +1,4 @@
+import { createLifecycle } from "../lifecycle.js";
 import { CLICK_DELAY_MS, WIDGET_MODES } from "../constants.js";
 import {
   clamp,
@@ -18,6 +19,8 @@ export function createBallController({
   positionController,
   logWindowError
 }) {
+  const lifecycle = createLifecycle();
+  render = lifecycle.guard(render);
   const positionWriter = createLatestPositionWriter(
     (position) => service.window.setPosition(position),
     (error) => logWindowError("移动悬浮球失败", error)
@@ -26,6 +29,7 @@ export function createBallController({
   let dragCompletion = Promise.resolve();
 
   async function startBallDrag(event) {
+    if (lifecycle.destroyed) return;
     event.preventDefault();
     state.ballPress = {
       pointerId: event.pointerId,
@@ -36,11 +40,12 @@ export function createBallController({
       moved: false
     };
 
-    if (!service.isAvailable()) return;
+    if (lifecycle.destroyed || !service.isAvailable()) return;
 
     try {
       await dragCompletion;
       await positionWriter.whenIdle();
+      if (lifecycle.destroyed) return;
       els.widget.setPointerCapture?.(event.pointerId);
       const [position, scaleFactor] = await Promise.all([service.window.outerPosition(), service.window.scaleFactor()]);
       const press = state.ballPress;
@@ -122,7 +127,7 @@ export function createBallController({
 
   async function completeBallDrag(event, press, drag) {
     await positionWriter.whenIdle();
-    if (event.type === "pointercancel") return;
+    if (lifecycle.destroyed || event.type === "pointercancel") return;
 
     const moved = press.moved || Boolean(drag?.moved);
     if (!moved) {
@@ -176,7 +181,7 @@ export function createBallController({
   }
 
   async function snapBallAfterDrag(targetPosition = null) {
-    if (!service.isAvailable()) return;
+    if (lifecycle.destroyed || !service.isAvailable()) return;
 
     try {
       const [monitors, position, size] = await Promise.all([
@@ -208,7 +213,7 @@ export function createBallController({
   }
 
   async function expandBallFromDock() {
-    if (!service.isAvailable() || !state.ballDock) return;
+    if (lifecycle.destroyed || !service.isAvailable() || !state.ballDock) return;
 
     try {
       const [monitor, position, size] = await Promise.all([
@@ -232,7 +237,25 @@ export function createBallController({
     }
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    clearBallClickTimer();
+    cancelBallDragFrame(state.ballDrag);
+    const pointerId = state.ballPress?.pointerId ?? state.ballDrag?.pointerId;
+    state.ballPress = null;
+    state.ballDrag = null;
+    if (pointerId !== undefined) {
+      try {
+        els.widget.releasePointerCapture?.(pointerId);
+      } catch {
+        // 系统可能已释放捕获，无需再次处理。
+      }
+    }
+  }
+
   return {
+    destroy,
     clearBallClickTimer,
     expandBallFromDock,
     finishBallDrag,

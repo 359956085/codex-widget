@@ -1,10 +1,14 @@
+import { createLifecycle } from "./lifecycle.js";
 import { DEFAULT_SETTINGS, RESET_CREDIT_EXPIRY_DISPLAY_LIMIT } from "./constants.js";
 
 export function createQuotaController({ state, service, render, normalizeError, logger }) {
+  const lifecycle = createLifecycle();
+  render = lifecycle.guard(render);
   let activeRefresh = null;
   let refreshPending = false;
 
   function refreshQuota() {
+    if (lifecycle.destroyed) return Promise.resolve();
     if (activeRefresh) {
       // 刷新参数来自最新设置；忙碌期间只需保留一次尾随刷新。
       refreshPending = true;
@@ -20,8 +24,9 @@ export function createQuotaController({ state, service, render, normalizeError, 
     try {
       do {
         refreshPending = false;
+        if (lifecycle.destroyed) break;
         await refreshQuotaOnce();
-      } while (refreshPending);
+      } while (refreshPending && !lifecycle.destroyed);
     } finally {
       activeRefresh = null;
       state.loading = false;
@@ -39,6 +44,7 @@ export function createQuotaController({ state, service, render, normalizeError, 
 
     try {
       const quota = await service.commands.getQuota();
+      if (lifecycle.destroyed) return;
       applyQuotaSuccess(quota);
       const hasAppServerExpiries = applyAppServerResetCreditExpiries(quota);
       render();
@@ -46,6 +52,7 @@ export function createQuotaController({ state, service, render, normalizeError, 
         refreshResetCreditExpiriesFromHttp();
       }
     } catch (error) {
+      if (lifecycle.destroyed) return;
       applyQuotaError(error);
       render();
     }
@@ -106,7 +113,7 @@ export function createQuotaController({ state, service, render, normalizeError, 
   }
 
   function isCurrentResetCreditExpiriesRequest(requestId) {
-    return state.resetCreditExpiriesRequestId === requestId;
+    return !lifecycle.destroyed && state.resetCreditExpiriesRequestId === requestId;
   }
 
   function applyResetCreditExpiriesResult(result) {
@@ -139,6 +146,7 @@ export function createQuotaController({ state, service, render, normalizeError, 
   }
 
   function scheduleAutoRefresh() {
+    if (lifecycle.destroyed) return;
     if (state.refreshTimer) {
       window.clearInterval(state.refreshTimer);
       state.refreshTimer = null;
@@ -151,7 +159,19 @@ export function createQuotaController({ state, service, render, normalizeError, 
     return Math.max(1, Math.min(1440, minutes)) * 60 * 1000;
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    refreshPending = false;
+    invalidateResetCreditExpiriesRequest();
+    window.clearTimeout(state.resetTimer);
+    window.clearInterval(state.refreshTimer);
+    state.resetTimer = null;
+    state.refreshTimer = null;
+  }
+
   return {
+    destroy,
     refreshQuota,
     scheduleAutoRefresh
   };

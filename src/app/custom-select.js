@@ -1,39 +1,42 @@
+import { createLifecycle } from "./lifecycle.js";
 import { setAttribute, setText } from "./dom-utils.js";
 
 export function createCustomSelectController({ shells = [], onChange } = {}) {
+  const lifecycle = createLifecycle();
   const records = Array.from(shells).map(createRecord).filter(Boolean);
 
   function bindEvents() {
+    if (!lifecycle.bind()) return;
     records.forEach((record) => {
-      record.trigger.addEventListener("click", (event) => {
+      lifecycle.listen(record.trigger, "click", (event) => {
         event.preventDefault();
         toggle(record);
       });
-      record.trigger.addEventListener("keydown", (event) => handleTriggerKeyDown(record, event));
+      lifecycle.listen(record.trigger, "keydown", (event) => handleTriggerKeyDown(record, event));
 
-      record.menu.addEventListener("click", (event) => {
+      lifecycle.listen(record.menu, "click", (event) => {
         const option = event.target instanceof Element ? event.target.closest(".custom-select-option") : null;
         if (!option || !record.menu.contains(option)) return;
         selectOption(record, option.dataset.value || "");
       });
-      record.menu.addEventListener("pointermove", (event) => {
+      lifecycle.listen(record.menu, "pointermove", (event) => {
         const option = event.target instanceof Element ? event.target.closest(".custom-select-option") : null;
         if (!option || !record.menu.contains(option)) return;
         setActiveIndex(record, Number.parseInt(option.dataset.index || "-1", 10));
       });
 
-      record.select.addEventListener("change", () => {
+      lifecycle.listen(record.select, "change", () => {
         onChange?.(record.select.id, record.select.value);
         syncRecord(record);
       });
     });
 
-    document.addEventListener("pointerdown", (event) => {
+    lifecycle.listen(document, "pointerdown", (event) => {
       if (event.target instanceof Element && event.target.closest(".custom-select-shell")) return;
       close();
     });
 
-    document.addEventListener("keydown", (event) => {
+    lifecycle.listen(document, "keydown", (event) => {
       if (event.key === "Escape") close();
     });
   }
@@ -156,10 +159,17 @@ export function createCustomSelectController({ shells = [], onChange } = {}) {
     syncActiveOption(record);
   }
 
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    close();
+    lifecycle.destroy();
+  }
+
   return {
+    destroy,
     bindEvents,
     close,
-    sync
+    sync: lifecycle.guard(sync)
   };
 }
 
@@ -235,12 +245,14 @@ function syncExpandedState(record) {
 function syncActiveOption(record) {
   const isOpen = record.shell.classList.contains("open");
   record.optionButtons.forEach((option, index) => {
-    option.dataset.active = isOpen && index === record.activeIndex ? "true" : "false";
+    setAttribute(option, "data-active", isOpen && index === record.activeIndex ? "true" : "false");
   });
   const activeOption = isOpen ? record.optionButtons[record.activeIndex] : null;
   if (activeOption) {
-    record.trigger.setAttribute("aria-activedescendant", activeOption.id);
-    activeOption.scrollIntoView?.({ block: "nearest" });
+    if (record.trigger.getAttribute("aria-activedescendant") !== activeOption.id) {
+      setAttribute(record.trigger, "aria-activedescendant", activeOption.id);
+      activeOption.scrollIntoView?.({ block: "nearest" });
+    }
   } else {
     record.trigger.removeAttribute("aria-activedescendant");
   }

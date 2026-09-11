@@ -10,6 +10,9 @@ use super::types::{CycleQuotaEstimate, EstimateStatus, QuotaEstimate};
 
 mod cache;
 
+#[cfg(test)]
+mod optimization_benchmark;
+
 use cache::EstimateCache;
 
 const PRICE_TABLE_AS_OF: &str = "2026-09-05";
@@ -60,6 +63,8 @@ struct EstimateCandidate {
 struct CycleCluster {
     min_reset_at: i64,
     events: Vec<UsageEvent>,
+    first_event_at: DateTime<Utc>,
+    last_event_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Default)]
@@ -365,12 +370,16 @@ fn cluster_events(mut events: Vec<UsageEvent>) -> Vec<CycleCluster> {
     for event in events {
         if let Some(cluster) = clusters.last_mut() {
             if event.reset_at.saturating_sub(cluster.min_reset_at) <= RESET_CLUSTER_SECONDS {
+                cluster.first_event_at = cluster.first_event_at.min(event.timestamp);
+                cluster.last_event_at = cluster.last_event_at.max(event.timestamp);
                 cluster.events.push(event);
                 continue;
             }
         }
         clusters.push(CycleCluster {
             min_reset_at: event.reset_at,
+            first_event_at: event.timestamp,
+            last_event_at: event.timestamp,
             events: vec![event],
         });
     }
@@ -379,29 +388,16 @@ fn cluster_events(mut events: Vec<UsageEvent>) -> Vec<CycleCluster> {
 
 impl CycleCluster {
     fn representative_reset_at(&self) -> i64 {
-        let mut resets = self
-            .events
-            .iter()
-            .map(|event| event.reset_at)
-            .collect::<Vec<_>>();
-        resets.sort_unstable();
-        resets[resets.len() / 2]
+        // 聚类按重置时间有序构造，直接取原规则的上中位数。
+        self.events[self.events.len() / 2].reset_at
     }
 
     fn first_event_at(&self) -> DateTime<Utc> {
-        self.events
-            .iter()
-            .map(|event| event.timestamp)
-            .min()
-            .unwrap_or_default()
+        self.first_event_at
     }
 
     fn last_event_at(&self) -> DateTime<Utc> {
-        self.events
-            .iter()
-            .map(|event| event.timestamp)
-            .max()
-            .unwrap_or_default()
+        self.last_event_at
     }
 }
 

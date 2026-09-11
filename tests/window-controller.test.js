@@ -10,6 +10,50 @@ const WORK_AREA = {
 };
 
 describe("窗口模式事务", () => {
+  it("销毁时已开始的原生切换完成保存，不遗留稳定计时器", async () => {
+    const nativeWrite = deferred();
+    const fixture = createFixture({ setSize: vi.fn(async (size) => {
+      await nativeWrite.promise;
+      fixture.native.size = { ...size };
+    }) });
+    const switching = fixture.controller.setWidgetMode(WIDGET_MODES.BALL);
+    await vi.waitFor(() => expect(fixture.service.window.setSize).toHaveBeenCalledOnce());
+    fixture.controller.destroy();
+    nativeWrite.resolve();
+    await switching;
+    expect(fixture.persistSettings).toHaveBeenCalledOnce();
+    expect(fixture.state.widgetMode).toBe(WIDGET_MODES.BALL);
+    expect(fixture.state.isApplyingWindowMode).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    await fixture.controller.setWidgetMode(WIDGET_MODES.PANEL);
+    expect(fixture.service.window.setSize).toHaveBeenCalledOnce();
+  });
+
+  it("尚未开始的切换在销毁后不启动事务", async () => {
+    const fixture = createFixture();
+    const switching = fixture.controller.setWidgetMode(WIDGET_MODES.BALL);
+    fixture.controller.destroy();
+    await switching;
+    expect(fixture.service.window.setSize).not.toHaveBeenCalled();
+    expect(fixture.state.isApplyingWindowMode).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("销毁清除拖动帧、捕获和移动监听", async () => {
+    const fixture = createFixture();
+    globalThis.cancelAnimationFrame = vi.fn();
+    fixture.state.ballPress = { pointerId: 5 };
+    fixture.state.ballDrag = { pointerId: 5, frame: 9 };
+    await fixture.controller.registerWindowMoveSave();
+    const unlisten = fixture.state.windowMoveUnlisten;
+    fixture.controller.destroy();
+    fixture.controller.destroy();
+    expect(globalThis.cancelAnimationFrame).toHaveBeenCalledWith(9);
+    expect(fixture.els.widget.releasePointerCapture).toHaveBeenCalledWith(5);
+    expect(unlisten).toHaveBeenCalledOnce();
+    expect(fixture.state.ballDrag).toBeNull();
+    delete globalThis.cancelAnimationFrame;
+  });
   let originalWindow;
 
   beforeEach(() => {

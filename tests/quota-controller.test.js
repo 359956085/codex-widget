@@ -4,6 +4,36 @@ import { createQuotaController } from "../src/app/quota-controller.js";
 import { createAppState } from "../src/app/state.js";
 
 describe("额度刷新定时器", () => {
+  it("销毁取消定时器和尾随刷新，迟到结果不覆盖快照", async () => {
+    const pending = deferred();
+    const { controller, service, state } = createFixture(() => pending.promise);
+    const snapshot = quotaResult({ id: "old" });
+    state.quota = snapshot;
+    controller.scheduleAutoRefresh();
+    const running = controller.refreshQuota();
+    controller.refreshQuota();
+    controller.destroy();
+    controller.destroy();
+    pending.resolve(quotaResult({ id: "late" }));
+    await running;
+    controller.scheduleAutoRefresh();
+    await controller.refreshQuota();
+    expect(state.quota).toBe(snapshot);
+    expect(service.commands.getQuota).toHaveBeenCalledOnce();
+    expect(state.refreshTimer).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("HTTP 过期时间迟到时不更新已销毁状态", async () => {
+    const pending = deferred();
+    const { controller, service, state } = createFixture(async () => ({ resetsAt: null }));
+    service.commands.getResetCreditExpiries.mockReturnValue(pending.promise);
+    await controller.refreshQuota();
+    controller.destroy();
+    pending.resolve({ expiries: ["2030-01-01T00:00:00Z"] });
+    await Promise.resolve();
+    expect(state.resetCreditExpiries).toEqual([]);
+  });
   let originalWindow;
 
   beforeEach(() => {

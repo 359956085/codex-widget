@@ -1,3 +1,4 @@
+import { createLifecycle } from "./lifecycle.js";
 import { APP_VERSION_LABEL, i18n, WIDGET_MODES } from "./constants.js";
 import {
   formatResetCreditExpiries,
@@ -20,6 +21,7 @@ import { activeError } from "./state.js";
 import { createMeterController } from "../components/meters/meter-controller.js";
 
 export function createRenderer({ els, state, getLocale, getTheme, onVersionClick, settingsView }) {
+  const lifecycle = createLifecycle();
   const brandView = createBrandView();
   const meterController = createMeterController(els.meterHost);
   const dataBarViews = els.dataBarCards.map((card) => createDataBarView(card, state));
@@ -178,12 +180,18 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     versionButton.className = "version-badge";
     versionButton.textContent = APP_VERSION_LABEL;
     versionButton.setAttribute("data-no-drag", "");
-    versionButton.addEventListener("click", onVersionClick);
+    lifecycle.listen(versionButton, "click", onVersionClick);
     els.brandName.replaceChildren(title, versionButton);
     return { title, versionButton };
   }
 
-  return { render };
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    meterController.destroy();
+  }
+
+  return { render: lifecycle.guard(render), destroy };
 }
 
 function createDataBarView(card, state) {

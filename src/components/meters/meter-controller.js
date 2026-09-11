@@ -13,6 +13,7 @@ const METER_FACTORIES = {
 export function createMeterController(root) {
   let activeTheme = null;
   let activeMeter = null;
+  let lastPayload = null;
 
   function update({ theme, ...payload }) {
     if (!root) return;
@@ -24,9 +25,14 @@ export function createMeterController(root) {
       root.replaceChildren();
       activeMeter = METER_FACTORIES[nextTheme](root);
       activeTheme = nextTheme;
+      lastPayload = null;
     }
 
+    const keys = Object.keys(payload);
+    if (lastPayload && keys.length === Object.keys(lastPayload).length &&
+      keys.every((key) => Object.hasOwn(lastPayload, key) && Object.is(lastPayload[key], payload[key]))) return;
     activeMeter.update(payload);
+    lastPayload = payload;
   }
 
   function destroy() {
@@ -34,6 +40,7 @@ export function createMeterController(root) {
     root?.replaceChildren();
     activeMeter = null;
     activeTheme = null;
+    lastPayload = null;
   }
 
   return { update, destroy };

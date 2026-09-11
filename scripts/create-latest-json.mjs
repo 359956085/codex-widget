@@ -1,3 +1,4 @@
+import { newestFile } from "./latest-file.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -151,15 +152,6 @@ function collectPlatform(platform) {
 function copyFile(source, target) {
   if (path.resolve(source) === path.resolve(target)) return;
   fs.copyFileSync(source, target);
-}
-
-function newestFile(dir, predicate) {
-  if (!fs.existsSync(dir)) return null;
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && predicate(entry.name))
-    .map((entry) => path.join(dir, entry.name))
-    .sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0] ?? null;
 }
 
 function releaseUrl(appVersion, assetName) {

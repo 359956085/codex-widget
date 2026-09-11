@@ -1,14 +1,15 @@
+import { createLifecycle } from "./lifecycle.js";
 const TOOLTIP_DELAY_MS = 1000;
 const VIEWPORT_PADDING = 8;
 const MOUSE_OFFSET_X = 10;
 const MOUSE_OFFSET_Y = 18;
 
 export function createTooltipController({ root = document.body } = {}) {
+  const lifecycle = createLifecycle();
   const tooltip = document.createElement("div");
   let activeTarget = null;
   let lastPointer = null;
   let showTimer = 0;
-  let hideTimer = 0;
 
   tooltip.className = "app-tooltip";
   tooltip.setAttribute("role", "tooltip");
@@ -17,14 +18,15 @@ export function createTooltipController({ root = document.body } = {}) {
   root.appendChild(tooltip);
 
   function bindEvents() {
-    root.addEventListener("pointerover", handlePointerOver);
-    root.addEventListener("pointermove", handlePointerMove);
-    root.addEventListener("pointerout", handlePointerOut);
-    root.addEventListener("focusin", handleFocusIn);
-    root.addEventListener("focusout", handleFocusOut);
-    root.addEventListener("pointerdown", hide);
-    window.addEventListener("resize", hide);
-    window.addEventListener("scroll", hide, true);
+    if (!lifecycle.bind()) return;
+    lifecycle.listen(root, "pointerover", handlePointerOver);
+    lifecycle.listen(root, "pointermove", handlePointerMove);
+    lifecycle.listen(root, "pointerout", handlePointerOut);
+    lifecycle.listen(root, "focusin", handleFocusIn);
+    lifecycle.listen(root, "focusout", handleFocusOut);
+    lifecycle.listen(root, "pointerdown", hide);
+    lifecycle.listen(window, "resize", hide);
+    lifecycle.listen(window, "scroll", hide, true);
   }
 
   function handlePointerOver(event) {
@@ -59,7 +61,6 @@ export function createTooltipController({ root = document.body } = {}) {
 
   function schedule(target) {
     clearTimeout(showTimer);
-    clearTimeout(hideTimer);
     activeTarget = target;
     tooltip.dataset.visible = "false";
     tooltip.setAttribute("aria-hidden", "true");
@@ -80,7 +81,6 @@ export function createTooltipController({ root = document.body } = {}) {
 
   function hide() {
     clearTimeout(showTimer);
-    clearTimeout(hideTimer);
     activeTarget = null;
     lastPointer = null;
     tooltip.dataset.visible = "false";
@@ -128,7 +128,14 @@ export function createTooltipController({ root = document.body } = {}) {
     tooltip.style.top = `${clamp(top, 6, window.innerHeight - tooltipRect.height - 6)}px`;
   }
 
-  return { bindEvents, hide };
+  function destroy() {
+    if (lifecycle.destroyed) return;
+    lifecycle.destroy();
+    hide();
+    tooltip.remove();
+  }
+
+  return { bindEvents, hide, destroy };
 }
 
 function findTooltipTarget(target) {
