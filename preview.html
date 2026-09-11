@@ -77,12 +77,56 @@
         color: #94a3b8;
         font-weight: 500;
       }
+      .theme-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+        padding: 8px 14px;
+        background: #1a202c;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .theme-bar-label {
+        font-size: 13px;
+        color: #94a3b8;
+      }
+      .theme-btn {
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #cbd5e1;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 120ms ease;
+      }
+      .theme-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      .theme-btn.active {
+        background: rgba(238, 178, 88, 0.22);
+        color: #ffdeaa;
+        border-color: rgba(238, 178, 88, 0.6);
+        box-shadow: 0 0 8px rgba(238, 178, 88, 0.2);
+      }
     </style>
   </head>
   <body data-theme="default">
     <div class="preview-container">
+      <div style="display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #1a202c; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+        <span style="font-size: 13px; color: #94a3b8;">快速导航：</span>
+        <a href="#section-main" style="color: #60a5fa; font-size: 13px; text-decoration: none;">1. 主面板档位</a>
+        <span style="color: #475569;">|</span>
+        <a href="#section-balls" style="color: #60a5fa; font-size: 13px; text-decoration: none;">2. 悬浮球模式</a>
+        <span style="color: #475569;">|</span>
+        <a href="#settings-preview" style="color: #eeb258; font-weight: 600; font-size: 13px; text-decoration: none;">3. 设置面板对标 (新) ↓</a>
+      </div>
+
       <!-- Section 1: 主面板 4 个额度档位对标 -->
-      <div>
+      <div id="section-main">
         <div class="section-header">
           <div class="section-title">1. 主面板 4 个额度档位 (390 × 236) - 对标新设计图</div>
           <div class="section-desc">包含 100%（满额纯净翠绿）、90%（微隙弧形液面）、60%（半满高反光液面）、30%（低位星尘暗面）</div>
@@ -212,7 +256,7 @@
       </div>
 
       <!-- Section 2: 悬浮球模式 5 个球体对标 -->
-      <div>
+      <div id="section-balls">
         <div class="section-header">
           <div class="section-title">2. 悬浮球模式 (88 × 88) 与吸附效果 - 对标新设计图下半部</div>
           <div class="section-desc">包含 100%、90%、60%、30% 独立悬浮球，以及 30% 右吸附效果</div>
@@ -297,6 +341,138 @@
           </div>
         </div>
       </div>
+
+      <!-- Section 3: 设置面板走查 -->
+      <div id="settings-preview">
+        <div class="section-header">
+          <div class="section-title">3. 设置面板 (Settings Panel 390 × 236) - 对标新设计图</div>
+          <div class="section-desc">顶部标题栏与底部操作栏已压缩高度，全宽分割线横贯左右边缘，首屏无缝展示前 3 个下拉选项（主题、语言、仪表窗口）</div>
+        </div>
+
+        <div class="theme-bar">
+          <span class="theme-bar-label">选择预览主题：</span>
+          <button class="theme-btn active" data-preview-theme="basic2" type="button">基础主题 2 (金色 - 设计图)</button>
+          <button class="theme-btn" data-preview-theme="default" type="button">默认主题 (青翠)</button>
+          <button class="theme-btn" data-preview-theme="basic1" type="button">基础主题 1 (青蓝)</button>
+          <button class="theme-btn" data-preview-theme="basic3" type="button">基础主题 3 (粉紫)</button>
+        </div>
+
+        <div class="panels-grid">
+          <!-- 卡片 1: 首屏默认展开状态（完全对标设计图） -->
+          <main class="widget" style="cursor: default;">
+            <section class="settings-panel" style="display: grid;">
+              <div class="settings-head">
+                <strong>设置</strong>
+                <button class="icon-button" type="button" aria-label="关闭">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+
+              <div class="settings-scroll">
+                <div class="settings-field">
+                  <span>主题</span>
+                  <div class="custom-select-shell">
+                    <button class="custom-select-trigger" type="button">
+                      <span class="custom-select-value">基础主题 2</span>
+                      <span class="custom-select-arrow" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="settings-field">
+                  <span>语言</span>
+                  <div class="custom-select-shell">
+                    <button class="custom-select-trigger" type="button">
+                      <span class="custom-select-value">中文</span>
+                      <span class="custom-select-arrow" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="settings-field">
+                  <span>仪表窗口</span>
+                  <div class="custom-select-shell">
+                    <button class="custom-select-trigger" type="button">
+                      <span class="custom-select-value">5小时窗口</span>
+                      <span class="custom-select-arrow" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="settings-field">
+                  <span>数据栏 1</span>
+                  <div class="custom-select-shell">
+                    <button class="custom-select-trigger" type="button">
+                      <span class="custom-select-value">5小时重置</span>
+                      <span class="custom-select-arrow" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-actions">
+                <button class="secondary-button" type="button">取消</button>
+                <button class="primary-button" type="button">
+                  <span>保存</span>
+                </button>
+              </div>
+            </section>
+          </main>
+
+          <!-- 卡片 2: 更多配置项与开关走查 -->
+          <main class="widget" style="cursor: default;">
+            <section class="settings-panel" style="display: grid;">
+              <div class="settings-head">
+                <strong>设置 (配置项与开关状态)</strong>
+                <button class="icon-button" type="button" aria-label="关闭">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+
+              <div class="settings-scroll">
+                <div class="settings-field">
+                  <span>日志等级</span>
+                  <div class="custom-select-shell">
+                    <button class="custom-select-trigger" type="button">
+                      <span class="custom-select-value">INFO</span>
+                      <span class="custom-select-arrow" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="settings-field settings-row">
+                  <div class="settings-copy">
+                    <span>开机自启</span>
+                    <small>登录系统后自动启动本应用</small>
+                  </div>
+                  <label class="switch-control">
+                    <input type="checkbox" checked />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+
+                <div class="settings-field settings-row">
+                  <div class="settings-copy">
+                    <span>自动更新</span>
+                    <small>依赖 GitHub 检查新版本</small>
+                  </div>
+                  <label class="switch-control">
+                    <input type="checkbox" checked />
+                    <span class="switch-track" aria-hidden="true"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="settings-actions">
+                <button class="secondary-button" type="button">取消</button>
+                <button class="primary-button" type="button">
+                  <span>保存</span>
+                </button>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
     </div>
 
     <script type="module">
@@ -361,6 +537,35 @@
         } else if (urlState === "error") {
           document.querySelectorAll(".brand-state").forEach(el => el.textContent = "额度异常");
           document.querySelectorAll(".status span:last-child").forEach(el => el.textContent = "读取额度失败");
+        }
+      }
+
+      // 主题切换交互
+      const themeBtns = document.querySelectorAll(".theme-btn");
+      function switchPreviewTheme(theme) {
+        document.body.dataset.theme = theme;
+        themeBtns.forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.previewTheme === theme);
+        });
+      }
+
+      const urlTheme = new URLSearchParams(window.location.search).get("theme");
+      if (urlTheme) {
+        switchPreviewTheme(urlTheme);
+      } else {
+        switchPreviewTheme("basic2"); // 默认对标设计图的 basic2 金色主题
+      }
+
+      themeBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          switchPreviewTheme(btn.dataset.previewTheme);
+        });
+      });
+
+      if (window.location.hash) {
+        const target = document.querySelector(window.location.hash);
+        if (target) {
+          setTimeout(() => target.scrollIntoView({ behavior: "smooth" }), 100);
         }
       }
     </script>

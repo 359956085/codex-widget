@@ -3,9 +3,9 @@
   inset: 0;
   z-index: 8;
   display: grid;
-  grid-template-rows: 30px minmax(0, 1fr) 34px;
-  gap: 7px;
-  padding: 12px;
+  grid-template-rows: 32px minmax(0, 1fr) 28px;
+  gap: 6px;
+  padding: 0 12px 8px 12px;
   border-radius: 16px;
   background: var(--settings-panel-background);
   backdrop-filter: blur(26px) saturate(1.18);
@@ -39,24 +39,54 @@
 .settings-head {
   justify-content: space-between;
   min-width: 0;
+  height: 32px;
+  margin: 0 -12px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--settings-control-border);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
 }
 
 .settings-head strong {
   overflow: hidden;
   color: rgba(255, 255, 255, 0.94);
   font-size: 13px;
+  font-weight: 600;
   line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.settings-head .icon-button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
+  color: var(--settings-text-color);
+  background: var(--settings-control-background);
+  box-shadow: inset 0 0 0 1px var(--settings-control-border);
+}
+
+.settings-head .icon-button svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+}
+
+.settings-head .icon-button:hover {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 6px var(--settings-accent-soft);
+}
+
 .settings-scroll {
   display: grid;
   min-height: 0;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 2px 2px 0;
+  padding: 4px 2px 2px 0;
   scrollbar-width: thin;
   scrollbar-color: var(--settings-control-border) transparent;
 }
@@ -339,6 +369,7 @@
 
 .settings-actions {
   justify-content: flex-end;
+  height: 28px;
   gap: 8px;
 }
 
@@ -361,12 +392,19 @@
 .secondary-button {
   display: inline-grid;
   place-items: center;
-  min-width: 70px;
-  height: 28px;
+  min-width: 68px;
+  height: 26px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1;
   color: var(--settings-text-color);
   cursor: pointer;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
 .primary-button {
@@ -374,9 +412,20 @@
   box-shadow: inset 0 0 0 1px var(--settings-accent-color);
 }
 
+.primary-button:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color),
+    0 0 8px var(--settings-accent-soft);
+}
+
 .secondary-button {
   background: var(--settings-control-background);
   box-shadow: inset 0 0 0 1px var(--settings-control-border);
+}
+
+.secondary-button:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 1px var(--settings-accent-color);
 }
 
 .primary-button:disabled {

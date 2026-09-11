@@ -671,8 +671,20 @@ body[data-theme="basic2"] .settings-head strong {
   color: var(--basic2-text);
 }
 
+body[data-theme="basic2"] .settings-head .icon-button {
+  width: 22px;
+  height: 22px;
+}
+
+body[data-theme="basic2"] .settings-head .icon-button svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+}
+
 body[data-theme="basic2"] .custom-select-menu {
   box-shadow:
     inset 0 0 0 1px rgba(255, 198, 109, 0.22),
     0 8px 22px rgba(0, 0, 0, 0.3);
 }
+
