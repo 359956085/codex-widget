@@ -1,6 +1,6 @@
 # 全局代码优化验收记录
 
-日期：2026-09-11。基线为本轮开始时的干净工作区，版本 1.6.3。所有改动保留在工作区，未提交、推送或发布。
+全局优化首次验收日期：2026-09-11，版本 1.6.3。以下保留该次交付时的检查与测量结果；后续依赖安全补丁的最新结果见文末“CI 依赖审计修复”。
 
 ## 优化清单
 
@@ -96,3 +96,38 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml optimization_benchmark 
 浏览器真实 DOM 已检查：打开设置、切换英文后取消恢复中文、切换主题保存、重新打开设置确认选择保留。夹具使用模拟持久化服务，没有改写真实账号配置。刷新、置顶、拖动、贴边、面板恢复及版本检查通过现有与新增控制器测试回归。
 
 本轮 Vite 预览进程已停止；对 `127.0.0.1:1420` 的连接返回 `ECONNREFUSED`，端口已释放。
+
+## CI 依赖审计修复
+
+日期：2026-09-11。修复基线为 `07e4d46`，本次安全补丁尚未提交、推送或发布。
+
+### 依赖与锁文件
+
+- Vitest 声明由 `^4.0.0` 提高到 `^4.1.11`，锁定 `4.1.11`；配套的 7 个 `@vitest/*` 包同步更新到 `4.1.11`，修复 [GHSA-82fw-gwwq-j7x9](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9)。
+- js-yaml 作为 ESLint 的间接依赖，由 `4.3.1` 更新到 `4.3.2`，修复 [GHSA-2883-xcg3-v3hh](https://github.com/nodeca/js-yaml/security/advisories/GHSA-2883-xcg3-v3hh)，未添加直接依赖或 overrides。
+- npm 定向更新后，还原其附带的无关版本及元数据变更。锁文件仅变更上述 9 个包及根 Vitest 声明；全部 64 个可选依赖条目与基线完全相同。
+- 执行 `npm run ci:install`，使用官方 registry，从锁文件完成干净安装。原本地 pnpm 安装目录已被替换，`npm ls vitest @vitest/mocker js-yaml --all` 正常退出，安装版本与锁文件一致。
+
+审计继续检查开发依赖，保留 `--audit-level=high` 及既有重试规则。CI 配置、工具链声明、业务代码、样式、Rust 依赖与应用版本号均未修改。
+
+### 本地验收
+
+环境：Windows，Node.js `24.19.0`、npm `11.6.2`、Rust/Cargo `1.91.1`。本地工具链与 CI 声明的 Node.js `20.19.0`、Rust `1.88.0` 不同，远程结果仍需由原工作流验证。
+
+| 项目 | 本次结果 |
+| --- | --- |
+| `npm run check` | 完整通过，退出码 0 |
+| npm 安全审计 | 漏洞总数 0；high、moderate、critical 均为 0 |
+| 前端测试 | 22 个文件、192 项测试通过 |
+| Rust 测试 | 118 项通过；1 项手动性能测试保持默认忽略，本次未重跑 |
+| ESLint、Rust 格式检查、Clippy | 全部通过 |
+| 前端生产构建 | 通过；JS 107.82 kB、CSS 85.33 kB，与全局优化交付结果一致 |
+| `npm run tauri:check` | 通过，生成 `src-tauri/target/release/CodexWidget.exe` |
+| 锁文件范围与可选依赖校验 | 通过，无无关包变更，无跨平台可选依赖丢失 |
+| `git diff --check` | 通过 |
+
+### 远程 CI 与清理
+
+本次未触发远程 CI，也未在 macOS 运行检查。后续推送更新后的锁文件后，由现有 Windows/macOS 工作流执行验证；不能把本地通过视作远程任务已通过。
+
+干净安装前释放了占用项目依赖文件的 esbuild 与 Vite 进程。验收结束时 `127.0.0.1:1420` 返回 `ECONNREFUSED`，没有启动新的预览服务。
