@@ -1,4 +1,6 @@
-import { SNAP_DISTANCE } from "./constants.js";
+import {
+  SNAP_DISTANCE
+} from "./constants.js";
 
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -96,6 +98,40 @@ export function resolveSafeBallDock(position, size, area, monitors) {
 
   const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
   return edgeHasAdjacentWorkArea(area, dock, monitors, size, y) ? null : dock;
+}
+
+export function resolvePanelDock(position, size, bounds, snapDistance = SNAP_DISTANCE) {
+  if (!position || !size || !bounds) return null;
+  const leftEdge = position.x;
+  const rightEdge = position.x + size.width;
+  const centerX = position.x + size.width / 2;
+  const hitsLeftDock = leftEdge <= bounds.left + snapDistance;
+  const hitsRightDock = rightEdge >= bounds.right - snapDistance;
+
+  if (hitsLeftDock && hitsRightDock) {
+    const boundsCenterX = bounds.left + (bounds.right - bounds.left) / 2;
+    return centerX <= boundsCenterX ? "left" : "right";
+  }
+  if (hitsLeftDock) return "left";
+  if (hitsRightDock) return "right";
+  return null;
+}
+
+export function resolveSafePanelDock(position, size, area, monitors, snapDistance = SNAP_DISTANCE) {
+  if (!area) return null;
+  const bounds = workAreaBounds(area);
+  const dock = resolvePanelDock(position, size, bounds, snapDistance);
+  if (!dock) return null;
+
+  const y = clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - size.height));
+  return edgeHasAdjacentWorkArea(area, dock, monitors, size, y) ? null : dock;
+}
+
+export function clampPanelDockPositionToWorkArea(position, dockSize, area, dock) {
+  const bounds = workAreaBounds(area);
+  const y = Math.round(clamp(position.y, bounds.top, Math.max(bounds.top, bounds.bottom - dockSize.height)));
+  const x = dock === "left" ? bounds.left : Math.round(bounds.right - dockSize.width);
+  return { x, y };
 }
 
 export function isBallAtInternalWorkAreaEdge(position, size, area, monitors) {

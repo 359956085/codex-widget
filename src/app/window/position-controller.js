@@ -1,13 +1,14 @@
 import { createLifecycle } from "../lifecycle.js";
 import { POSITION_SAVE_DEBOUNCE_MS, WIDGET_MODES } from "../constants.js";
-import { normalizeBallDock, normalizeWindowPosition } from "../settings-model.js";
+import { normalizeBallDock, normalizePanelDock, normalizeWindowPosition } from "../settings-model.js";
 
 export function createPositionController({
   state,
   service,
   persistSettings,
   showError,
-  logWindowError
+  logWindowError,
+  onPanelMove
 }) {
   const lifecycle = createLifecycle();
   let registration = null;
@@ -59,7 +60,11 @@ export function createPositionController({
     try {
       const position = await readCurrentWindowPosition();
       if (!position) return;
-      await persistWindowPosition(position, state.widgetMode, state.ballDock);
+      if (onPanelMove && state.widgetMode === WIDGET_MODES.PANEL && !state.panelDock) {
+        const handled = await onPanelMove(position);
+        if (handled) return;
+      }
+      await persistWindowPosition(position, state.widgetMode, state.ballDock, state.panelDock);
     } catch (error) {
       if (silent) {
         logWindowError("保存窗口位置失败", error);
@@ -70,7 +75,7 @@ export function createPositionController({
     }
   }
 
-  async function persistWindowPosition(position, mode, dock = null) {
+  async function persistWindowPosition(position, mode, dock = null, panelDock = null) {
     await persistSettings((currentSettings) => {
       const nextSettings = { ...currentSettings };
       if (mode === WIDGET_MODES.BALL) {
@@ -78,6 +83,7 @@ export function createPositionController({
         nextSettings.ballDock = normalizeBallDock(dock);
       } else {
         nextSettings.panelPosition = position;
+        nextSettings.panelDock = normalizePanelDock(panelDock !== null ? panelDock : state.panelDock);
       }
       return nextSettings;
     }, { syncDraft: !state.settingsOpen });
@@ -86,7 +92,6 @@ export function createPositionController({
   async function readCurrentWindowPosition() {
     clearPositionSaveTimer();
     if (lifecycle.destroyed || !service.isAvailable() || state.isApplyingWindowMode) return null;
-
     try {
       return normalizeWindowPosition(await service.window.outerPosition());
     } catch (error) {

@@ -4,6 +4,7 @@ import {
   clampPositionToWorkArea,
   isBallAtInternalWorkAreaEdge,
   resolveSafeBallDock,
+  resolveSafePanelDock,
   workAreaForBallPosition
 } from "../src/app/geometry.js";
 
@@ -49,5 +50,21 @@ describe("窗口几何", () => {
       ballSize,
       monitors
     )).toBe(rightArea);
+  });
+
+  it("面板靠近边缘触发吸附，多屏内侧边缘受到保护", () => {
+    const panelSize = { width: 390, height: 236 };
+    // 靠近左侧边缘（<= 24px）吸附
+    expect(resolveSafePanelDock({ x: 10, y: 200 }, panelSize, leftArea, monitors)).toBe("left");
+    expect(resolveSafePanelDock({ x: -10, y: 200 }, panelSize, leftArea, monitors)).toBe("left");
+
+    // 靠屏幕中央不吸附
+    expect(resolveSafePanelDock({ x: 500, y: 200 }, panelSize, leftArea, monitors)).toBeNull();
+
+    // 靠左侧工作区右边缘（多屏内部相交边界），安全检查拒绝吸附
+    expect(resolveSafePanelDock({ x: 1530, y: 200 }, panelSize, leftArea, monitors)).toBeNull();
+
+    // 靠最右侧外边缘吸附
+    expect(resolveSafePanelDock({ x: 3840 - 390, y: 200 }, panelSize, rightArea, monitors)).toBe("right");
   });
 });

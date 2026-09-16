@@ -18,7 +18,7 @@
         "title": "Codex CLI 额度小组件",
         "width": 390,
         "height": 236,
-        "minWidth": 88,
+        "minWidth": 44,
         "minHeight": 88,
         "resizable": false,
         "decorations": false,

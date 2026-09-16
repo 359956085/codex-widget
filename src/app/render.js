@@ -35,6 +35,7 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     renderStatus(context);
     renderMeter(context);
     renderQuotaCards(context);
+    renderPanelDock(context);
     settingsView.renderSettingsPanel(context.text);
   }
 
@@ -78,6 +79,12 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
     setDatasetValue(els.body, "state", mainState);
     setDatasetValue(els.body, "widgetMode", state.widgetMode);
     setDatasetValue(els.body, "ballDock", state.ballDock || "none");
+    setDatasetValue(els.body, "panelDock", state.panelDock || "none");
+    if (state.panelDock) {
+      setDatasetValue(els.widget, "panelDock", state.panelDock);
+    } else {
+      removeAttribute(els.widget, "data-panel-dock");
+    }
     setDatasetValue(els.body, "theme", activeTheme);
   }
 
@@ -136,6 +143,49 @@ export function createRenderer({ els, state, getLocale, getTheme, onVersionClick
 
   function renderQuotaCards(context) {
     dataBarViews.forEach((view, index) => view.render(context.dataBars[index], context));
+  }
+
+  function renderPanelDock(context) {
+    if (!els.panelDock) return;
+    if (!state.panelDock) {
+      els.panelDock.hidden = true;
+      return;
+    }
+
+    els.panelDock.hidden = false;
+    setDatasetValue(els.panelDock, "dock", state.panelDock);
+    setDatasetValue(els.panelDock, "expanded", String(state.panelDockExpanded));
+
+    if (els.panelDockFill) {
+      els.panelDockFill.style.height = `${context.remainingValue}%`;
+    }
+
+    const cardsData = context.dataBars.slice(0, 3);
+    cardsData.forEach((barType, index) => {
+      const labelEl = els.panelDockCardLabels?.[index];
+      const valueEl = els.panelDockCardValues?.[index];
+      if (!labelEl || !valueEl) return;
+
+      if (barType === "fiveHour") {
+        setText(labelEl, "5h");
+        const percent = context.quota?.primary?.remainingPercent;
+        setText(valueEl, typeof percent === "number" ? `${Math.round(percent)}%` : "--");
+      } else if (barType === "weekly") {
+        setText(labelEl, "1w");
+        const percent = context.quota?.secondary?.remainingPercent;
+        setText(valueEl, typeof percent === "number" ? `${Math.round(percent)}%` : "--");
+      } else if (barType === "quotaEstimate") {
+        setText(labelEl, context.activeLocale === "zh" ? "估算" : "Est.");
+        setText(valueEl, formatQuotaEstimateUsd(context.quota?.estimate, context.activeLocale));
+      } else if (barType === "resetCredits") {
+        setText(labelEl, context.activeLocale === "zh" ? "重置" : "Reset");
+        const count = context.quota?.resetCredits?.availableCount;
+        setText(valueEl, formatResetCredits(count));
+      } else {
+        setText(labelEl, "--");
+        setText(valueEl, "--");
+      }
+    });
   }
 
   function renderBrandName(text) {

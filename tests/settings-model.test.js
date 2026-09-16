@@ -5,6 +5,7 @@ import {
   normalizeBallDock,
   normalizeDataBars,
   normalizeInputValue,
+  normalizePanelDock,
   normalizeSettings,
   normalizeWindowPosition,
   resolveDataBars
@@ -52,6 +53,9 @@ describe("设置标准化", () => {
   it("拒绝无效位置、停靠方向并清理空文本", () => {
     expect(normalizeWindowPosition({ x: "bad", y: 1 })).toBeNull();
     expect(normalizeBallDock("top")).toBeNull();
+    expect(normalizeBallDock("left")).toBe("left");
+    expect(normalizePanelDock("top")).toBeNull();
+    expect(normalizePanelDock("right")).toBe("right");
     expect(normalizeInputValue("   ")).toBeNull();
     expect(normalizeInputValue("  value  ")).toBe("value");
   });

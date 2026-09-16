@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS = {
   onboardingSeen: false,
   widgetMode: "panel",
   panelPosition: null,
+  panelDock: null,
   ballPosition: null,
   ballDock: null
 };
@@ -134,6 +135,10 @@ export const LOG_LEVELS = {
 };
 
 export const PANEL_SIZE = { width: 390, height: 236 };
+export const PANEL_DOCK_COLLAPSED_SIZE = { width: 44, height: 216 };
+export const PANEL_DOCK_EXPANDED_SIZE = { width: 196, height: 216 };
+export const PANEL_DOCK_THRESHOLD = 0.5;
+export const PANEL_DOCK_LEAVE_DEBOUNCE_MS = 250;
 export const BALL_SIZE = 88;
 export const SNAP_DISTANCE = 24;
 export const CLICK_DELAY_MS = 220;

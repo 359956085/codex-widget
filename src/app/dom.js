@@ -67,6 +67,20 @@ export function createElements() {
     settingsError: document.getElementById("settingsError"),
     cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
     saveSettingsBtn: document.getElementById("saveSettingsBtn"),
-    saveSettingsText: document.getElementById("saveSettingsText")
+    saveSettingsText: document.getElementById("saveSettingsText"),
+    panelDock: document.getElementById("panelDock"),
+    panelDockPill: document.querySelector(".panel-dock-pill"),
+    panelDockFill: document.getElementById("panelDockFill"),
+    panelDockFold: document.getElementById("panelDockFold"),
+    panelDockCardLabels: [
+      document.getElementById("panelDockCard1Label"),
+      document.getElementById("panelDockCard2Label"),
+      document.getElementById("panelDockCard3Label")
+    ],
+    panelDockCardValues: [
+      document.getElementById("panelDockCard1Value"),
+      document.getElementById("panelDockCard2Value"),
+      document.getElementById("panelDockCard3Value")
+    ]
   };
 }

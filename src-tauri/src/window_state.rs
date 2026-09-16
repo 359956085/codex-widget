@@ -1,9 +1,11 @@
 use tauri::{LogicalSize, PhysicalPosition, Position, Size, WebviewWindow};
 
-use crate::settings::{AppSettings, BallDock, WidgetMode, WindowPosition};
+use crate::settings::{AppSettings, BallDock, PanelDock, WidgetMode, WindowPosition};
 
 const PANEL_WIDTH: f64 = 390.0;
 const PANEL_HEIGHT: f64 = 236.0;
+const PANEL_DOCK_WIDTH: f64 = 44.0;
+const PANEL_DOCK_HEIGHT: f64 = 216.0;
 const BALL_SIZE: f64 = 88.0;
 const SNAP_DISTANCE: i32 = 24;
 
@@ -19,19 +21,28 @@ pub(crate) fn apply_startup_window_state(
     window: &WebviewWindow,
     settings: &AppSettings,
 ) -> tauri::Result<()> {
-    window.set_size(Size::Logical(window_size_for_mode(settings.widget_mode)))?;
+    window.set_size(Size::Logical(window_size_for_settings(settings)))?;
     if restore_saved_window_position(window, settings)? {
         return Ok(());
     }
     place_window_top_right(window)
 }
 
-fn window_size_for_mode(mode: WidgetMode) -> LogicalSize<f64> {
-    match mode {
-        WidgetMode::Panel => LogicalSize {
-            width: PANEL_WIDTH,
-            height: PANEL_HEIGHT,
-        },
+fn window_size_for_settings(settings: &AppSettings) -> LogicalSize<f64> {
+    match settings.widget_mode {
+        WidgetMode::Panel => {
+            if settings.panel_dock.is_some() {
+                LogicalSize {
+                    width: PANEL_DOCK_WIDTH,
+                    height: PANEL_DOCK_HEIGHT,
+                }
+            } else {
+                LogicalSize {
+                    width: PANEL_WIDTH,
+                    height: PANEL_HEIGHT,
+                }
+            }
+        }
         WidgetMode::Ball => LogicalSize {
             width: BALL_SIZE,
             height: BALL_SIZE,
@@ -83,6 +94,14 @@ fn restore_saved_window_position(
                     window_height,
                     position,
                 ),
+                safe_startup_panel_dock(
+                    settings,
+                    *area,
+                    &work_areas,
+                    window_width,
+                    window_height,
+                    position,
+                ),
             )?;
         }
         return Ok(true);
@@ -110,6 +129,14 @@ fn restore_saved_window_position(
                 window_height,
                 area,
                 safe_startup_ball_dock(
+                    settings,
+                    area,
+                    &work_areas,
+                    window_width,
+                    window_height,
+                    position,
+                ),
+                safe_startup_panel_dock(
                     settings,
                     area,
                     &work_areas,
@@ -147,6 +174,14 @@ fn startup_ball_dock(settings: &AppSettings) -> Option<BallDock> {
     }
 }
 
+fn startup_panel_dock(settings: &AppSettings) -> Option<PanelDock> {
+    if settings.widget_mode == WidgetMode::Panel {
+        settings.panel_dock
+    } else {
+        None
+    }
+}
+
 fn position_belongs_to_area(
     position: WindowPosition,
     window_width: i32,
@@ -168,6 +203,7 @@ fn set_position_in_work_area(
     window_height: i32,
     area: WorkAreaBounds,
     ball_dock: Option<BallDock>,
+    panel_dock: Option<PanelDock>,
 ) -> tauri::Result<()> {
     let mut x = position.x.clamp(
         area.left,
@@ -182,6 +218,11 @@ fn set_position_in_work_area(
         x = match dock {
             BallDock::Left => area.left.saturating_sub(window_width / 2),
             BallDock::Right => area.right.saturating_sub(window_width / 2),
+        };
+    } else if let Some(dock) = panel_dock {
+        x = match dock {
+            PanelDock::Left => area.left,
+            PanelDock::Right => area.right.saturating_sub(window_width),
         };
     }
 
@@ -204,6 +245,32 @@ fn safe_startup_ball_dock(
 
     // 多屏内部边界不能半隐藏，否则隐藏半边会显示到相邻屏幕。
     if edge_has_adjacent_work_area(area, dock, work_areas, window_width, window_height, y) {
+        None
+    } else {
+        Some(dock)
+    }
+}
+
+fn safe_startup_panel_dock(
+    settings: &AppSettings,
+    area: WorkAreaBounds,
+    work_areas: &[WorkAreaBounds],
+    window_width: i32,
+    window_height: i32,
+    position: WindowPosition,
+) -> Option<PanelDock> {
+    let dock = startup_panel_dock(settings)?;
+    let y = position.y.clamp(
+        area.top,
+        area.top.max(area.bottom.saturating_sub(window_height)),
+    );
+
+    let equivalent_ball_dock = match dock {
+        PanelDock::Left => BallDock::Left,
+        PanelDock::Right => BallDock::Right,
+    };
+
+    if edge_has_adjacent_work_area(area, equivalent_ball_dock, work_areas, window_width, window_height, y) {
         None
     } else {
         Some(dock)

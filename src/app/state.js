@@ -27,6 +27,9 @@ export function createAppState() {
     savingSettings: false,
     widgetMode: DEFAULT_SETTINGS.widgetMode,
     ballDock: null,
+    panelDock: null,
+    panelDockExpanded: false,
+    panelDockLeaveTimer: null,
     panelClick: null,
     ballPress: null,
     ballDrag: null,
@@ -47,6 +50,7 @@ export function applyNormalizedSettings(state, settings, { syncDraft = true } = 
   state.locale = normalized.locale;
   state.widgetMode = normalized.widgetMode;
   state.ballDock = normalized.widgetMode === WIDGET_MODES.BALL ? normalized.ballDock : null;
+  state.panelDock = normalized.widgetMode === WIDGET_MODES.PANEL ? normalized.panelDock : null;
   if (syncDraft) {
     syncSettingsDraftFromSettings(state);
   }

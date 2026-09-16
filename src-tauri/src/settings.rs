@@ -67,6 +67,13 @@ pub enum BallDock {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum PanelDock {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowPosition {
     pub x: i32,
@@ -107,6 +114,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub panel_position: Option<WindowPosition>,
     #[serde(default)]
+    pub panel_dock: Option<PanelDock>,
+    #[serde(default)]
     pub ball_position: Option<WindowPosition>,
     #[serde(default)]
     pub ball_dock: Option<BallDock>,
@@ -130,6 +139,7 @@ impl Default for AppSettings {
             log_level: LogLevel::default(),
             widget_mode: WidgetMode::default(),
             panel_position: None,
+            panel_dock: None,
             ball_position: None,
             ball_dock: None,
         }
@@ -439,6 +449,7 @@ mod tests {
             log_level: LogLevel::Debug,
             widget_mode: WidgetMode::Ball,
             panel_position: Some(WindowPosition { x: 120, y: 80 }),
+            panel_dock: Some(PanelDock::Left),
             ball_position: Some(WindowPosition { x: 1800, y: 240 }),
             ball_dock: Some(BallDock::Right),
         };
@@ -479,6 +490,7 @@ mod tests {
             loaded.panel_position,
             Some(WindowPosition { x: 120, y: 80 })
         );
+        assert_eq!(loaded.panel_dock, Some(PanelDock::Left));
         assert_eq!(
             loaded.ball_position,
             Some(WindowPosition { x: 1800, y: 240 })
@@ -538,6 +550,7 @@ mod tests {
         assert_eq!(settings.log_level, LogLevel::Off);
         assert_eq!(settings.widget_mode, WidgetMode::Panel);
         assert_eq!(settings.panel_position, None);
+        assert_eq!(settings.panel_dock, None);
         assert_eq!(settings.ball_position, None);
         assert_eq!(settings.ball_dock, None);
     }

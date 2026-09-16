@@ -1,0 +1,279 @@
+/* 面板吸附效果 (方案B 折页展开) */
+
+:root {
+  --panel-dock-border: rgba(238, 178, 88, 0.55);
+  --panel-dock-pill-bg: radial-gradient(circle at 35% 20%, rgba(42, 32, 20, 0.98), rgba(12, 10, 8, 0.99));
+  --panel-dock-pill-shadow: 0 0 18px rgba(238, 178, 88, 0.22), inset 0 0 12px rgba(0, 0, 0, 0.85);
+  --panel-dock-fill-gradient: linear-gradient(180deg, #ffe8ad 0%, #f5ab35 55%, #c46808 100%);
+  --panel-dock-fill-glow: 0 0 12px rgba(245, 171, 53, 0.7);
+  --panel-dock-card-bg: linear-gradient(135deg, rgba(32, 25, 16, 0.92) 0%, rgba(16, 13, 9, 0.96) 100%);
+  --panel-dock-card-border: rgba(238, 178, 88, 0.32);
+  --panel-dock-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 6px 16px rgba(0, 0, 0, 0.55);
+  --panel-dock-label-color: rgba(255, 222, 170, 0.85);
+  --panel-dock-value-color: #fffae6;
+}
+
+/* 默认主题 (青翠) 主色适配 */
+body[data-theme="default"] {
+  --panel-dock-border: rgba(69, 244, 176, 0.5);
+  --panel-dock-pill-bg: radial-gradient(circle at 35% 20%, rgba(16, 38, 30, 0.98), rgba(7, 18, 14, 0.99));
+  --panel-dock-pill-shadow: 0 0 18px rgba(69, 244, 176, 0.2), inset 0 0 12px rgba(0, 0, 0, 0.85);
+  --panel-dock-fill-gradient: linear-gradient(180deg, #a7f3d0 0%, #34d399 50%, #059669 100%);
+  --panel-dock-fill-glow: 0 0 12px rgba(52, 211, 153, 0.65);
+  --panel-dock-card-bg: linear-gradient(135deg, rgba(16, 34, 27, 0.92) 0%, rgba(8, 18, 14, 0.96) 100%);
+  --panel-dock-card-border: rgba(69, 244, 176, 0.28);
+  --panel-dock-label-color: rgba(167, 243, 208, 0.85);
+  --panel-dock-value-color: #f0fdf4;
+}
+
+/* 基础主题 1 (青蓝) 主色适配 */
+body[data-theme="basic1"] {
+  --panel-dock-border: rgba(103, 232, 249, 0.5);
+  --panel-dock-pill-bg: radial-gradient(circle at 35% 20%, rgba(14, 32, 44, 0.98), rgba(6, 15, 22, 0.99));
+  --panel-dock-pill-shadow: 0 0 18px rgba(103, 232, 249, 0.2), inset 0 0 12px rgba(0, 0, 0, 0.85);
+  --panel-dock-fill-gradient: linear-gradient(180deg, #cffafe 0%, #38bdf8 50%, #0284c7 100%);
+  --panel-dock-fill-glow: 0 0 12px rgba(56, 189, 248, 0.65);
+  --panel-dock-card-bg: linear-gradient(135deg, rgba(13, 29, 41, 0.92) 0%, rgba(6, 15, 22, 0.96) 100%);
+  --panel-dock-card-border: rgba(103, 232, 249, 0.28);
+  --panel-dock-label-color: rgba(186, 230, 253, 0.85);
+  --panel-dock-value-color: #f0f9ff;
+}
+
+/* 基础主题 2 (金色) 对标设计图 */
+body[data-theme="basic2"] {
+  --panel-dock-border: rgba(238, 178, 88, 0.65);
+  --panel-dock-pill-bg: radial-gradient(circle at 35% 20%, rgba(45, 34, 20, 0.98), rgba(12, 10, 8, 0.99));
+  --panel-dock-pill-shadow: 0 0 20px rgba(238, 178, 88, 0.25), inset 0 0 12px rgba(0, 0, 0, 0.85);
+  --panel-dock-fill-gradient: linear-gradient(180deg, #fffae6 0%, #ffd066 30%, #eeb258 70%, #b86a07 100%);
+  --panel-dock-fill-glow: 0 0 14px rgba(238, 178, 88, 0.75);
+  --panel-dock-card-bg: linear-gradient(135deg, rgba(34, 27, 18, 0.94) 0%, rgba(16, 13, 9, 0.98) 100%);
+  --panel-dock-card-border: rgba(238, 178, 88, 0.35);
+  --panel-dock-label-color: rgba(255, 222, 170, 0.9);
+  --panel-dock-value-color: #ffffff;
+}
+
+/* 基础主题 3 (粉紫) 主色适配 */
+body[data-theme="basic3"] {
+  --panel-dock-border: rgba(255, 113, 173, 0.55);
+  --panel-dock-pill-bg: radial-gradient(circle at 35% 20%, rgba(48, 19, 36, 0.98), rgba(18, 7, 14, 0.99));
+  --panel-dock-pill-shadow: 0 0 18px rgba(255, 113, 173, 0.22), inset 0 0 12px rgba(0, 0, 0, 0.85);
+  --panel-dock-fill-gradient: linear-gradient(180deg, #fce7f3 0%, #f472b6 50%, #db2777 100%);
+  --panel-dock-fill-glow: 0 0 12px rgba(244, 114, 182, 0.65);
+  --panel-dock-card-bg: linear-gradient(135deg, rgba(38, 16, 29, 0.92) 0%, rgba(18, 7, 14, 0.96) 100%);
+  --panel-dock-card-border: rgba(255, 113, 173, 0.3);
+  --panel-dock-label-color: rgba(251, 207, 232, 0.85);
+  --panel-dock-value-color: #fdf2f8;
+}
+
+/* 面板吸附模式激活时的全局覆盖 */
+body[data-panel-dock="left"] .widget,
+body[data-panel-dock="right"] .widget,
+.widget[data-panel-dock="left"],
+.widget[data-panel-dock="right"] {
+  width: auto;
+  height: 216px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  cursor: grab;
+}
+
+body[data-panel-dock="left"] .widget:active,
+body[data-panel-dock="right"] .widget:active,
+.widget[data-panel-dock="left"]:active,
+.widget[data-panel-dock="right"]:active {
+  cursor: grabbing;
+}
+
+body[data-panel-dock="left"] .widget::before,
+body[data-panel-dock="left"] .widget::after,
+body[data-panel-dock="left"] .titlebar,
+body[data-panel-dock="left"] .content,
+body[data-panel-dock="left"] .status,
+body[data-panel-dock="left"] .settings-panel,
+body[data-panel-dock="left"] .onboarding-overlay,
+body[data-panel-dock="right"] .widget::before,
+body[data-panel-dock="right"] .widget::after,
+body[data-panel-dock="right"] .titlebar,
+body[data-panel-dock="right"] .content,
+body[data-panel-dock="right"] .status,
+body[data-panel-dock="right"] .settings-panel,
+body[data-panel-dock="right"] .onboarding-overlay,
+.widget[data-panel-dock="left"] > :not(.panel-dock),
+.widget[data-panel-dock="right"] > :not(.panel-dock) {
+  display: none !important;
+}
+
+body[data-panel-dock="left"] .panel-dock,
+body[data-panel-dock="right"] .panel-dock,
+.widget[data-panel-dock="left"] .panel-dock,
+.widget[data-panel-dock="right"] .panel-dock {
+  display: flex !important;
+}
+
+/* 吸附组件容器 */
+.panel-dock {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 216px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.panel-dock[data-dock="left"] {
+  flex-direction: row;
+}
+
+.panel-dock[data-dock="right"] {
+  flex-direction: row-reverse;
+}
+
+/* 胶囊条 (Pill) */
+.panel-dock-pill {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 216px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  background: var(--panel-dock-pill-bg);
+  border: 1.5px solid var(--panel-dock-border);
+  box-shadow: var(--panel-dock-pill-shadow);
+  cursor: grab;
+}
+
+.panel-dock-pill:active {
+  cursor: grabbing;
+}
+
+.panel-dock[data-dock="left"] .panel-dock-pill {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 22px;
+  border-bottom-right-radius: 22px;
+  border-left: 0;
+}
+
+.panel-dock[data-dock="right"] .panel-dock-pill {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 22px;
+  border-bottom-left-radius: 22px;
+  border-right: 0;
+}
+
+/* 内部凹槽轨道 */
+.panel-dock-track {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 20px;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
+/* 渐变流光柱体 */
+.panel-dock-fill {
+  width: 100%;
+  height: 0%;
+  border-radius: 999px;
+  background: var(--panel-dock-fill-gradient);
+  box-shadow: var(--panel-dock-fill-glow);
+  transition: height 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 折页容器 (Fold) */
+.panel-dock-fold {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 152px;
+  height: 216px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-dock[data-dock="left"] .panel-dock-fold {
+  transform: translateX(-14px);
+  margin-left: -2px;
+}
+
+.panel-dock[data-dock="right"] .panel-dock-fold {
+  transform: translateX(14px);
+  margin-right: -2px;
+}
+
+/* 展开态 */
+.panel-dock[data-expanded="true"] .panel-dock-fold {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+/* 独立数据卡片 */
+.panel-dock-card {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: var(--panel-dock-card-bg);
+  border: 1px solid var(--panel-dock-card-border);
+  box-shadow: var(--panel-dock-card-shadow);
+  backdrop-filter: blur(20px) saturate(1.2);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+  cursor: grab;
+}
+
+.panel-dock-card:active {
+  cursor: grabbing;
+}
+
+.panel-dock-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--panel-dock-label-color);
+  line-height: 13px;
+  margin-bottom: 3px;
+  letter-spacing: 0.2px;
+}
+
+.panel-dock-card-value {
+  font-size: 21px;
+  font-weight: 750;
+  color: var(--panel-dock-value-color);
+  line-height: 24px;
+  letter-spacing: -0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 悬停卡片时的细腻光泽 */
+.panel-dock-card:hover {
+  border-color: var(--panel-dock-border);
+}

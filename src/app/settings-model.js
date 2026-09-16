@@ -28,6 +28,7 @@ export function normalizeSettings(settings) {
       typeof settings?.onboardingSeen === "boolean" ? settings.onboardingSeen : DEFAULT_SETTINGS.onboardingSeen,
     widgetMode,
     panelPosition: normalizeWindowPosition(settings?.panelPosition),
+    panelDock: normalizePanelDock(settings?.panelDock),
     ballPosition: normalizeWindowPosition(settings?.ballPosition),
     ballDock: normalizeBallDock(settings?.ballDock)
   };
@@ -45,6 +46,10 @@ export function normalizeWindowPosition(position) {
 }
 
 export function normalizeBallDock(dock) {
+  return dock === "left" || dock === "right" ? dock : null;
+}
+
+export function normalizePanelDock(dock) {
   return dock === "left" || dock === "right" ? dock : null;
 }
 

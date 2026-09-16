@@ -201,6 +201,102 @@ describe("窗口模式事务", () => {
     expect(fixture.state.widgetMode).toBe(WIDGET_MODES.PANEL);
     expect(fixture.persistSettings).toHaveBeenCalledOnce();
   });
+
+  describe("面板边缘吸附与拖拽脱离", () => {
+    it("移动到边缘触发吸附并收起为胶囊尺寸", async () => {
+      const fixture = createFixture();
+      fixture.controller.bindEvents();
+      await fixture.controller.registerWindowMoveSave();
+
+      fixture.native.position = { x: 0, y: 100 };
+      fixture.native.onMoved?.();
+      await vi.advanceTimersByTimeAsync(350);
+
+      expect(fixture.state.panelDock).toBe("left");
+      expect(fixture.native.size).toEqual({ width: 44, height: 216 });
+      expect(fixture.native.position.x).toBe(0);
+    });
+
+    it("悬停展开并在鼠标移出后收起", async () => {
+      const fixture = createFixture();
+      fixture.controller.bindEvents();
+      await fixture.controller.registerWindowMoveSave();
+
+      fixture.native.position = { x: 1920 - 390, y: 100 };
+      fixture.native.onMoved?.();
+      await vi.advanceTimersByTimeAsync(350);
+      expect(fixture.state.panelDock).toBe("right");
+      expect(fixture.native.size).toEqual({ width: 44, height: 216 });
+
+      await fixture.els.panelDock.emit("pointerenter");
+      expect(fixture.state.panelDockExpanded).toBe(true);
+      expect(fixture.native.size).toEqual({ width: 196, height: 216 });
+
+      await fixture.els.panelDock.emit("pointerleave");
+      await vi.advanceTimersByTimeAsync(300);
+      expect(fixture.state.panelDockExpanded).toBe(false);
+      expect(fixture.native.size).toEqual({ width: 44, height: 216 });
+    });
+
+    it("从吸附胶囊向内拖拽脱离恢复面板并启动原生拖动", async () => {
+      const fixture = createFixture();
+      fixture.controller.bindEvents();
+      await fixture.controller.registerWindowMoveSave();
+
+      fixture.native.position = { x: 0, y: 100 };
+      fixture.native.onMoved?.();
+      await vi.advanceTimersByTimeAsync(350);
+      expect(fixture.state.panelDock).toBe("left");
+
+      await fixture.els.panelDock.emit("pointerdown", {
+        button: 0,
+        pointerId: 1,
+        screenX: 20,
+        screenY: 120
+      });
+
+      await fixture.els.panelDock.emit("pointermove", {
+        screenX: 45,
+        screenY: 120
+      });
+
+      expect(fixture.state.panelDock).toBeNull();
+      expect(fixture.native.size).toEqual({ width: 390, height: 236 });
+      expect(fixture.native.position.x).toBeGreaterThanOrEqual(48);
+      expect(fixture.service.window.startDragging).toHaveBeenCalledOnce();
+    });
+
+    it("双击吸附胶囊恢复完整面板", async () => {
+      const fixture = createFixture();
+      fixture.controller.bindEvents();
+      await fixture.controller.registerWindowMoveSave();
+
+      fixture.native.position = { x: 0, y: 100 };
+      fixture.native.onMoved?.();
+      await vi.advanceTimersByTimeAsync(350);
+      expect(fixture.state.panelDock).toBe("left");
+
+      await fixture.els.panelDock.emit("pointerdown", {
+        button: 0,
+        pointerId: 1,
+        screenX: 20,
+        screenY: 120
+      });
+
+      const preventDefault = vi.fn();
+      await fixture.els.panelDock.emit("pointerdown", {
+        button: 0,
+        pointerId: 1,
+        screenX: 21,
+        screenY: 121,
+        preventDefault
+      });
+
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(fixture.state.panelDock).toBeNull();
+      expect(fixture.native.size).toEqual({ width: 390, height: 236 });
+    });
+  });
 });
 
 function createFixture({
@@ -272,7 +368,8 @@ function createElements() {
     widget: createEventTarget(),
     modeBtn: createEventTarget(),
     minimizeBtn: createEventTarget(),
-    closeBtn: createEventTarget()
+    closeBtn: createEventTarget(),
+    panelDock: createEventTarget()
   };
 }
 

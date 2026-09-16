@@ -116,13 +116,24 @@
   </head>
   <body data-theme="default">
     <div class="preview-container">
-      <div style="display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #1a202c; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-        <span style="font-size: 13px; color: #94a3b8;">快速导航：</span>
-        <a href="#section-main" style="color: #60a5fa; font-size: 13px; text-decoration: none;">1. 主面板档位</a>
-        <span style="color: #475569;">|</span>
-        <a href="#section-balls" style="color: #60a5fa; font-size: 13px; text-decoration: none;">2. 悬浮球模式</a>
-        <span style="color: #475569;">|</span>
-        <a href="#settings-preview" style="color: #eeb258; font-weight: 600; font-size: 13px; text-decoration: none;">3. 设置面板对标 (新) ↓</a>
+      <div style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 18px; background: #1a202c; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <span style="font-size: 13px; color: #94a3b8;">快速导航：</span>
+          <a href="#section-main" style="color: #60a5fa; font-size: 13px; text-decoration: none;">1. 主面板档位</a>
+          <span style="color: #475569;">|</span>
+          <a href="#section-balls" style="color: #60a5fa; font-size: 13px; text-decoration: none;">2. 悬浮球模式</a>
+          <span style="color: #475569;">|</span>
+          <a href="#settings-preview" style="color: #60a5fa; font-size: 13px; text-decoration: none;">3. 设置面板</a>
+          <span style="color: #475569;">|</span>
+          <a href="#section-panel-dock" style="color: #f59e0b; font-weight: 700; font-size: 13px; text-decoration: none;">4. 面板吸附折页 (方案B) ↓</a>
+        </div>
+        <div class="theme-bar" style="margin-bottom: 0; padding: 4px 8px; background: rgba(0,0,0,0.25);">
+          <span class="theme-bar-label">全站主题切换：</span>
+          <button class="theme-btn" data-preview-theme="default">默认 (青翠)</button>
+          <button class="theme-btn" data-preview-theme="basic1">基础1 (青蓝)</button>
+          <button class="theme-btn active" data-preview-theme="basic2">基础2 (金色-设计图)</button>
+          <button class="theme-btn" data-preview-theme="basic3">基础3 (粉紫)</button>
+        </div>
       </div>
 
       <!-- Section 1: 主面板 4 个额度档位对标 -->
@@ -473,6 +484,198 @@
           </main>
         </div>
       </div>
+
+      <!-- Section 4: 面板边缘吸附折页展开效果走查（方案B | 折页展开） -->
+      <div id="section-panel-dock">
+        <div class="section-header">
+          <div class="section-title">4. 面板边缘吸附折页展开（方案B | 折页展开）- 对标设计图</div>
+          <div class="section-desc">面板靠边拖拽超 50% 自动吸附收起为边缘胶囊条（显示当前仪表数据柱）；鼠标悬停展开 3 张折页数据卡片（5h、1w、估算/重置）。移出鼠标 250ms 缓冲收起。向屏幕中心拖出即还原完整面板。</div>
+        </div>
+
+        <!-- 交互体验区 -->
+        <div style="background: rgba(26, 32, 44, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+          <div style="font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #e2e8f0; display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #eeb258;"></span>
+            动态交互模拟区（请鼠标悬停胶囊条体验折页展开动画，移开体验 250ms 缓冲收起）：
+          </div>
+          <div style="display: flex; justify-content: space-around; align-items: center; gap: 32px; flex-wrap: wrap;">
+            <!-- 左吸附交互模拟 -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="font-size: 12px; color: #94a3b8;">左边缘吸附 (向右折页展开)</div>
+              <div class="dock-interactive-stage" style="width: 250px; height: 240px; display: flex; align-items: center; justify-content: flex-start; padding-left: 0; background: #0e1217; border-left: 3px solid #3b82f6; border-radius: 12px; position: relative; overflow: visible;">
+                <div class="panel-dock" data-dock="left" id="previewInteractiveDockLeft" style="display: flex;">
+                  <div class="panel-dock-pill" title="悬浮展开，向右拖拽还原">
+                    <div class="panel-dock-track">
+                      <div class="panel-dock-fill" style="height: 63%;"></div>
+                    </div>
+                  </div>
+                  <div class="panel-dock-fold">
+                    <div class="panel-dock-card">
+                      <div class="panel-dock-card-label">5h</div>
+                      <div class="panel-dock-card-value">63%</div>
+                    </div>
+                    <div class="panel-dock-card">
+                      <div class="panel-dock-card-label">1w</div>
+                      <div class="panel-dock-card-value">31%</div>
+                    </div>
+                    <div class="panel-dock-card">
+                      <div class="panel-dock-card-label">估算</div>
+                      <div class="panel-dock-card-value">$68</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右吸附交互模拟 -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="font-size: 12px; color: #94a3b8;">右边缘吸附 (向左镜像折页展开)</div>
+              <div class="dock-interactive-stage" style="width: 250px; height: 240px; display: flex; align-items: center; justify-content: flex-end; padding-right: 0; background: #0e1217; border-right: 3px solid #3b82f6; border-radius: 12px; position: relative; overflow: visible;">
+                <div class="panel-dock" data-dock="right" id="previewInteractiveDockRight" style="display: flex;">
+                  <div class="panel-dock-pill" title="悬浮展开，向左拖拽还原">
+                    <div class="panel-dock-track">
+                      <div class="panel-dock-fill" style="height: 63%;"></div>
+                    </div>
+                  </div>
+                  <div class="panel-dock-fold">
+                    <div class="panel-dock-card">
+                      <div class="panel-dock-card-label">5h</div>
+                      <div class="panel-dock-card-value">63%</div>
+                    </div>
+                    <div class="panel-dock-card">
+                      <div class="panel-dock-card-label">1w</div>
+                      <div class="panel-dock-card-value">31%</div>
+                    </div>
+                    <div class="panel-dock-card">
+                      <div class="panel-dock-card-label">估算</div>
+                      <div class="panel-dock-card-value">$68</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 静态全景各状态走查 -->
+        <div style="background: rgba(26, 32, 44, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 28px;">
+          <!-- 第一排：收起状态各档位柱高走查 -->
+          <div>
+            <div style="font-size: 13.5px; font-weight: 600; margin-bottom: 14px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
+              <span style="color: #94a3b8;">1.</span> 收起胶囊态各档位液柱比对（100%、63%设计图基准、30%、0%）：
+            </div>
+            <div style="display: flex; gap: 28px; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap;">
+              <!-- 收起 100% -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="font-size: 12px; color: #94a3b8;">收起 100%</div>
+                <div style="width: 54px; height: 230px; display: flex; align-items: center; justify-content: flex-start; background: #0e1217; border-left: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  <div class="panel-dock" data-dock="left" style="display: flex;">
+                    <div class="panel-dock-pill">
+                      <div class="panel-dock-track"><div class="panel-dock-fill" style="height: 100%;"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 收起 63% (设计图对标) -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="font-size: 12px; color: #eeb258; font-weight: 600;">收起 63% (设计图)</div>
+                <div style="width: 54px; height: 230px; display: flex; align-items: center; justify-content: flex-start; background: #0e1217; border-left: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  <div class="panel-dock" data-dock="left" style="display: flex;">
+                    <div class="panel-dock-pill">
+                      <div class="panel-dock-track"><div class="panel-dock-fill" style="height: 63%;"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 收起 30% -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="font-size: 12px; color: #94a3b8;">收起 30%</div>
+                <div style="width: 54px; height: 230px; display: flex; align-items: center; justify-content: flex-start; background: #0e1217; border-left: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  <div class="panel-dock" data-dock="left" style="display: flex;">
+                    <div class="panel-dock-pill">
+                      <div class="panel-dock-track"><div class="panel-dock-fill" style="height: 30%;"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 收起 0% -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="font-size: 12px; color: #94a3b8;">收起 0%</div>
+                <div style="width: 54px; height: 230px; display: flex; align-items: center; justify-content: flex-start; background: #0e1217; border-left: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  <div class="panel-dock" data-dock="left" style="display: flex;">
+                    <div class="panel-dock-pill">
+                      <div class="panel-dock-track"><div class="panel-dock-fill" style="height: 0%;"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 第二排：折页展开卡片全览 (左吸附与右吸附镜像) -->
+          <div>
+            <div style="font-size: 13.5px; font-weight: 600; margin-bottom: 14px; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
+              <span style="color: #94a3b8;">2.</span> 常开折页数据卡片对标（左缘展开 vs 右缘镜像）：
+            </div>
+            <div style="display: flex; gap: 40px; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap;">
+              <!-- 常开展示：左吸附折页展开 -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="font-size: 12px; color: #eeb258; font-weight: 600;">左吸附折页展开 (对标设计图)</div>
+                <div style="width: 216px; height: 230px; display: flex; align-items: center; justify-content: flex-start; background: #0e1217; border-left: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  <div class="panel-dock" data-dock="left" data-expanded="true" style="display: flex;">
+                    <div class="panel-dock-pill">
+                      <div class="panel-dock-track"><div class="panel-dock-fill" style="height: 63%;"></div></div>
+                    </div>
+                    <div class="panel-dock-fold">
+                      <div class="panel-dock-card">
+                        <div class="panel-dock-card-label">5h</div>
+                        <div class="panel-dock-card-value">63%</div>
+                      </div>
+                      <div class="panel-dock-card">
+                        <div class="panel-dock-card-label">1w</div>
+                        <div class="panel-dock-card-value">31%</div>
+                      </div>
+                      <div class="panel-dock-card">
+                        <div class="panel-dock-card-label">估算</div>
+                        <div class="panel-dock-card-value">$68</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 常开展示：右吸附镜像折页展开 -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div style="font-size: 12px; color: #94a3b8;">右吸附镜像折页展开</div>
+                <div style="width: 216px; height: 230px; display: flex; align-items: center; justify-content: flex-end; background: #0e1217; border-right: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  <div class="panel-dock" data-dock="right" data-expanded="true" style="display: flex;">
+                    <div class="panel-dock-pill">
+                      <div class="panel-dock-track"><div class="panel-dock-fill" style="height: 63%;"></div></div>
+                    </div>
+                    <div class="panel-dock-fold">
+                      <div class="panel-dock-card">
+                        <div class="panel-dock-card-label">5h</div>
+                        <div class="panel-dock-card-value">63%</div>
+                      </div>
+                      <div class="panel-dock-card">
+                        <div class="panel-dock-card-label">1w</div>
+                        <div class="panel-dock-card-value">31%</div>
+                      </div>
+                      <div class="panel-dock-card">
+                        <div class="panel-dock-card-label">重置</div>
+                        <div class="panel-dock-card-value">5次</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script type="module">
@@ -559,6 +762,28 @@
       themeBtns.forEach(btn => {
         btn.addEventListener("click", () => {
           switchPreviewTheme(btn.dataset.previewTheme);
+        });
+      });
+
+      // 交互式折页吸附展开/收起模拟
+      const interactiveDocks = [
+        document.getElementById("previewInteractiveDockLeft"),
+        document.getElementById("previewInteractiveDockRight")
+      ].filter(Boolean);
+
+      interactiveDocks.forEach((dock) => {
+        let leaveTimer = null;
+        dock.addEventListener("pointerenter", () => {
+          if (leaveTimer) {
+            clearTimeout(leaveTimer);
+            leaveTimer = null;
+          }
+          dock.dataset.expanded = "true";
+        });
+        dock.addEventListener("pointerleave", () => {
+          leaveTimer = setTimeout(() => {
+            dock.dataset.expanded = "false";
+          }, 250);
         });
       });
 
