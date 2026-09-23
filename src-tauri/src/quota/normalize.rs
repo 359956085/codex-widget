@@ -22,6 +22,7 @@ fn normalize_snapshot(response: &Value, snapshot: &Value) -> QuotaSnapshot {
     let resets_at = active_window.and_then(|window| window.resets_at.clone());
 
     QuotaSnapshot {
+        windows_revision: 0,
         limit_id: read_string(snapshot, "limitId").unwrap_or_else(|| "codex".to_string()),
         limit_name: read_string(snapshot, "limitName").unwrap_or_else(|| "Codex".to_string()),
         plan_type: read_string(snapshot, "planType").unwrap_or_else(|| "unknown".to_string()),

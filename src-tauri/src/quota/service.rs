@@ -1,11 +1,16 @@
 use std::path::Path;
+use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use serde_json::Value;
+use tokio::sync::broadcast;
 
 use super::command::resolve_codex_command;
 use super::normalize::normalize_rate_limits_response;
-use super::session::{enrich_error_with_stderr, CodexSession, SessionRequestError};
+use super::session::{
+    enrich_error_with_stderr, CodexSession, RevisionedValue, SessionRequestError,
+};
 use super::types::QuotaSnapshot;
 
 enum SessionReadFailure {
@@ -25,11 +30,28 @@ impl From<SessionRequestError> for SessionReadFailure {
 
 pub struct QuotaService {
     session: Option<CodexSession>,
+    notifications: broadcast::Sender<RevisionedValue>,
+    revision: Arc<AtomicU64>,
 }
 
 impl QuotaService {
     pub fn new() -> Self {
-        Self { session: None }
+        let (notifications, _) = broadcast::channel(32);
+        Self {
+            session: None,
+            notifications,
+            revision: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<RevisionedValue> {
+        self.notifications.subscribe()
+    }
+
+    pub fn snapshot_from_notification(update: &RevisionedValue) -> Result<QuotaSnapshot> {
+        let mut snapshot = normalize_quota_response(&update.value)?;
+        snapshot.windows_revision = update.revision;
+        Ok(snapshot)
     }
 
     pub async fn get_quota(&mut self, codex_cli_path: Option<&Path>) -> Result<QuotaSnapshot> {
@@ -42,14 +64,16 @@ impl QuotaService {
             Err(SessionReadFailure::Protocol(error)) => return Err(error),
         };
         // 响应结构错误不会因重启进程而改变，只对会话传输错误重试。
-        normalize_quota_response(&response)
+        let mut snapshot = normalize_quota_response(&response.value)?;
+        snapshot.windows_revision = response.revision;
+        Ok(snapshot)
     }
 
     async fn retry_with_fresh_session(
         &mut self,
         first_error: anyhow::Error,
         codex_cli_path: Option<&Path>,
-    ) -> Result<Value> {
+    ) -> Result<RevisionedValue> {
         // 长连接一旦读写失败就不能假设仍可复用，先清理再启动新会话重试一次。
         self.invalidate_session().await;
 
@@ -68,7 +92,7 @@ impl QuotaService {
     async fn read_rate_limits_with_session(
         &mut self,
         codex_cli_path: Option<&Path>,
-    ) -> Result<Value, SessionReadFailure> {
+    ) -> Result<RevisionedValue, SessionReadFailure> {
         let codex_command = resolve_codex_command(codex_cli_path);
         if self
             .session
@@ -80,9 +104,13 @@ impl QuotaService {
 
         if self.session.is_none() {
             self.session = Some(
-                CodexSession::start(codex_command)
-                    .await
-                    .map_err(SessionReadFailure::from)?,
+                CodexSession::start(
+                    codex_command,
+                    self.notifications.clone(),
+                    Arc::clone(&self.revision),
+                )
+                .await
+                .map_err(SessionReadFailure::from)?,
             );
         }
 

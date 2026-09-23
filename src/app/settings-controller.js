@@ -1,6 +1,6 @@
 import { setAttribute, setText } from "./dom-utils.js";
 import { createLifecycle } from "./lifecycle.js";
-import { DATA_BAR_CONTENTS, DEFAULT_SETTINGS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
+import { DATA_BAR_CONTENTS, LOG_LEVELS, METER_WINDOWS, THEMES } from "./constants.js";
 import { createCustomSelectController } from "./custom-select.js";
 import { createDialogFocusManager } from "./dialog-focus.js";
 import { detectMacOS } from "./platform.js";
@@ -26,7 +26,6 @@ export function createSettingsController({
   readCurrentWindowPosition,
   mergeWindowPosition,
   setUpdateStatus,
-  scheduleAutoRefresh,
   refreshQuota,
   scheduleUpdateChecks,
   logger,
@@ -112,7 +111,6 @@ export function createSettingsController({
   function fillSettingsForm() {
     els.codexPathInput.value = state.settingsDraft.codexCliPath || "";
     els.updateProxyInput.value = state.settingsDraft.updateProxy || "";
-    els.refreshIntervalInput.value = String(state.settingsDraft.refreshIntervalMinutes || DEFAULT_SETTINGS.refreshIntervalMinutes);
     syncSettingsControls(renderLocale());
   }
 
@@ -137,7 +135,6 @@ export function createSettingsController({
     setText(els.hideDockIconHint, text.hideDockIconHint);
     setText(els.updateProxyLabel, text.updateProxy);
     setText(els.updateProxyHint, text.updateProxyHint);
-    setText(els.refreshIntervalLabel, text.refreshInterval);
     setText(els.themeLabel, text.theme);
     setText(els.languageLabel, text.language);
     setText(els.meterWindowLabel, text.meterWindow);
@@ -255,7 +252,6 @@ export function createSettingsController({
       state.settingsOpen = false;
       state.errors.settings = "";
       setUpdateStatus({ type: "saved" });
-      scheduleAutoRefresh();
       refreshQuota();
       scheduleUpdateChecks();
       focusManager.deactivate();
@@ -269,11 +265,9 @@ export function createSettingsController({
   }
 
   function collectSettingsDraft() {
-    const refreshIntervalMinutes = Number.parseInt(els.refreshIntervalInput.value, 10);
     return {
       codexCliPath: normalizeInputValue(els.codexPathInput.value),
       updateProxy: normalizeInputValue(els.updateProxyInput.value),
-      refreshIntervalMinutes: Number.isFinite(refreshIntervalMinutes) ? refreshIntervalMinutes : DEFAULT_SETTINGS.refreshIntervalMinutes,
       locale: els.localeSelect.value === "en" ? "en" : "zh",
       theme: normalizeTheme(els.themeSelect.value),
       meterWindow: normalizeMeterWindow(els.meterWindowSelect.value),

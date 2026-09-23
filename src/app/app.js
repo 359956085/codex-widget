@@ -126,7 +126,6 @@ function initializeApp(dependencies, lifecycle) {
     readCurrentWindowPosition: windowController.readCurrentWindowPosition,
     mergeWindowPosition: windowController.mergeWindowPosition,
     setUpdateStatus: updateController.setUpdateStatus,
-    scheduleAutoRefresh: quotaController.scheduleAutoRefresh,
     refreshQuota: quotaController.refreshQuota,
     scheduleUpdateChecks: updateController.scheduleUpdateChecks,
     logger,
@@ -218,6 +217,12 @@ function initializeApp(dependencies, lifecycle) {
       ),
       listenRuntimeEvent(
         service.events.listen,
+        "quota:windows-updated",
+        lifecycle.guard((event) => quotaController.applyQuotaWindows?.(event.payload)),
+        (error) => logger.error("监听额度窗口事件失败", error, "frontend.events")
+      ),
+      listenRuntimeEvent(
+        service.events.listen,
         "window:always-on-top-changed",
         lifecycle.guard((event) => {
           state.alwaysOnTop = Boolean(event.payload);
@@ -227,11 +232,13 @@ function initializeApp(dependencies, lifecycle) {
       )
     ].map((registration) => registration.then(lifecycle.add));
 
-    // 事件监听属于增强能力，不能阻塞核心刷新与定时任务启动。
+    await Promise.all(runtimeEventRegistrations);
+    if (lifecycle.destroyed) return;
+    await quotaController.readCachedWindows?.();
+    if (lifecycle.destroyed) return;
     void quotaController.refreshQuota();
     quotaController.scheduleAutoRefresh();
     updateController.scheduleUpdateChecks();
-    await Promise.all(runtimeEventRegistrations);
   }
 
   async function loadSettings() {

@@ -15,7 +15,7 @@ mod optimization_benchmark;
 
 use cache::EstimateCache;
 
-const PRICE_TABLE_AS_OF: &str = "2026-09-05";
+const PRICE_TABLE_AS_OF: &str = "2026-09-23";
 const WEEKLY_WINDOW_MINS: i64 = 10_080;
 const LOOKBACK_SECONDS: i64 = 16 * 24 * 60 * 60;
 const MAX_RESET_DISTANCE_SECONDS: i64 = 8 * 24 * 60 * 60;
@@ -297,6 +297,8 @@ fn model_price(model: &str) -> Option<ModelPrice> {
             output: 50.0,
             cache_write_multiplier: Some(1.25),
         }),
+        "gpt-6-sol" => Some(gpt_56(2.0, 0.2, 10.0)),
+        "gpt-6-luna" => Some(gpt_56(0.1, 0.01, 0.5)),
         "gpt-5.6" | "gpt-5.6-sol" => Some(gpt_56(4.0, 0.4, 20.0)),
         "gpt-5.6-terra" => Some(gpt_56(2.0, 0.2, 12.0)),
         "gpt-5.6-luna" => Some(gpt_56(0.2, 0.02, 1.2)),
@@ -739,6 +741,39 @@ mod tests {
     }
 
     #[test]
+    fn gpt_6_sol和luna计入缓存写入及长上下文() {
+        for (model, short, long) in [("gpt-6-sol", 0.466, 1.082), ("gpt-6-luna", 0.0233, 0.0541)] {
+            let short_cost =
+                price_token_usage(model, usage(200_000, 80_000, 20_000, 20_000)).unwrap();
+            let long_cost =
+                price_token_usage(model, usage(300_000, 80_000, 20_000, 10_000)).unwrap();
+            assert!((short_cost - short).abs() < 0.000_001, "{model}");
+            assert!((long_cost - long).abs() < 0.000_001, "{model}");
+        }
+    }
+
+    #[test]
+    fn gpt_6_sol和luna仅识别正式模型名且严格应用边界() {
+        for (model, input_price, output_price) in
+            [("gpt-6-sol", 2.0, 10.0), ("gpt-6-luna", 0.1, 0.5)]
+        {
+            for input in [272_000, 272_001] {
+                let multiplier = if input > 272_000 { 2.0 } else { 1.0 };
+                let output_multiplier = if input > 272_000 { 1.5 } else { 1.0 };
+                let expected = (input as f64 * input_price * multiplier
+                    + 10_000.0 * output_price * output_multiplier)
+                    / 1_000_000.0;
+                let actual = price_token_usage(model, usage(input, 0, 0, 10_000)).unwrap();
+                assert!((actual - expected).abs() < 0.000_001, "{model}: {input}");
+            }
+            assert_eq!(
+                price_token_usage(&format!("{model}-fast"), usage(1000, 0, 0, 100)),
+                None
+            );
+        }
+    }
+
+    #[test]
     fn 长上下文应用输入和输出倍率() {
         let cost = price_token_usage("gpt-5.5", usage(300_000, 0, 0, 10_000)).unwrap();
 
@@ -934,7 +969,7 @@ mod tests {
         }
 
         let result = estimate_from_events(events, reset_at);
-        assert_eq!(result.price_table_as_of, "2026-09-05");
+        assert_eq!(result.price_table_as_of, PRICE_TABLE_AS_OF);
         let current = result.current.unwrap();
         assert_eq!(current.status, EstimateStatus::Ready);
         assert!((current.full_quota_usd.unwrap() - 100.0).abs() < 0.000_001);

@@ -43,8 +43,6 @@ export function createElements() {
     updateProxyLabel: document.getElementById("updateProxyLabel"),
     updateProxyInput: document.getElementById("updateProxyInput"),
     updateProxyHint: document.getElementById("updateProxyHint"),
-    refreshIntervalLabel: document.getElementById("refreshIntervalLabel"),
-    refreshIntervalInput: document.getElementById("refreshIntervalInput"),
     themeLabel: document.getElementById("themeLabel"),
     themeSelect: document.getElementById("themeSelect"),
     languageLabel: document.getElementById("languageLabel"),

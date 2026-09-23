@@ -4,15 +4,10 @@ export const PLUS_DEFAULT_DATA_BARS = ["fiveHour", "weekly", "quotaEstimate"];
 export const OTHER_DEFAULT_DATA_BARS = ["quotaEstimate", "weekly", "resetCredits"];
 
 export function normalizeSettings(settings) {
-  const refreshIntervalMinutes = Number(settings?.refreshIntervalMinutes);
   const widgetMode = settings?.widgetMode === WIDGET_MODES.BALL ? WIDGET_MODES.BALL : WIDGET_MODES.PANEL;
   return {
     codexCliPath: typeof settings?.codexCliPath === "string" ? settings.codexCliPath : "",
     updateProxy: typeof settings?.updateProxy === "string" ? settings.updateProxy : "",
-    refreshIntervalMinutes:
-      Number.isInteger(refreshIntervalMinutes) && refreshIntervalMinutes >= 1 && refreshIntervalMinutes <= 1440
-        ? refreshIntervalMinutes
-        : DEFAULT_SETTINGS.refreshIntervalMinutes,
     locale: settings?.locale === "en" ? "en" : "zh",
     theme: normalizeTheme(settings?.theme),
     meterWindow: normalizeMeterWindow(settings?.meterWindow),

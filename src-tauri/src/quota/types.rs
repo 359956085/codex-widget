@@ -54,6 +54,7 @@ pub struct QuotaEstimate {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaSnapshot {
+    pub windows_revision: u64,
     pub limit_id: String,
     pub limit_name: String,
     pub plan_type: String,
@@ -68,4 +69,30 @@ pub struct QuotaSnapshot {
     pub fetched_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quota_estimate: Option<QuotaEstimate>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct QuotaWindowsSnapshot {
+    pub revision: u64,
+    pub primary: Option<QuotaWindow>,
+    pub secondary: Option<QuotaWindow>,
+    pub remaining_percent: Option<u8>,
+    pub used_percent: Option<u8>,
+    pub resets_at: Option<String>,
+    pub fetched_at: String,
+}
+
+impl From<&QuotaSnapshot> for QuotaWindowsSnapshot {
+    fn from(snapshot: &QuotaSnapshot) -> Self {
+        Self {
+            revision: snapshot.windows_revision,
+            primary: snapshot.primary.clone(),
+            secondary: snapshot.secondary.clone(),
+            remaining_percent: snapshot.remaining_percent,
+            used_percent: snapshot.used_percent,
+            resets_at: snapshot.resets_at.clone(),
+            fetched_at: snapshot.fetched_at.clone(),
+        }
+    }
 }

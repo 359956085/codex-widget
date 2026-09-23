@@ -110,15 +110,15 @@ describe("应用编排", () => {
     const registration = new Promise((done) => { resolve = done; });
     fixture.service.events.listen.mockReturnValue(registration);
     const started = fixture.app.start();
-    await vi.waitFor(() => expect(fixture.service.events.listen).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fixture.service.events.listen).toHaveBeenCalledTimes(3));
     fixture.app.destroy();
     const before = fixture.render.mock.calls.length;
     resolve(unlisten);
     await started;
-    fixture.service.events.listen.mock.calls[1][1]({ payload: false });
+    fixture.service.events.listen.mock.calls[2][1]({ payload: false });
     expect(fixture.state.alwaysOnTop).toBe(true);
     expect(fixture.render).toHaveBeenCalledTimes(before);
-    expect(unlisten).toHaveBeenCalledTimes(2);
+    expect(unlisten).toHaveBeenCalledTimes(3);
   });
   it("损坏设置安全回退，监听失败不阻断核心任务", async () => {
     const fixture = createFixture({ settingsError: new Error("settings.json 已损坏") });
@@ -132,7 +132,7 @@ describe("应用编排", () => {
     expect(fixture.controllers.quota.refreshQuota).toHaveBeenCalledOnce();
     expect(fixture.controllers.quota.scheduleAutoRefresh).toHaveBeenCalledOnce();
     expect(fixture.controllers.update.scheduleUpdateChecks).toHaveBeenCalledOnce();
-    expect(fixture.service.events.listen).toHaveBeenCalledTimes(2);
+    expect(fixture.service.events.listen).toHaveBeenCalledTimes(3);
     expect(fixture.logger.error).toHaveBeenCalledWith(
       "监听托盘刷新事件失败",
       expect.any(Error),

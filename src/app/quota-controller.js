@@ -1,5 +1,7 @@
 import { createLifecycle } from "./lifecycle.js";
-import { DEFAULT_SETTINGS, RESET_CREDIT_EXPIRY_DISPLAY_LIMIT } from "./constants.js";
+import { RESET_CREDIT_EXPIRY_DISPLAY_LIMIT } from "./constants.js";
+
+const ANCILLARY_REFRESH_MS = 5 * 60 * 1000;
 
 export function createQuotaController({ state, service, render, normalizeError, logger }) {
   const lifecycle = createLifecycle();
@@ -65,9 +67,46 @@ export function createQuotaController({ state, service, render, normalizeError, 
   }
 
   function applyQuotaSuccess(quota) {
-    state.quota = quota;
+    const previous = state.quota;
+    const previousRevision = Number(previous?.windowsRevision) || 0;
+    const nextRevision = Number(quota?.windowsRevision) || 0;
+    state.quota = previousRevision > nextRevision
+      ? { ...quota, ...windowFields(previous) }
+      : quota;
     state.errors.quota = "";
-    scheduleResetRefresh(state.quota?.resetsAt);
+  }
+
+  function windowFields(quota) {
+    return {
+      windowsRevision: quota.windowsRevision,
+      primary: quota.primary,
+      secondary: quota.secondary,
+      remainingPercent: quota.remainingPercent,
+      usedPercent: quota.usedPercent,
+      resetsAt: quota.resetsAt,
+      fetchedAt: quota.fetchedAt
+    };
+  }
+
+  function applyQuotaWindows(update) {
+    if (lifecycle.destroyed || !update || !Number.isSafeInteger(update.revision)) return;
+    const previousRevision = Number(state.quota?.windowsRevision) || 0;
+    if (update.revision <= previousRevision) return;
+    state.quota = {
+      ...state.quota,
+      ...windowFields({ ...update, windowsRevision: update.revision })
+    };
+    state.errors.quota = "";
+    render();
+  }
+
+  async function readCachedWindows() {
+    if (lifecycle.destroyed || !service.commands.getQuotaWindows) return;
+    try {
+      applyQuotaWindows(await service.commands.getQuotaWindows());
+    } catch (error) {
+      logger?.error("读取额度窗口缓存失败", error, "frontend.quota");
+    }
   }
 
   function applyQuotaError(error) {
@@ -132,31 +171,13 @@ export function createQuotaController({ state, service, render, normalizeError, 
     state.resetCreditExpiriesRequestId += 1;
   }
 
-  function scheduleResetRefresh(resetsAt) {
-    if (state.resetTimer) {
-      window.clearTimeout(state.resetTimer);
-      state.resetTimer = null;
-    }
-
-    if (!resetsAt) return;
-    const delay = new Date(resetsAt).getTime() - Date.now() + 1500;
-    if (!Number.isFinite(delay) || delay <= 0) return;
-
-    state.resetTimer = window.setTimeout(refreshQuota, Math.min(delay, refreshIntervalMs()));
-  }
-
   function scheduleAutoRefresh() {
     if (lifecycle.destroyed) return;
     if (state.refreshTimer) {
       window.clearInterval(state.refreshTimer);
       state.refreshTimer = null;
     }
-    state.refreshTimer = window.setInterval(refreshQuota, refreshIntervalMs());
-  }
-
-  function refreshIntervalMs() {
-    const minutes = Number(state.settings.refreshIntervalMinutes) || DEFAULT_SETTINGS.refreshIntervalMinutes;
-    return Math.max(1, Math.min(1440, minutes)) * 60 * 1000;
+    state.refreshTimer = window.setInterval(refreshQuota, ANCILLARY_REFRESH_MS);
   }
 
   function destroy() {
@@ -164,14 +185,14 @@ export function createQuotaController({ state, service, render, normalizeError, 
     lifecycle.destroy();
     refreshPending = false;
     invalidateResetCreditExpiriesRequest();
-    window.clearTimeout(state.resetTimer);
     window.clearInterval(state.refreshTimer);
-    state.resetTimer = null;
     state.refreshTimer = null;
   }
 
   return {
     destroy,
+    applyQuotaWindows,
+    readCachedWindows,
     refreshQuota,
     scheduleAutoRefresh
   };

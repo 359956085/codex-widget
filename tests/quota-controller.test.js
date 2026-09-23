@@ -132,14 +132,33 @@ describe("额度刷新定时器", () => {
     expect(state.loading).toBe(false);
   });
 
-  it("按设置间隔自动刷新", async () => {
-    const { controller, service, state } = createFixture(async () => quotaResult());
-    state.settings.refreshIntervalMinutes = 1;
+  it("每五分钟刷新附属数据", async () => {
+    const { controller, service } = createFixture(async () => quotaResult());
 
     controller.scheduleAutoRefresh();
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
 
     expect(service.commands.getQuota).toHaveBeenCalledTimes(1);
+  });
+
+  it("通知更新窗口且旧全量响应不会倒退", async () => {
+    const pending = deferred();
+    const { controller, state } = createFixture(() => pending.promise);
+    const loading = controller.refreshQuota();
+    controller.applyQuotaWindows({ revision: 8, primary: { remainingPercent: 40 }, secondary: null, remainingPercent: 40, usedPercent: 60, resetsAt: null, fetchedAt: "now" });
+    pending.resolve(quotaResult({ windowsRevision: 7, primary: { remainingPercent: 70 }, resetCredits: { availableCount: 2, expiries: [] } }));
+    await loading;
+    expect(state.quota.primary.remainingPercent).toBe(40);
+    expect(state.quota.resetCredits.availableCount).toBe(2);
+    expect(state.quota.windowsRevision).toBe(8);
+  });
+
+  it("缓存读取晚于通知时不覆盖较新窗口", async () => {
+    const { controller, service, state } = createFixture(async () => quotaResult());
+    service.commands.getQuotaWindows = vi.fn(async () => ({ revision: 3, remainingPercent: 90 }));
+    controller.applyQuotaWindows({ revision: 4, remainingPercent: 80 });
+    await controller.readCachedWindows();
+    expect(state.quota.remainingPercent).toBe(80);
   });
 });
 

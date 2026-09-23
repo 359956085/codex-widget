@@ -52,7 +52,7 @@ describe("设置面板", () => {
     await vi.waitFor(() => expect(fixture.state.savingSettings).toBe(false));
     expect(fixture.state.settingsOpen).toBe(false);
     expect(fixture.state.errors.settings).toBe("");
-    expect(fixture.scheduleAutoRefresh).toHaveBeenCalledOnce();
+    expect(fixture.scheduleAutoRefresh).not.toHaveBeenCalled();
     expect(fixture.refreshQuota).toHaveBeenCalledOnce();
     expect(fixture.scheduleUpdateChecks).toHaveBeenCalledOnce();
   });

@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,8 +9,8 @@ use serde_json::{json, Value};
 use tokio::io::{
     AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, Lines,
 };
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
-use tokio::sync::Mutex;
+use tokio::process::{Child, ChildStderr, ChildStdin, Command};
+use tokio::sync::{broadcast, oneshot, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
@@ -68,19 +70,31 @@ impl std::fmt::Display for SessionRequestError {
     }
 }
 
+type PendingResponses =
+    Arc<Mutex<HashMap<u64, oneshot::Sender<Result<RevisionedValue, SessionRequestError>>>>>;
+
 pub(super) struct CodexSession {
     codex_command: PathBuf,
     child: Child,
     stdin: ChildStdin,
-    lines: Lines<BufReader<ChildStdout>>,
+    pending: PendingResponses,
+    reader_task: JoinHandle<()>,
     next_request_id: u64,
     stderr_tail: Arc<Mutex<String>>,
     stderr_task: Option<JoinHandle<()>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct RevisionedValue {
+    pub revision: u64,
+    pub value: Value,
+}
+
 impl CodexSession {
     pub(super) async fn start(
         codex_command: PathBuf,
+        notifications: broadcast::Sender<RevisionedValue>,
+        revision: Arc<AtomicU64>,
     ) -> std::result::Result<Self, SessionRequestError> {
         let mut command = Command::new(&codex_command);
         command
@@ -97,7 +111,7 @@ impl CodexSession {
             .with_context(|| format!("无法启动 Codex CLI：{}", codex_command.display()))
             .map_err(SessionRequestError::transport)?;
 
-        let stdin = child.stdin.take().ok_or_else(|| {
+        let mut stdin = child.stdin.take().ok_or_else(|| {
             SessionRequestError::transport(anyhow!("无法打开 Codex CLI 输入流。"))
         })?;
         let stdout = child.stdout.take().ok_or_else(|| {
@@ -109,46 +123,72 @@ impl CodexSession {
 
         let stderr_tail = Arc::new(Mutex::new(String::new()));
         let stderr_task = spawn_stderr_tail_task(stderr, Arc::clone(&stderr_tail));
-        let mut session = Self {
+        let mut lines = BufReader::new(stdout).lines();
+        let mut next_request_id = 1;
+        let request_id = take_next_request_id(&mut next_request_id);
+        if let Err(error) = initialize_connection(&mut stdin, &mut lines, request_id)
+            .await
+            .map_err(|error| error.with_context("Codex CLI app-server 初始化失败"))
+        {
+            let stderr = stderr_tail.lock().await.trim().to_string();
+            let error = error.with_stderr(stderr);
+            cleanup_child(&mut child).await;
+            stderr_task.abort();
+            return Err(error);
+        }
+        let pending = Arc::new(Mutex::new(HashMap::new()));
+        let reader_task = tokio::spawn(read_messages(
+            lines,
+            Arc::clone(&pending),
+            notifications,
+            revision,
+        ));
+        Ok(Self {
             codex_command,
             child,
             stdin,
-            lines: BufReader::new(stdout).lines(),
-            next_request_id: 1,
+            pending,
+            reader_task,
+            next_request_id,
             stderr_tail,
             stderr_task: Some(stderr_task),
-        };
-
-        if let Err(error) = session.initialize().await {
-            let stderr = session.stderr_tail().await;
-            let error = error.with_stderr(stderr);
-            session.shutdown().await;
-            return Err(error);
-        }
-
-        Ok(session)
+        })
     }
 
     pub(super) fn codex_command(&self) -> &Path {
         &self.codex_command
     }
 
-    async fn initialize(&mut self) -> std::result::Result<(), SessionRequestError> {
+    pub(super) async fn read_rate_limits(
+        &mut self,
+    ) -> Result<RevisionedValue, SessionRequestError> {
+        if self.reader_task.is_finished() {
+            return Err(SessionRequestError::transport(anyhow!(
+                "Codex CLI 子进程提前退出。"
+            )));
+        }
         let request_id = self.next_request_id();
-        initialize_connection(&mut self.stdin, &mut self.lines, request_id)
-            .await
-            .map_err(|error| error.with_context("Codex CLI app-server 初始化失败"))
-    }
-
-    pub(super) async fn read_rate_limits(&mut self) -> Result<Value, SessionRequestError> {
-        let request_id = self.next_request_id();
-        send_request(&mut self.stdin, request_id, "account/rateLimits/read", None)
-            .await
-            .map_err(SessionRequestError::transport)
-            .map_err(|error| error.with_context("Codex CLI 额度请求发送失败"))?;
-        read_response(&mut self.lines, request_id, "account/rateLimits/read")
-            .await
-            .map_err(|error| error.with_context("Codex CLI 额度读取失败"))
+        let (sender, receiver) = oneshot::channel();
+        self.pending.lock().await.insert(request_id, sender);
+        let result = async {
+            send_request(&mut self.stdin, request_id, "account/rateLimits/read", None)
+                .await
+                .map_err(SessionRequestError::transport)
+                .map_err(|error| error.with_context("Codex CLI 额度请求发送失败"))?;
+            timeout(DEFAULT_TIMEOUT, receiver)
+                .await
+                .map_err(|_| {
+                    SessionRequestError::transport(anyhow!(
+                        "Codex CLI 请求超时：account/rateLimits/read"
+                    ))
+                })?
+                .map_err(|_| {
+                    SessionRequestError::transport(anyhow!("Codex CLI 子进程提前退出。"))
+                })?
+        }
+        .await;
+        self.pending.lock().await.remove(&request_id);
+        result.map_err(|error| error.with_context("Codex CLI 额度读取失败"))
     }
 
     fn next_request_id(&mut self) -> u64 {
@@ -160,6 +200,7 @@ impl CodexSession {
     }
 
     pub(super) async fn shutdown(mut self) {
+        self.reader_task.abort();
         cleanup_child(&mut self.child).await;
         if let Some(stderr_task) = self.stderr_task.take() {
             stderr_task.abort();
@@ -170,10 +211,65 @@ impl CodexSession {
 
 impl Drop for CodexSession {
     fn drop(&mut self) {
+        self.reader_task.abort();
         if let Some(stderr_task) = self.stderr_task.take() {
             stderr_task.abort();
         }
     }
+}
+
+async fn read_messages<R>(
+    mut lines: Lines<R>,
+    pending: PendingResponses,
+    notifications: broadcast::Sender<RevisionedValue>,
+    revision: Arc<AtomicU64>,
+) where
+    R: AsyncBufRead + Unpin,
+{
+    while let Ok(Some(line)) = lines.next_line().await {
+        let Ok(message) = serde_json::from_str::<Value>(&line) else {
+            continue;
+        };
+        if let Some(id) = message.get("id").and_then(Value::as_u64) {
+            let Some(sender) = pending.lock().await.remove(&id) else {
+                continue;
+            };
+            let result = response_result(message).map(|value| RevisionedValue {
+                revision: revision.fetch_add(1, Ordering::SeqCst) + 1,
+                value,
+            });
+            let _ = sender.send(result);
+        } else if message.get("method").and_then(Value::as_str)
+            == Some("account/rateLimits/updated")
+        {
+            if let Some(params) = message.get("params") {
+                let _ = notifications.send(RevisionedValue {
+                    revision: revision.fetch_add(1, Ordering::SeqCst) + 1,
+                    value: params.clone(),
+                });
+            }
+        }
+    }
+    for (_, sender) in pending.lock().await.drain() {
+        let _ = sender.send(Err(SessionRequestError::transport(anyhow!(
+            "Codex CLI 子进程提前退出。"
+        ))));
+    }
+}
+
+fn response_result(message: Value) -> Result<Value, SessionRequestError> {
+    if let Some(error) = message.get("error") {
+        let text = error
+            .get("message")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| error.to_string());
+        return Err(SessionRequestError::protocol(anyhow!(text)));
+    }
+    message
+        .get("result")
+        .cloned()
+        .ok_or_else(|| SessionRequestError::protocol(anyhow!("Codex CLI 响应缺少 result 字段。")))
 }
 
 fn spawn_stderr_tail_task(stderr: ChildStderr, stderr_tail: Arc<Mutex<String>>) -> JoinHandle<()> {
@@ -472,6 +568,31 @@ mod tests {
         assert!(!error.is_transport());
         assert!(error.to_string().contains("Already initialized"));
         assert_eq!(output.lines().count(), 1);
+    }
+
+    #[tokio::test]
+    async fn 响应与通知交错时均送达且按到达次序编号() {
+        let lines = response_lines(
+            r#"{"method":"account/rateLimits/updated","params":{"rateLimits":{"primary":{"usedPercent":31}}}}
+{"id":2,"result":{"ignored":true}}
+{"id":1,"result":{"rateLimits":{"primary":{"usedPercent":32}}}}
+"#,
+        );
+        let pending = Arc::new(Mutex::new(HashMap::new()));
+        let (sender, receiver) = oneshot::channel();
+        pending.lock().await.insert(1, sender);
+        let (notifications, mut updates) = broadcast::channel(4);
+        let revision = Arc::new(AtomicU64::new(0));
+
+        read_messages(lines, pending, notifications, revision.clone()).await;
+
+        let update = updates.recv().await.unwrap();
+        let response = receiver.await.unwrap().unwrap();
+        assert_eq!(update.revision, 1);
+        assert_eq!(update.value["rateLimits"]["primary"]["usedPercent"], 31);
+        assert_eq!(response.revision, 2);
+        assert_eq!(response.value["rateLimits"]["primary"]["usedPercent"], 32);
+        assert_eq!(revision.load(Ordering::SeqCst), 2);
     }
 
     fn response_lines(text: &str) -> Lines<BufReader<Cursor<Vec<u8>>>> {

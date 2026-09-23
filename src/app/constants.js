@@ -3,7 +3,6 @@ import { version as packageVersion } from "../../package.json";
 export const DEFAULT_SETTINGS = {
   codexCliPath: "",
   updateProxy: "",
-  refreshIntervalMinutes: 5,
   locale: "zh",
   theme: "default",
   meterWindow: "secondary",
@@ -201,7 +200,6 @@ export const i18n = {
     codexPath: "Codex CLI 路径",
     chooseCodex: "选择 Codex CLI (codex/codex.exe)",
     updateProxy: "更新代理",
-    refreshInterval: "刷新分钟",
     theme: "主题",
     language: "语言",
     meterWindow: "仪表窗口",
@@ -296,7 +294,6 @@ export const i18n = {
     codexPath: "Codex CLI path",
     chooseCodex: "Choose Codex CLI (codex/codex.exe)",
     updateProxy: "Update proxy",
-    refreshInterval: "Refresh min",
     theme: "Theme",
     language: "Language",
     meterWindow: "Meter window",

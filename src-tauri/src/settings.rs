@@ -10,9 +10,6 @@ use tempfile::NamedTempFile;
 use crate::logging::LogLevel;
 
 const SETTINGS_FILE_NAME: &str = "settings.json";
-const DEFAULT_REFRESH_INTERVAL_MINUTES: u16 = 5;
-const MIN_REFRESH_INTERVAL_MINUTES: u16 = 1;
-const MAX_REFRESH_INTERVAL_MINUTES: u16 = 1440;
 const DEFAULT_AUTO_UPDATE_ENABLED: bool = true;
 const DEFAULT_AUTO_START_ENABLED: bool = false;
 
@@ -80,8 +77,6 @@ pub struct AppSettings {
     pub codex_cli_path: Option<String>,
     #[serde(default)]
     pub update_proxy: Option<String>,
-    #[serde(default = "default_refresh_interval_minutes")]
-    pub refresh_interval_minutes: u16,
     #[serde(default)]
     pub locale: Locale,
     #[serde(default)]
@@ -117,7 +112,6 @@ impl Default for AppSettings {
         Self {
             codex_cli_path: None,
             update_proxy: None,
-            refresh_interval_minutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
             locale: Locale::default(),
             theme: ThemeMode::default(),
             meter_window: MeterWindow::default(),
@@ -235,12 +229,6 @@ fn validate_and_normalize(mut settings: AppSettings) -> Result<AppSettings> {
         validate_proxy(proxy)?;
     }
 
-    if !is_valid_refresh_interval(settings.refresh_interval_minutes) {
-        return Err(anyhow!(
-            "自动刷新时间必须在 {MIN_REFRESH_INTERVAL_MINUTES}-{MAX_REFRESH_INTERVAL_MINUTES} 分钟之间。"
-        ));
-    }
-
     Ok(settings)
 }
 
@@ -251,14 +239,7 @@ fn normalize_loaded_settings(mut settings: AppSettings) -> AppSettings {
         // 固定周仪表策略已撤销；旧配置中的 5 小时选择必须原样恢复。
         settings.meter_window_migrated = true;
     }
-    if !is_valid_refresh_interval(settings.refresh_interval_minutes) {
-        settings.refresh_interval_minutes = DEFAULT_REFRESH_INTERVAL_MINUTES;
-    }
     settings
-}
-
-fn default_refresh_interval_minutes() -> u16 {
-    DEFAULT_REFRESH_INTERVAL_MINUTES
 }
 
 fn default_auto_update_enabled() -> bool {
@@ -267,10 +248,6 @@ fn default_auto_update_enabled() -> bool {
 
 fn default_auto_start_enabled() -> bool {
     DEFAULT_AUTO_START_ENABLED
-}
-
-fn is_valid_refresh_interval(value: u16) -> bool {
-    (MIN_REFRESH_INTERVAL_MINUTES..=MAX_REFRESH_INTERVAL_MINUTES).contains(&value)
 }
 
 fn normalize_optional_text(value: Option<String>) -> Option<String> {
@@ -422,7 +399,6 @@ mod tests {
         let settings = AppSettings {
             codex_cli_path: Some(format!("  {}  ", codex.display())),
             update_proxy: Some("  http://127.0.0.1:7890  ".to_string()),
-            refresh_interval_minutes: 15,
             locale: Locale::En,
             theme: ThemeMode::Basic3,
             meter_window: MeterWindow::Secondary,
@@ -615,20 +591,15 @@ mod tests {
     }
 
     #[test]
-    fn 刷新间隔必须在边界内() {
-        let dir = temp_test_dir("refresh-interval");
+    fn 旧刷新间隔加载后不再写回() {
+        let dir = temp_test_dir("obsolete-refresh-interval");
         let path = dir.join("settings.json");
-        let mut settings = AppSettings {
-            refresh_interval_minutes: 0,
-            ..AppSettings::default()
-        };
-        assert!(save_to_path(&path, settings.clone()).is_err());
-
-        settings.refresh_interval_minutes = 1441;
-        assert!(save_to_path(&path, settings.clone()).is_err());
-
-        settings.refresh_interval_minutes = 1440;
-        assert!(save_to_path(&path, settings).is_ok());
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(&path, r#"{"refreshIntervalMinutes":1440}"#).unwrap();
+        let settings = load_from_path(&path).unwrap();
+        save_to_path(&path, settings).unwrap();
+        let saved = fs::read_to_string(&path).unwrap();
+        assert!(!saved.contains("refreshIntervalMinutes"));
     }
 
     fn create_fake_codex(dir: &Path) -> PathBuf {

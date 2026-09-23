@@ -14,8 +14,9 @@ use tauri_plugin_autostart::MacosLauncher;
 use app_state::AppState;
 use autostart::reconcile_auto_start;
 use commands::{
-    close_app, get_always_on_top, get_quota, get_reset_credit_expiries, get_settings, hide_window,
-    open_codex, save_settings, set_always_on_top, write_frontend_log,
+    close_app, get_always_on_top, get_quota, get_quota_windows, get_reset_credit_expiries,
+    get_settings, hide_window, open_codex, save_settings, set_always_on_top, start_quota_monitor,
+    write_frontend_log,
 };
 use dock::set_dock_icon_hidden;
 use logging::LogLevel;
@@ -101,10 +102,12 @@ pub fn run() {
             apply_startup_window_state(&window, &startup_settings.settings)?;
             window.show()?;
             create_tray(app.handle())?;
+            start_quota_monitor(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_quota,
+            get_quota_windows,
             get_reset_credit_expiries,
             hide_window,
             close_app,

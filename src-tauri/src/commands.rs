@@ -2,13 +2,14 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::atomic::Ordering;
 
-use tauri::{AppHandle, State, WebviewWindow};
+use tauri::{AppHandle, Manager, State, WebviewWindow};
+use tokio::time::{sleep_until, Duration, Instant};
 
 use crate::app_state::AppState;
 use crate::autostart::{read_auto_start_enabled, sync_auto_start};
 use crate::dock::set_dock_icon_hidden;
 use crate::logging::{AppLogger, LogLevel};
-use crate::quota::{self, QuotaSnapshot, ResetCreditExpiries};
+use crate::quota::{self, QuotaService, QuotaSnapshot, QuotaWindowsSnapshot, ResetCreditExpiries};
 use crate::settings::{AppSettings, SettingsService};
 use crate::tray::set_always_on_top_authoritative;
 
@@ -33,6 +34,7 @@ pub(crate) async fn get_quota(
             message
         })?
     };
+    state.publish_quota_windows(&app, &snapshot, false).await;
 
     // 本地日志扫描不占用 App Server 会话锁；估算失败不能阻断权威额度刷新。
     if let Some(reset_at) = snapshot
@@ -51,6 +53,70 @@ pub(crate) async fn get_quota(
     }
 
     Ok(snapshot)
+}
+
+#[tauri::command]
+pub(crate) async fn get_quota_windows(
+    state: State<'_, AppState>,
+) -> Result<Option<QuotaWindowsSnapshot>, String> {
+    Ok(state.quota_windows.lock().await.clone())
+}
+
+pub(crate) fn start_quota_monitor(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let mut notifications = {
+            let state = app.state::<AppState>();
+            let receiver = state.quota_service.lock().await.subscribe();
+            receiver
+        };
+        let mut next_poll = Instant::now();
+        let mut failures = 0_u8;
+        loop {
+            tokio::select! {
+                _ = sleep_until(next_poll) => {
+                    let state = app.state::<AppState>();
+                    let settings = {
+                        let _guard = state.settings_lock.lock().await;
+                        load_operational_settings(&app, &state, "backend.quota.monitor")
+                    };
+                    let path = settings.codex_cli_path.as_deref().map(Path::new);
+                    let result = state.quota_service.lock().await.get_quota(path).await;
+                    match result {
+                        Ok(snapshot) => {
+                            state.publish_quota_windows(&app, &snapshot, false).await;
+                            failures = 0;
+                        }
+                        Err(error) => {
+                            failures = failures.saturating_add(1).min(3);
+                            state.logger.write_best_effort(LogLevel::Warn, "backend.quota.monitor", &error.to_string());
+                        }
+                    }
+                    next_poll = Instant::now() + poll_delay(failures);
+                }
+                update = notifications.recv() => {
+                    match update {
+                        Ok(update) => match QuotaService::snapshot_from_notification(&update) {
+                            Ok(snapshot) => app.state::<AppState>().publish_quota_windows(&app, &snapshot, true).await,
+                            Err(error) => app.state::<AppState>().logger.write_best_effort(
+                                LogLevel::Warn, "backend.quota.notification", &error.to_string()),
+                        },
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                            next_poll = Instant::now();
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                    }
+                }
+            }
+        }
+    });
+}
+
+fn poll_delay(failures: u8) -> Duration {
+    Duration::from_secs(match failures {
+        0 | 1 => 15,
+        2 => 30,
+        _ => 60,
+    })
 }
 
 #[tauri::command]
@@ -201,6 +267,7 @@ pub(crate) async fn save_settings(
     if codex_cli_path_changed {
         let mut service = state.quota_service.lock().await;
         service.reset_session().await;
+        *state.quota_windows.lock().await = None;
     }
     Ok(saved)
 }
@@ -308,6 +375,14 @@ fn append_rollback_error(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn 失败轮询按十五三十六十秒退避() {
+        assert_eq!(poll_delay(0), Duration::from_secs(15));
+        assert_eq!(poll_delay(1), Duration::from_secs(15));
+        assert_eq!(poll_delay(2), Duration::from_secs(30));
+        assert_eq!(poll_delay(3), Duration::from_secs(60));
+    }
 
     #[test]
     fn 设置写入失败会恢复原开机自启状态() {

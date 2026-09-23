@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS } from "../src/app/constants.js";
 import {
   normalizeBallDock,
   normalizeDataBars,
@@ -13,7 +12,6 @@ import {
 describe("设置标准化", () => {
   it("保留合法边界并修正坐标", () => {
     const settings = normalizeSettings({
-      refreshIntervalMinutes: 1440,
       locale: "en",
       theme: "basic2",
       meterWindow: "primary",
@@ -26,7 +24,6 @@ describe("设置标准化", () => {
     });
 
     expect(settings).toMatchObject({
-      refreshIntervalMinutes: 1440,
       locale: "en",
       theme: "basic2",
       meterWindow: "primary",
@@ -39,9 +36,8 @@ describe("设置标准化", () => {
     });
   });
 
-  it.each([0, 1441, Number.NaN])("无效刷新间隔 %s 回退默认值", (value) => {
-    expect(normalizeSettings({ refreshIntervalMinutes: value }).refreshIntervalMinutes)
-      .toBe(DEFAULT_SETTINGS.refreshIntervalMinutes);
+  it("忽略旧配置里的刷新间隔", () => {
+    expect(normalizeSettings({ refreshIntervalMinutes: 1440 })).not.toHaveProperty("refreshIntervalMinutes");
   });
 
   it("旧配置和非法 Dock 设置回退显示图标", () => {
