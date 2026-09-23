@@ -20,7 +20,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "socks"] }
-rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+rustls = { version = "0.23.45", default-features = false, features = ["ring", "std"] }
 tauri = { version = "2", features = ["macos-private-api", "image-png", "tray-icon"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2.7.1"
