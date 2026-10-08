@@ -15,7 +15,7 @@ mod optimization_benchmark;
 
 use cache::EstimateCache;
 
-const PRICE_TABLE_AS_OF: &str = "2026-09-23";
+const PRICE_TABLE_AS_OF: &str = "2026-10-08";
 const WEEKLY_WINDOW_MINS: i64 = 10_080;
 const LOOKBACK_SECONDS: i64 = 16 * 24 * 60 * 60;
 const MAX_RESET_DISTANCE_SECONDS: i64 = 8 * 24 * 60 * 60;
@@ -148,15 +148,37 @@ fn estimate_from_codex_home(
     let cutoff = now.saturating_sub(LOOKBACK_SECONDS);
     let collected = cache.collect_events(codex_home, cutoff, now)?;
     let _stats = collected.stats;
-    Ok(estimate_from_events(collected.events, current_reset_at))
+    Ok(estimate_from_events_with_activity(
+        collected.events,
+        current_reset_at,
+        collected.reserve_activity,
+    ))
+}
+
+fn record_timestamp(record: &Value) -> Option<DateTime<Utc>> {
+    Some(
+        record
+            .get("timestamp")
+            .and_then(Value::as_str)
+            .and_then(|value| DateTime::parse_from_rfc3339(value).ok())?
+            .with_timezone(&Utc),
+    )
+}
+
+fn is_reserve_record(record: &Value) -> bool {
+    [
+        "/payload/rate_limits/limit_name",
+        "/payload/rate_limits/limitName",
+    ]
+    .iter()
+    .any(|pointer| record.pointer(pointer).and_then(Value::as_str) == Some("gpt-reserve"))
 }
 
 fn parse_usage_event(record: &Value, model: Option<&str>) -> Option<UsageEvent> {
-    let timestamp = record
-        .get("timestamp")
-        .and_then(Value::as_str)
-        .and_then(|value| DateTime::parse_from_rfc3339(value).ok())?
-        .with_timezone(&Utc);
+    if is_reserve_record(record) {
+        return None;
+    }
+    let timestamp = record_timestamp(record)?;
     let rate_limits = record.pointer("/payload/rate_limits")?;
     let weekly = [rate_limits.get("primary"), rate_limits.get("secondary")]
         .into_iter()
@@ -297,6 +319,7 @@ fn model_price(model: &str) -> Option<ModelPrice> {
             output: 50.0,
             cache_write_multiplier: Some(1.25),
         }),
+        "gpt-6.1-sol" => Some(gpt_56(2.0, 0.1, 10.0)),
         "gpt-6-sol" => Some(gpt_56(2.0, 0.2, 10.0)),
         "gpt-6-luna" => Some(gpt_56(0.1, 0.01, 0.5)),
         "gpt-5.6" | "gpt-5.6-sol" => Some(gpt_56(4.0, 0.4, 20.0)),
@@ -316,7 +339,18 @@ fn model_price(model: &str) -> Option<ModelPrice> {
     }
 }
 
+#[cfg(test)]
 fn estimate_from_events(events: Vec<UsageEvent>, current_reset_at: i64) -> QuotaEstimate {
+    estimate_from_events_with_activity(events, current_reset_at, Vec::new())
+}
+
+fn estimate_from_events_with_activity(
+    events: Vec<UsageEvent>,
+    current_reset_at: i64,
+    mut reserve_activity: Vec<DateTime<Utc>>,
+) -> QuotaEstimate {
+    reserve_activity.sort_unstable();
+    reserve_activity.dedup();
     let clusters = cluster_events(events);
     let current_index = clusters
         .iter()
@@ -337,7 +371,13 @@ fn estimate_from_events(events: Vec<UsageEvent>, current_reset_at: i64) -> Quota
                     < current_reset_at.saturating_sub(CURRENT_RESET_MATCH_SECONDS)
             })
             .max_by_key(|cluster| cluster.last_event_at())
-            .map(|cluster| analyze_cluster(cluster, cluster.representative_reset_at()));
+            .map(|cluster| {
+                analyze_cluster(
+                    cluster,
+                    cluster.representative_reset_at(),
+                    &reserve_activity,
+                )
+            });
         return QuotaEstimate {
             price_table_as_of: PRICE_TABLE_AS_OF.to_string(),
             previous,
@@ -357,12 +397,22 @@ fn estimate_from_events(events: Vec<UsageEvent>, current_reset_at: i64) -> Quota
                 && cluster.last_event_at() < current_first_event
         })
         .max_by_key(|(_, cluster)| cluster.last_event_at())
-        .map(|(_, cluster)| analyze_cluster(cluster, cluster.representative_reset_at()));
+        .map(|(_, cluster)| {
+            analyze_cluster(
+                cluster,
+                cluster.representative_reset_at(),
+                &reserve_activity,
+            )
+        });
 
     QuotaEstimate {
         price_table_as_of: PRICE_TABLE_AS_OF.to_string(),
         previous,
-        current: Some(analyze_cluster(current, current_reset_at)),
+        current: Some(analyze_cluster(
+            current,
+            current_reset_at,
+            &reserve_activity,
+        )),
     }
 }
 
@@ -403,7 +453,11 @@ impl CycleCluster {
     }
 }
 
-fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEstimate {
+fn analyze_cluster(
+    cluster: &CycleCluster,
+    cycle_ends_at: i64,
+    reserve_activity: &[DateTime<Utc>],
+) -> CycleQuotaEstimate {
     let mut events = cluster.events.iter().collect::<Vec<_>>();
     events.sort_by_key(|event| event.timestamp);
 
@@ -451,7 +505,11 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
                 (previous_percent, event.used_percent),
             );
             let activity_gap = last_timestamp.is_some_and(|timestamp| {
-                event.timestamp.signed_duration_since(timestamp)
+                let index = reserve_activity.partition_point(|at| *at <= event.timestamp);
+                let latest_activity = index
+                    .checked_sub(1)
+                    .map_or(timestamp, |index| timestamp.max(reserve_activity[index]));
+                event.timestamp.signed_duration_since(latest_activity)
                     >= chrono::Duration::seconds(ACTIVITY_GAP_SECONDS)
             });
 
@@ -462,7 +520,7 @@ fn analyze_cluster(cluster: &CycleCluster, cycle_ends_at: i64) -> CycleQuotaEsti
                 initial_interval_excluded = true;
                 unpriced_event_count = unpriced_event_count.saturating_add(1);
             } else if activity_gap {
-                // 仅依据本机活动空档推断跨设备使用；候选金额高低不参与判断。
+                // 主额度计量和 reserve 记录共同证明本机活动，reserve 不参与费用计算。
                 suspected_remote_interval_count = suspected_remote_interval_count.saturating_add(1);
             } else if let Some(candidate) = candidate {
                 candidates.push(candidate);
@@ -645,6 +703,166 @@ mod tests {
     }
 
     #[test]
+    fn reserve活动恢复两段本机区间但不增加费用或样本() {
+        let at = |text: &str| {
+            DateTime::parse_from_rfc3339(text)
+                .unwrap()
+                .with_timezone(&Utc)
+        };
+        let reset = 1_791_948_597;
+        let points = [
+            ("2026-10-08T01:04:26.676Z", 0.0, 0.0),
+            ("2026-10-08T01:04:43.894Z", 1.0, 0.0661316),
+            ("2026-10-08T01:16:35.928Z", 2.0, 0.844562),
+            ("2026-10-08T02:57:11.411Z", 2.0, 0.0),
+            ("2026-10-08T03:01:13.783Z", 3.0, 0.3072783),
+            ("2026-10-08T03:09:30.767Z", 3.0, 0.0),
+            ("2026-10-08T06:54:24.725Z", 6.0, 0.5289184),
+            ("2026-10-08T07:04:03.709Z", 6.0, 0.0),
+            ("2026-10-08T08:09:42.682Z", 10.0, 0.403526),
+        ];
+        let events = points
+            .into_iter()
+            .map(|(time, used, cost)| UsageEvent {
+                timestamp: at(time),
+                reset_at: reset,
+                used_percent: used,
+                cost_usd: Some(cost),
+            })
+            .collect::<Vec<_>>();
+        let without = estimate_from_events(events.clone(), reset).current.unwrap();
+        assert_eq!(without.sample_count, 2);
+        assert_eq!(without.percent_span, 2);
+        assert_eq!(without.suspected_remote_interval_count, 2);
+        let first_activity = at("2026-10-08T06:53:43.951Z");
+        let second_activity = at("2026-10-08T08:09:29.633Z");
+        assert_eq!(
+            (events[6].timestamp - first_activity).num_milliseconds(),
+            40_774
+        );
+        assert_eq!(
+            (events[8].timestamp - second_activity).num_milliseconds(),
+            13_049
+        );
+        // 故意乱序和重复；reserve 活动不能创建额外候选。
+        let result = estimate_from_events_with_activity(
+            events,
+            reset,
+            vec![second_activity, first_activity, second_activity],
+        );
+        assert!(result.previous.is_none());
+        let current = result.current.unwrap();
+        assert_eq!(current.status, EstimateStatus::Ready);
+        assert_eq!(current.sample_count, 4);
+        assert_eq!(current.percent_span, 9);
+        assert_eq!(current.unpriced_event_count, 1);
+        assert_eq!(current.suspected_remote_interval_count, 0);
+        assert!((current.full_quota_usd.unwrap() - 0.5289184 * 100.0 / 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn reserve日志通过完整读取链仅影响活动判断() {
+        let home = tempfile::tempdir().unwrap();
+        let sessions = home.path().join("sessions");
+        fs::create_dir(&sessions).unwrap();
+        let mut file = File::create(sessions.join("rollout-reserve.jsonl")).unwrap();
+        let reset = 10_000;
+        for (index, second) in [1_000, 1_001, 1_002, 2_002, 3_002].into_iter().enumerate() {
+            let total = (index + 1) * 100_000;
+            let timestamp = Utc.timestamp_opt(second, 0).single().unwrap();
+            if index >= 3 {
+                writeln!(
+                    file,
+                    "{}",
+                    json!({"type":"turn_context","payload":{"model":"unknown"}})
+                )
+                .unwrap();
+                writeln!(
+                    file,
+                    "{}",
+                    json!({
+                        "timestamp":(timestamp - chrono::Duration::seconds(3)).to_rfc3339(),
+                        "type":"event_msg","payload":{"type":"token_count",
+                            "info":{"last_token_usage":{"input_tokens":999_999_999},
+                                "total_token_usage":{"input_tokens":total}},
+                            "rate_limits":{"limit_name":"gpt-reserve", "primary":{
+                                "window_minutes":10080,"used_percent":99,"resets_at":reset
+                            }}
+                        }
+                    })
+                )
+                .unwrap();
+            }
+            writeln!(
+                file,
+                "{}",
+                json!({"type":"turn_context","payload":{"model":"gpt-6-astra"}})
+            )
+            .unwrap();
+            writeln!(
+                file,
+                "{}",
+                json!({
+                    "timestamp":timestamp.to_rfc3339(),"type":"event_msg",
+                    "payload":{"type":"token_count",
+                        "info":{"last_token_usage":{"input_tokens":100_000},
+                            "total_token_usage":{"input_tokens":total}},
+                        "rate_limits":{"limit_id":"codex","primary":{
+                            "window_minutes":10080,"used_percent":index,"resets_at":reset
+                        }}
+                    }
+                })
+            )
+            .unwrap();
+        }
+        drop(file);
+        let mut cache = EstimateCache::default();
+        let cold = estimate_from_codex_home(home.path(), reset, 3_002, &mut cache).unwrap();
+        let warm = estimate_from_codex_home(home.path(), reset, 3_002, &mut cache).unwrap();
+        assert_eq!(cold, warm);
+        assert!(cold.previous.is_none());
+        let current = cold.current.unwrap();
+        assert_eq!(current.status, EstimateStatus::Ready);
+        assert_eq!(current.sample_count, 3);
+        assert_eq!(current.percent_span, 3);
+        assert_eq!(current.unpriced_event_count, 1);
+        assert_eq!(current.suspected_remote_interval_count, 0);
+        assert_eq!(current.full_quota_usd, Some(100.0));
+    }
+
+    #[test]
+    fn reserve活动保留十五分钟亚秒边界且不使用未来或更旧活动() {
+        for (second, nanos, remote) in [
+            (1_003, 0, 1),
+            (1_003, 1, 0),
+            (1_001, 0, 1),
+            (1_904, 0, 1),
+            (1_903, 0, 0),
+        ] {
+            let events = vec![
+                test_event(1_000, 10_000, 0.0, Some(0.0)),
+                test_event(1_001, 10_000, 1.0, Some(1.0)),
+                test_event(1_002, 10_000, 2.0, Some(1.0)),
+                test_event(1_903, 10_000, 3.0, Some(1.0)),
+            ];
+            let activity = Utc.timestamp_opt(second, nanos).single().unwrap();
+            let current = estimate_from_events_with_activity(events, 10_000, vec![activity])
+                .current
+                .unwrap();
+            assert_eq!(current.suspected_remote_interval_count, remote);
+            assert_eq!(current.sample_count, 2 - remote);
+            assert_eq!(current.unpriced_event_count, 1);
+        }
+        let empty = estimate_from_events_with_activity(
+            Vec::new(),
+            10_000,
+            vec![Utc.timestamp_opt(1_000, 0).single().unwrap()],
+        );
+        assert!(empty.current.is_none());
+        assert!(empty.previous.is_none());
+    }
+
+    #[test]
     fn 活动空档按实际亚秒时间判断十五分钟边界() {
         for (nanos, remote_count) in [(899_999_999, 0), (900_000_000, 1)] {
             let mut events = (0..5)
@@ -737,6 +955,49 @@ mod tests {
             "gpt-6-astra-2026-09-05",
         ] {
             assert_eq!(price_token_usage(model, usage(1000, 0, 0, 100)), None);
+        }
+    }
+
+    #[test]
+    fn gpt_6_1_sol混合计费含缓存写入且不会重复计算推理输出() {
+        let cost =
+            price_token_usage("gpt-6.1-sol", usage(200_000, 80_000, 20_000, 20_000)).unwrap();
+        assert!((cost - 0.458).abs() < 0.000_001);
+    }
+
+    #[test]
+    fn gpt_6_1_sol长上下文及倍率边界按独立缓存价格计费() {
+        for (input, output, expected) in [
+            (300_000, 10_000, 1.066),
+            (272_000, 10_000, 0.502),
+            (272_001, 10_000, 0.954_004),
+        ] {
+            let cost =
+                price_token_usage("gpt-6.1-sol", usage(input, 80_000, 20_000, output)).unwrap();
+            assert!((cost - expected).abs() < 0.000_001, "input={input}");
+        }
+    }
+
+    #[test]
+    fn gpt_6_1_sol仅识别正式模型名() {
+        assert!(model_price("gpt-6.1-sol").is_some());
+        for model in [
+            "gpt6.1",
+            "gpt-6.1",
+            "gpt-6.1-sol-fast",
+            "gpt-6.1-sol-pro",
+            "gpt-6.1-sol-2026-09-29",
+            "GPT-6.1 Sol",
+        ] {
+            assert_eq!(price_token_usage(model, usage(1000, 0, 0, 100)), None);
+        }
+    }
+
+    #[test]
+    fn gpt_6_1_sol缓存读取价格不影响旧版sol() {
+        for (model, expected) in [("gpt-6.1-sol", 0.01), ("gpt-6-sol", 0.02)] {
+            let cost = price_token_usage(model, usage(100_000, 100_000, 0, 0)).unwrap();
+            assert!((cost - expected).abs() < 0.000_001, "{model}");
         }
     }
 
@@ -1264,10 +1525,22 @@ mod tests {
     }
 
     #[test]
-    fn gpt_6_astra含缓存写入的日志用量可生成周额度估值() {
+    fn gpt_6_astra和gpt_6_1_sol含缓存写入的日志可生成周额度估值() {
         let reset_at = 10_000;
-        let events = (0..=4)
-            .map(|percent| {
+        for (model, expected) in [("gpt-6-astra", 233.0), ("gpt-6.1-sol", 45.8)] {
+            let codex_home = tempfile::tempdir().unwrap();
+            let sessions = codex_home.path().join("sessions");
+            fs::create_dir_all(&sessions).unwrap();
+            let mut file = File::create(sessions.join("rollout-cache-write.jsonl")).unwrap();
+            writeln!(
+                file,
+                "{}",
+                json!({
+                    "type": "turn_context", "payload": { "model": model }
+                })
+            )
+            .unwrap();
+            for percent in 0..=4 {
                 let timestamp = Utc
                     .timestamp_opt(1_000 + i64::from(percent), 0)
                     .single()
@@ -1286,6 +1559,11 @@ mod tests {
                                 "output_tokens": 20_000,
                                 "reasoning_output_tokens": 10_000,
                                 "total_tokens": 220_000
+                            },
+                            "total_token_usage": {
+                                "input_tokens": 200_000 * (percent + 1),
+                                "output_tokens": 20_000 * (percent + 1),
+                                "total_tokens": 220_000 * (percent + 1)
                             }
                         },
                         "rate_limits": {
@@ -1297,17 +1575,23 @@ mod tests {
                         }
                     }
                 });
-                parse_usage_event(&record, Some("gpt-6-astra")).unwrap()
-            })
-            .collect();
+                writeln!(file, "{record}").unwrap();
+            }
+            drop(file);
 
-        let current = estimate_from_events(events, reset_at).current.unwrap();
-        assert_eq!(current.status, EstimateStatus::Ready);
-        assert_eq!(current.sample_count, 3);
-        assert_eq!(current.percent_span, 3);
-        // 仅保留原有周期首段排除，缓存写入事件均正常计价。
-        assert_eq!(current.unpriced_event_count, 1);
-        assert!((current.full_quota_usd.unwrap() - 233.0).abs() < 0.000_001);
+            let estimate = estimate_from_home(codex_home.path(), reset_at, 1_010).unwrap();
+            assert_eq!(estimate.price_table_as_of, "2026-10-08");
+            let current = estimate.current.unwrap();
+            assert_eq!(current.status, EstimateStatus::Ready);
+            assert_eq!(current.sample_count, 3);
+            assert_eq!(current.percent_span, 3);
+            // 仅保留原有周期首段排除，缓存写入事件均正常计价。
+            assert_eq!(current.unpriced_event_count, 1);
+            assert!(
+                (current.full_quota_usd.unwrap() - expected).abs() < 0.000_001,
+                "{model}"
+            );
+        }
     }
 
     #[test]

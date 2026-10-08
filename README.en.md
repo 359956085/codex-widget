@@ -99,7 +99,7 @@ The quota estimate is the Token API equivalent value of 100% weekly quota. It is
 
 On the first refresh, the app streams local session logs from the latest 16 days under `CODEX_HOME/sessions` and `CODEX_HOME/archived_sessions`. Later refreshes reuse unchanged rollouts in memory. When a file grows, the app streams its entire old prefix again to verify its content fingerprint, then parses only the appended portion if it matches. Incremental refreshes therefore still read the old content but avoid parsing it again. Truncated, rewritten, or incomplete-tail files are read again in full. Failed or unexpectedly short reads do not commit incomplete cache entries. Fingerprints detect ordinary log rewrites; they are not a security authentication mechanism.
 
-The scan extracts only model, Token usage, weekly quota percentage, and reset time, preserving subsecond timestamps when ordering events across files. If the same rollout briefly exists in both locations during an archive move, only the newer copy is read. Cumulative Token fingerprints deduplicate costs within each file: the first valid event is charged once, while records without a valid timestamp or weekly quota do not consume a fingerprint. Later percentage or reset-time updates for the same usage are retained without charging priced usage again; originally unknown costs remain unknown. Identical quota records are ignored.
+The scan extracts only model, Token usage, weekly quota percentage, reset time, and local reserve activity times, preserving subsecond timestamps when ordering events across files. If the same rollout briefly exists in both locations during an archive move, only the newer copy is read. Cumulative Token fingerprints deduplicate costs within each file: the first valid event is charged once, while records without a valid timestamp or weekly quota do not consume a fingerprint. Later percentage or reset-time updates for the same usage are retained without charging priced usage again; originally unknown costs remain unknown. Identical quota records are ignored. An `event_msg/token_count` record whose `rate_limits.limit_name` (also accepting `limitName`) equals exactly `gpt-reserve` contributes only its valid activity timestamp. It does not contribute costs, consume main-quota deduplication fingerprints, or create estimate cycles. A priced model or weekly window is not required, and repeated metering records can still provide activity evidence.
 
 A weekly window is identified as `10080` minutes; reset times drifting by no more than 30 minutes belong to one cycle. The current cycle may differ from the live reset time by up to 2 hours, and the previous cycle is the nearest valid earlier cycle. When the current cycle has no local events yet, the previous estimate can still be shown: candidates must reset more than 2 hours before the live reset time, and the one with the latest activity is selected.
 
@@ -107,18 +107,19 @@ A weekly window is identified as `10080` minutes; reset times drifting by no mor
 
 #### Built-in price table
 
-Price table date: `2026-09-05`. All prices are USD per million Tokens, ordered as input, cached input, and output.
+Price table date: `2026-10-08`. All prices are USD per million Tokens, ordered as input, cached input, and output.
 
 | Model | Input | Cached input | Output |
 |---|---:|---:|---:|
 | [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) | 10 | 1 | 50 |
+| [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) | 2 | 0.10 | 10 |
 | [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol) | 4 | 0.4 | 20 |
 | [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) | 2 | 0.2 | 12 |
 | [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) | 0.2 | 0.02 | 1.2 |
 | [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
 | [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
 
-GPT-6 Astra matches only the official model ID `gpt-6-astra` and has a cache-write price of `12.50`. GPT-6 Astra and GPT-5.6 cache writes use `1.25×` the input price. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
+GPT-6 Astra matches only the official model ID `gpt-6-astra` and has a cache-write price of `12.50`. GPT-6.1 Sol matches only the official model ID `gpt-6.1-sol`, with cached input priced at `0.10` and cache writes at `2.50`; existing GPT-6 Sol cached input remains priced at `0.20`. GPT-6 Astra, GPT-6.1 Sol, and GPT-5.6 cache writes use `1.25×` the input price. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
 
 #### Per-event cost
 
@@ -151,7 +152,7 @@ E_i = 100 × C_i / ΔP_i
 100% weekly quota API equivalent = weightedMedian(E_i, weight = ΔP_i)
 ```
 
-The first valid percentage increase in each weekly cycle lacks a complete cost baseline, so it is reported as unpriced and excluded from the estimate. This rule takes precedence over cross-device inference. After that, only an account-percentage increase following at least `15` minutes without a local metering event is reported as a suspected cross-device interval. That boundary is excluded and sampling resumes from a new baseline. Cross-device inference does not use candidate cost. Valid high-cost, low-cost, short-burst, and model-switch candidates all participate in the weighted median. Invalid candidates are reported only as unpriced.
+The first valid percentage increase in each weekly cycle lacks a complete cost baseline, so it is reported as unpriced and excluded from the estimate. This rule takes precedence over cross-device inference. For later percentage increases, the activity baseline is the later of the previous main-quota metering timestamp and the latest `gpt-reserve` activity timestamp no later than the current event. A gap of at least `15` minutes is reported as a suspected cross-device interval; that boundary is excluded and sampling resumes from a new baseline. Without reserve records, the main-quota metering gap is used as before. Reserve costs, percentages, and reset times never enter the main-quota estimate. This activity-gap heuristic cannot establish whether another device is being used concurrently. Cross-device inference does not use candidate cost. Valid high-cost, low-cost, short-burst, and model-switch candidates all participate in the weighted median. Invalid candidates are reported only as unpriced.
 
 Effective span is the union length of percentage intervals covered by all valid candidates; overlaps count once and unobserved gaps are not filled. An amount is shown only when there are at least `3` samples, at least `2%` unique span, and a positive finite weighted median. Changes in model mix, long-context share, cache hits, and sample distribution can still change the estimate.
 

@@ -7,9 +7,13 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context, Result};
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use super::{parse_usage_event, read_token_usage, TokenUsage, UsageEvent};
+use super::{
+    is_reserve_record, parse_usage_event, read_token_usage, record_timestamp, TokenUsage,
+    UsageEvent,
+};
 
 const MAX_FILE_COUNT: usize = 5_000;
 const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
@@ -30,6 +34,7 @@ struct CachedRollout {
     content_fingerprint: u64,
     state: RolloutParserState,
     events: Vec<UsageEvent>,
+    reserve_activity: Vec<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -48,6 +53,7 @@ struct AcceptedUsage {
 #[derive(Debug)]
 pub(super) struct CollectedEvents {
     pub(super) events: Vec<UsageEvent>,
+    pub(super) reserve_activity: Vec<DateTime<Utc>>,
     pub(super) stats: CacheStats,
 }
 
@@ -70,6 +76,7 @@ pub(super) struct FileCandidate {
 #[derive(Debug)]
 struct ParsedChunk {
     events: Vec<UsageEvent>,
+    reserve_activity: Vec<DateTime<Utc>>,
     state: RolloutParserState,
     append_safe: bool,
     content_fingerprint: u64,
@@ -110,6 +117,7 @@ impl EstimateCache {
         let candidates = collect_rollout_files(&session_dirs, cutoff)?;
         let mut selected_names = HashSet::with_capacity(candidates.len());
         let mut events = Vec::new();
+        let mut reserve_activity = Vec::new();
         let mut stats = CacheStats::default();
 
         for candidate in candidates {
@@ -130,12 +138,19 @@ impl EstimateCache {
                         })
                         .cloned(),
                 );
+                reserve_activity.extend(cached.reserve_activity.iter().copied().filter(|at| {
+                    at.timestamp() >= cutoff && at.timestamp() <= now.saturating_add(5 * 60)
+                }));
             }
         }
 
         self.files
             .retain(|file_name, _| selected_names.contains(file_name));
-        Ok(CollectedEvents { events, stats })
+        Ok(CollectedEvents {
+            events,
+            reserve_activity,
+            stats,
+        })
     }
 
     fn refresh_candidate(&mut self, candidate: &FileCandidate, stats: &mut CacheStats) -> bool {
@@ -220,6 +235,7 @@ impl EstimateCache {
                 return false;
             };
             cached.events.extend(parsed.events);
+            cached.reserve_activity.extend(parsed.reserve_activity);
             cached.state = parsed.state;
             cached.size = candidate.size;
             cached.modified = candidate.modified;
@@ -235,6 +251,7 @@ impl EstimateCache {
                     content_fingerprint: parsed.content_fingerprint,
                     state: parsed.state,
                     events: parsed.events,
+                    reserve_activity: parsed.reserve_activity,
                 },
             );
         }
@@ -394,6 +411,7 @@ fn parse_rollout_segment(
     });
     let mut line = Vec::new();
     let mut events = Vec::new();
+    let mut reserve_activity = Vec::new();
     let mut append_safe = true;
 
     let result = (|| -> io::Result<()> {
@@ -403,7 +421,9 @@ fn parse_rollout_segment(
                 BoundedLine::Oversized { terminated } => append_safe = terminated,
                 BoundedLine::Line { terminated } => {
                     append_safe = terminated;
-                    if let Some(event) = parse_rollout_line(&line, &mut state) {
+                    if let Some(event) =
+                        parse_rollout_line(&line, &mut state, &mut reserve_activity)
+                    {
                         events.push(event);
                     }
                 }
@@ -423,13 +443,18 @@ fn parse_rollout_segment(
     }
     Ok(ParsedChunk {
         events,
+        reserve_activity,
         state,
         append_safe,
         content_fingerprint: reader.get_ref().digest.finish(),
     })
 }
 
-fn parse_rollout_line(line: &[u8], state: &mut RolloutParserState) -> Option<UsageEvent> {
+fn parse_rollout_line(
+    line: &[u8],
+    state: &mut RolloutParserState,
+    reserve_activity: &mut Vec<DateTime<Utc>>,
+) -> Option<UsageEvent> {
     let text = std::str::from_utf8(line).ok()?;
     // 先按记录类型过滤，避免把提示词和工具输出反序列化进内存。
     if !text.contains("\"turn_context\"") && !text.contains("\"token_count\"") {
@@ -456,6 +481,14 @@ fn parse_rollout_line(line: &[u8], state: &mut RolloutParserState) -> Option<Usa
     if record.get("type").and_then(Value::as_str) != Some("event_msg")
         || record.pointer("/payload/type").and_then(Value::as_str) != Some("token_count")
     {
+        return None;
+    }
+
+    if is_reserve_record(&record) {
+        if let Some(timestamp) = record_timestamp(&record) {
+            reserve_activity.push(timestamp);
+        }
+        // reserve 只提供活动时间，不读取用量，也不消耗主额度去重指纹。
         return None;
     }
 
@@ -543,6 +576,138 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    #[test]
+    fn reserve只记录活动且不占用主额度指纹() {
+        for name_key in ["limit_name", "limitName"] {
+            let mut state = RolloutParserState {
+                model: Some("unknown".into()),
+                ..Default::default()
+            };
+            let mut activity = Vec::new();
+            let main = quota_event(1_000, 10_000, 1.0, 100_000);
+            let mut reserve = main.clone();
+            reserve["payload"]["rate_limits"][name_key] = json!("gpt-reserve");
+            reserve["payload"]["rate_limits"]["primary"]["used_percent"] = json!(99.0);
+            reserve["payload"]["info"]["last_token_usage"]["input_tokens"] = json!(999_999_999);
+            assert!(super::super::parse_usage_event(&reserve, Some("gpt-6-astra")).is_none());
+            assert!(
+                parse_rollout_line(reserve.to_string().as_bytes(), &mut state, &mut activity)
+                    .is_none()
+            );
+            reserve["timestamp"] = json!(format_timestamp(1_001));
+            assert!(
+                parse_rollout_line(reserve.to_string().as_bytes(), &mut state, &mut activity)
+                    .is_none()
+            );
+            assert_eq!(activity.len(), 2);
+            assert!(state.total_usage_fingerprints.is_empty());
+            state.model = Some("gpt-6-astra".into());
+            let event =
+                parse_rollout_line(main.to_string().as_bytes(), &mut state, &mut activity).unwrap();
+            assert_eq!(event.cost_usd, Some(1.0));
+            assert_eq!(state.total_usage_fingerprints.len(), 1);
+            assert_eq!(activity.len(), 2);
+        }
+    }
+
+    #[test]
+    fn reserve活动无需周窗口模型或用量但严格验证记录类型名称与时间() {
+        let valid = json!({"timestamp":format_timestamp(1_000),"type":"event_msg",
+            "payload":{"type":"token_count","rate_limits":{"limit_name":"gpt-reserve"}}});
+        let mut state = RolloutParserState::default();
+        let mut activity = Vec::new();
+        assert!(
+            parse_rollout_line(valid.to_string().as_bytes(), &mut state, &mut activity).is_none()
+        );
+        assert_eq!(
+            activity,
+            vec![Utc.timestamp_opt(1_000, 0).single().unwrap()]
+        );
+        for (pointer, value) in [
+            ("/timestamp", json!("invalid")),
+            ("/type", json!("response_item")),
+            ("/payload/type", json!("other")),
+            ("/payload/rate_limits/limit_name", json!("GPT-RESERVE")),
+            (
+                "/payload/rate_limits/limit_name",
+                json!("gpt-reserve-extra"),
+            ),
+            ("/payload/rate_limits/limit_name", Value::Null),
+        ] {
+            let mut invalid = valid.clone();
+            *invalid.pointer_mut(pointer).unwrap() = value;
+            assert!(
+                parse_rollout_line(invalid.to_string().as_bytes(), &mut state, &mut activity)
+                    .is_none()
+            );
+            assert_eq!(activity.len(), 1);
+        }
+    }
+
+    #[test]
+    fn reserve活动缓存复用追加重写和归档均与冷读取一致() {
+        for directory in ["sessions", "archived_sessions"] {
+            let home = tempfile::tempdir().unwrap();
+            let now = Utc::now().timestamp();
+            let reset = now + 10_000;
+            let path = write_rollout(
+                home.path(),
+                directory,
+                "rollout-reserve.jsonl",
+                now,
+                reset,
+                true,
+            );
+            let mut cache = EstimateCache::default();
+            cache
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            let record = |timestamp| {
+                json!({"timestamp":format_timestamp(timestamp),"type":"event_msg",
+                "payload":{"type":"token_count","rate_limits":{"limit_name":"gpt-reserve"}}})
+            };
+            {
+                let mut file = OpenOptions::new().append(true).open(&path).unwrap();
+                for timestamp in [now + 2, now + 3, now + 3, now - 101, now + 311] {
+                    writeln!(file, "{}", record(timestamp)).unwrap();
+                }
+            }
+            let appended = cache
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            let cold = EstimateCache::default()
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            assert_eq!(appended.stats.appended_files, 1);
+            assert_eq!(appended.events, cold.events);
+            assert_eq!(appended.reserve_activity, cold.reserve_activity);
+            assert_eq!(appended.events.len(), 1);
+            assert_eq!(appended.reserve_activity.len(), 3);
+            let reused = cache
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            assert_eq!(reused.stats.bytes_read, 0);
+            assert_eq!(reused.reserve_activity, cold.reserve_activity);
+            // 更大的重写触发旧内容校验失败，不能沿用过期活动或主额度事件。
+            let padding = "x".repeat(fs::metadata(&path).unwrap().len() as usize + 1);
+            fs::write(&path, format!("{padding}\n{}\n", record(now + 4))).unwrap();
+            let rewritten = cache
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            let cold = EstimateCache::default()
+                .collect_events(home.path(), now - 100, now + 10)
+                .unwrap();
+            assert_eq!(rewritten.stats.full_parse_files, 1);
+            assert_eq!(rewritten.reserve_activity, cold.reserve_activity);
+            assert_eq!(
+                rewritten.reserve_activity,
+                vec![Utc.timestamp_opt(now + 4, 0).single().unwrap()]
+            );
+            assert!(rewritten.events.is_empty());
+            assert!(cold.events.is_empty());
+        }
+    }
 
     #[test]
     fn 未变化日志第二次不读取正文() {
@@ -947,10 +1112,20 @@ mod tests {
                 model: Some("gpt-6-astra".into()),
                 ..Default::default()
             };
-            assert!(parse_rollout_line(invalid.to_string().as_bytes(), &mut state).is_none());
-            let event = parse_rollout_line(valid.to_string().as_bytes(), &mut state).unwrap();
+            assert!(parse_rollout_line(
+                invalid.to_string().as_bytes(),
+                &mut state,
+                &mut Vec::new()
+            )
+            .is_none());
+            let event =
+                parse_rollout_line(valid.to_string().as_bytes(), &mut state, &mut Vec::new())
+                    .unwrap();
             assert_eq!(event.cost_usd, Some(1.0));
-            assert!(parse_rollout_line(valid.to_string().as_bytes(), &mut state).is_none());
+            assert!(
+                parse_rollout_line(valid.to_string().as_bytes(), &mut state, &mut Vec::new())
+                    .is_none()
+            );
         }
     }
 
@@ -962,17 +1137,26 @@ mod tests {
                 ..Default::default()
             };
             let first = quota_event(1_000, 10_000, 1.0, 100_000);
-            let original = parse_rollout_line(first.to_string().as_bytes(), &mut state).unwrap();
+            let original =
+                parse_rollout_line(first.to_string().as_bytes(), &mut state, &mut Vec::new())
+                    .unwrap();
             assert_eq!(original.cost_usd, (model != "unknown").then_some(1.0));
             // 后续上下文不能把原先未知的用量重新归价。
             state.model = Some("gpt-6-astra".into());
             for (reset, percent) in [(10_000, 2.0), (10_001, 2.0)] {
                 let updated = quota_event(1_001, reset, percent, 100_000);
-                let event = parse_rollout_line(updated.to_string().as_bytes(), &mut state).unwrap();
+                let event =
+                    parse_rollout_line(updated.to_string().as_bytes(), &mut state, &mut Vec::new())
+                        .unwrap();
                 assert_eq!(event.used_percent, percent);
                 assert_eq!(event.reset_at, reset);
                 assert_eq!(event.cost_usd, (model != "unknown").then_some(0.0));
-                assert!(parse_rollout_line(updated.to_string().as_bytes(), &mut state).is_none());
+                assert!(parse_rollout_line(
+                    updated.to_string().as_bytes(),
+                    &mut state,
+                    &mut Vec::new()
+                )
+                .is_none());
             }
         }
     }
