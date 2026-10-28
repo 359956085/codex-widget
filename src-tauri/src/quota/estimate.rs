@@ -15,7 +15,7 @@ mod optimization_benchmark;
 
 use cache::EstimateCache;
 
-const PRICE_TABLE_AS_OF: &str = "2026-10-08";
+const PRICE_TABLE_AS_OF: &str = "2026-10-28";
 const WEEKLY_WINDOW_MINS: i64 = 10_080;
 const LOOKBACK_SECONDS: i64 = 16 * 24 * 60 * 60;
 const MAX_RESET_DISTANCE_SECONDS: i64 = 8 * 24 * 60 * 60;
@@ -320,6 +320,7 @@ fn model_price(model: &str) -> Option<ModelPrice> {
             cache_write_multiplier: Some(1.25),
         }),
         "gpt-6.1-sol" => Some(gpt_56(2.0, 0.1, 10.0)),
+        "gpt-6.1-terra" => Some(gpt_56(1.0, 0.05, 5.0)),
         "gpt-6-sol" => Some(gpt_56(2.0, 0.2, 10.0)),
         "gpt-6-luna" => Some(gpt_56(0.1, 0.01, 0.5)),
         "gpt-5.6" | "gpt-5.6-sol" => Some(gpt_56(4.0, 0.4, 20.0)),
@@ -994,8 +995,46 @@ mod tests {
     }
 
     #[test]
-    fn gpt_6_1_sol缓存读取价格不影响旧版sol() {
-        for (model, expected) in [("gpt-6.1-sol", 0.01), ("gpt-6-sol", 0.02)] {
+    fn gpt_6_1_terra混合计费含缓存写入且不会重复计算推理输出() {
+        let cost =
+            price_token_usage("gpt-6.1-terra", usage(200_000, 80_000, 20_000, 20_000)).unwrap();
+        assert!((cost - 0.229).abs() < 1e-9);
+    }
+
+    #[test]
+    fn gpt_6_1_terra长上下文及倍率边界按独立缓存价格计费() {
+        for (input, expected) in [(300_000, 0.533), (272_000, 0.251), (272_001, 0.477_002)] {
+            let cost =
+                price_token_usage("gpt-6.1-terra", usage(input, 80_000, 20_000, 10_000)).unwrap();
+            assert!((cost - expected).abs() < 1e-9, "input={input}");
+        }
+    }
+
+    #[test]
+    fn gpt_6_1_terra仅识别正式模型名() {
+        assert!(model_price("gpt-6.1-terra").is_some());
+        for model in [
+            "gpt6.1",
+            "gpt-6.1",
+            "gpt-6-terra",
+            "gpt-6.1-terra-fast",
+            "gpt-6.1-terra-ultrafast",
+            "gpt-6.1-terra-pro",
+            "gpt-6.1-terra-2026-10-26",
+            "GPT-6.1 Terra",
+        ] {
+            assert_eq!(price_token_usage(model, usage(1000, 0, 0, 100)), None);
+        }
+    }
+
+    #[test]
+    fn gpt_6_1缓存读取价格保持各模型独立() {
+        for (model, expected) in [
+            ("gpt-6.1-terra", 0.005),
+            ("gpt-6.1-sol", 0.01),
+            ("gpt-6-sol", 0.02),
+            ("gpt-5.6-terra", 0.02),
+        ] {
             let cost = price_token_usage(model, usage(100_000, 100_000, 0, 0)).unwrap();
             assert!((cost - expected).abs() < 0.000_001, "{model}");
         }
@@ -1525,9 +1564,13 @@ mod tests {
     }
 
     #[test]
-    fn gpt_6_astra和gpt_6_1_sol含缓存写入的日志可生成周额度估值() {
+    fn gpt_6系列含缓存写入的日志可生成周额度估值() {
         let reset_at = 10_000;
-        for (model, expected) in [("gpt-6-astra", 233.0), ("gpt-6.1-sol", 45.8)] {
+        for (model, expected) in [
+            ("gpt-6-astra", 233.0),
+            ("gpt-6.1-sol", 45.8),
+            ("gpt-6.1-terra", 22.9),
+        ] {
             let codex_home = tempfile::tempdir().unwrap();
             let sessions = codex_home.path().join("sessions");
             fs::create_dir_all(&sessions).unwrap();
@@ -1580,7 +1623,7 @@ mod tests {
             drop(file);
 
             let estimate = estimate_from_home(codex_home.path(), reset_at, 1_010).unwrap();
-            assert_eq!(estimate.price_table_as_of, "2026-10-08");
+            assert_eq!(estimate.price_table_as_of, "2026-10-28");
             let current = estimate.current.unwrap();
             assert_eq!(current.status, EstimateStatus::Ready);
             assert_eq!(current.sample_count, 3);

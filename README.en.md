@@ -24,11 +24,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_default.png" alt="Default theme panel"></td>
-    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_default.png" alt="Default theme floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_default.png" alt="Default theme panel" width="390"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_default.png" alt="Default theme floating ball" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_default.png" alt="Default theme docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_default.png" alt="Default theme docked floating ball" height="88"></td>
   </tr>
 </table>
 
@@ -36,11 +36,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics1.png" alt="Basic theme 1 panel"></td>
-    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics1.png" alt="Basic theme 1 floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics1.png" alt="Basic theme 1 panel" width="390"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics1.png" alt="Basic theme 1 floating ball" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics1.png" alt="Basic theme 1 docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics1.png" alt="Basic theme 1 docked floating ball" height="88"></td>
   </tr>
 </table>
 
@@ -48,11 +48,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics2.png" alt="Basic theme 2 panel"></td>
-    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics2.png" alt="Basic theme 2 floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics2.png" alt="Basic theme 2 panel" width="390"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics2.png" alt="Basic theme 2 floating ball" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics2.png" alt="Basic theme 2 docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics2.png" alt="Basic theme 2 docked floating ball" height="88"></td>
   </tr>
 </table>
 
@@ -60,11 +60,11 @@ Codex Quota Widget is a desktop floating widget. It reads quota data from your l
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="Basic theme 3 panel"></td>
-    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="Basic theme 3 floating ball"></td>
+    <td rowspan="2" style="text-align: center;"><strong>Panel</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="Basic theme 3 panel" width="390"></td>
+    <td style="text-align: center;"><strong>Floating ball</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="Basic theme 3 floating ball" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="Basic theme 3 docked floating ball"></td>
+    <td style="text-align: center;"><strong>Docked</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="Basic theme 3 docked floating ball" height="88"></td>
   </tr>
 </table>
 
@@ -107,19 +107,22 @@ A weekly window is identified as `10080` minutes; reset times drifting by no mor
 
 #### Built-in price table
 
-Price table date: `2026-10-08`. All prices are USD per million Tokens, ordered as input, cached input, and output.
+Price table date: `2026-10-28`. All prices are USD per million Tokens, ordered as input, cached input, and output.
 
 | Model | Input | Cached input | Output |
 |---|---:|---:|---:|
 | [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) | 10 | 1 | 50 |
 | [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) | 2 | 0.10 | 10 |
+| [GPT-6.1 Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra) | 1 | 0.05 | 5 |
+| [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol) | 2 | 0.20 | 10 |
+| [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) | 0.10 | 0.01 | 0.50 |
 | [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol) | 4 | 0.4 | 20 |
 | [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) | 2 | 0.2 | 12 |
 | [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) | 0.2 | 0.02 | 1.2 |
 | [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
 | [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
 
-GPT-6 Astra matches only the official model ID `gpt-6-astra` and has a cache-write price of `12.50`. GPT-6.1 Sol matches only the official model ID `gpt-6.1-sol`, with cached input priced at `0.10` and cache writes at `2.50`; existing GPT-6 Sol cached input remains priced at `0.20`. GPT-6 Astra, GPT-6.1 Sol, and GPT-5.6 cache writes use `1.25×` the input price. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
+GPT-6 models match only their official model IDs. GPT-6 Astra (`gpt-6-astra`) has a cache-write price of `12.50`; GPT-6.1 Sol (`gpt-6.1-sol`) has cached input priced at `0.10` and cache writes at `2.50`; GPT-6.1 Terra (`gpt-6.1-terra`) uses `0.05` and `1.25`; GPT-6 Sol (`gpt-6-sol`) uses `0.20` and `2.50`; GPT-6 Luna (`gpt-6-luna`) uses `0.01` and `0.125`. GPT-6 and GPT-5.6 cache writes use `1.25×` the input price. Estimates retain the Standard API-equivalent basis and 30-minute cache-write rates; they do not distinguish 12-hour caching, Fast, Ultrafast, Batch, Flex, or regional rates. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
 
 #### Per-event cost
 

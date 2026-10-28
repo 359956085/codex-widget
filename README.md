@@ -24,11 +24,11 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_default.png" alt="默认主题面板"></td>
-    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_default.png" alt="默认主题悬浮球"></td>
+    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_default.png" alt="默认主题面板" width="390"></td>
+    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_default.png" alt="默认主题悬浮球" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_default.png" alt="默认主题悬浮球吸附"></td>
+    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_default.png" alt="默认主题悬浮球吸附" height="88"></td>
   </tr>
 </table>
 
@@ -36,11 +36,11 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics1.png" alt="基础主题 1 面板"></td>
-    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics1.png" alt="基础主题 1 悬浮球"></td>
+    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics1.png" alt="基础主题 1 面板" width="390"></td>
+    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics1.png" alt="基础主题 1 悬浮球" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics1.png" alt="基础主题 1 悬浮球吸附"></td>
+    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics1.png" alt="基础主题 1 悬浮球吸附" height="88"></td>
   </tr>
 </table>
 
@@ -48,11 +48,11 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics2.png" alt="基础主题 2 面板"></td>
-    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics2.png" alt="基础主题 2 悬浮球"></td>
+    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics2.png" alt="基础主题 2 面板" width="390"></td>
+    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics2.png" alt="基础主题 2 悬浮球" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics2.png" alt="基础主题 2 悬浮球吸附"></td>
+    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics2.png" alt="基础主题 2 悬浮球吸附" height="88"></td>
   </tr>
 </table>
 
@@ -60,11 +60,11 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 <table>
   <tr>
-    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="基础主题 3 面板"></td>
-    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="基础主题 3 悬浮球"></td>
+    <td rowspan="2" style="text-align: center;"><strong>面板</strong><br><img src="docs/assets/ui_panel_theme_basics3.png" alt="基础主题 3 面板" width="390"></td>
+    <td style="text-align: center;"><strong>悬浮球</strong><br><img src="docs/assets/ui_ball_theme_basics3.png" alt="基础主题 3 悬浮球" height="88"></td>
   </tr>
   <tr>
-    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="基础主题 3 悬浮球吸附"></td>
+    <td style="text-align: center;"><strong>吸附</strong><br><img src="docs/assets/ui_dock_theme_basics3.png" alt="基础主题 3 悬浮球吸附" height="88"></td>
   </tr>
 </table>
 
@@ -107,19 +107,22 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 #### 内置价格表
 
-价格表日期：`2026-10-08`。价格单位均为“美元 / 百万 Token”，列顺序为输入、缓存输入、输出。
+价格表日期：`2026-10-28`。价格单位均为“美元 / 百万 Token”，列顺序为输入、缓存输入、输出。
 
 | 模型 | 输入 | 缓存输入 | 输出 |
 |---|---:|---:|---:|
 | [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) | 10 | 1 | 50 |
 | [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) | 2 | 0.10 | 10 |
+| [GPT-6.1 Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra) | 1 | 0.05 | 5 |
+| [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol) | 2 | 0.20 | 10 |
+| [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) | 0.10 | 0.01 | 0.50 |
 | [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol) | 4 | 0.4 | 20 |
 | [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra) | 2 | 0.2 | 12 |
 | [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) | 0.2 | 0.02 | 1.2 |
 | [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
 | [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
 
-GPT-6 Astra 仅匹配正式模型名 `gpt-6-astra`，缓存写入价格为 `12.50`。GPT-6.1 Sol 仅匹配正式模型名 `gpt-6.1-sol`，缓存读取价格为 `0.10`、缓存写入价格为 `2.50`；现有 GPT-6 Sol 的缓存读取价格仍为 `0.20`。GPT-6 Astra、GPT-6.1 Sol 和 GPT-5.6 缓存写入均按输入价格的 `1.25×` 计算。GPT-5.4（包括 `codex-auto-review`）没有独立缓存写入费率，因此按普通输入价格计算；`0.25` 仅用于缓存命中读取。GPT-5.5 没有内置公开缓存写入价格；出现缓存写入 Token 时，该事件不计价。
+GPT-6 系列仅匹配正式模型名。GPT-6 Astra（`gpt-6-astra`）的缓存写入价格为 `12.50`；GPT-6.1 Sol（`gpt-6.1-sol`）的缓存读取价格为 `0.10`、缓存写入价格为 `2.50`；GPT-6.1 Terra（`gpt-6.1-terra`）分别为 `0.05`、`1.25`；GPT-6 Sol（`gpt-6-sol`）分别为 `0.20`、`2.50`；GPT-6 Luna（`gpt-6-luna`）分别为 `0.01`、`0.125`。GPT-6 系列和 GPT-5.6 缓存写入均按输入价格的 `1.25×` 计算，沿用标准 API 等价值及 30 分钟缓存写入口径；不识别 12 小时缓存、Fast、Ultrafast、Batch、Flex 或区域费率。GPT-5.4（包括 `codex-auto-review`）没有独立缓存写入费率，因此按普通输入价格计算；`0.25` 仅用于缓存命中读取。GPT-5.5 没有内置公开缓存写入价格；出现缓存写入 Token 时，该事件不计价。
 
 #### 单次事件费用
 
