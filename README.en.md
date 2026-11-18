@@ -189,6 +189,8 @@ Disable and enable it again in settings, and make sure your system startup items
 
 ### Development
 
+`npm run check` includes frontend checks, npm security auditing, and Rust checks. The audit temporarily accepts [picomatch advisory GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) and its transitive effects while no upstream fix is available: it preserves the original report, prints a warning, and allows subsequent checks and builds to continue. Other high or critical vulnerabilities and errors that prevent auditing still block the checks. Upgrade the dependency and remove this exception when an upstream fix is released.
+
 ```powershell
 npm install
 npm run tauri:dev

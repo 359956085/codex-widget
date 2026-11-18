@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const retryDelays = [10_000, 20_000];
 const attemptTimeout = 60_000;
+// 上游尚无修复版，临时接受这一公告及其传递影响；发布修复版后移除此例外。
+const acceptedPicomatchAdvisory = "https://github.com/advisories/GHSA-fc5q-39xc-vjpf";
 const transientCodes = new Set([
   "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "ETIMEDOUT", "ESOCKETTIMEDOUT",
   "ECONNECTIONTIMEOUT", "EIDLETIMEOUT", "ERESPONSETIMEOUT", "ETRANSFERTIMEOUT"
@@ -36,6 +38,30 @@ function isAuditReport(report) {
     );
 }
 
+function hasOnlyAcceptedHighVulnerabilities(report) {
+  const entries = Object.entries(report.vulnerabilities);
+  const counts = report.metadata.vulnerabilities;
+  if (counts.critical !== 0 || entries.some(([, entry]) =>
+    !["info", "low", "moderate", "high"].includes(entry?.severity)
+  )) return false;
+  const high = entries.filter(([, entry]) => entry.severity === "high");
+  if (high.length === 0 || high.length !== counts.high) return false;
+
+  // 检查每条 via 链，不能因同一个包还带有已接受公告而放过新漏洞。
+  function isAccepted(name, ancestors = new Set()) {
+    if (ancestors.has(name) || !Object.hasOwn(report.vulnerabilities, name)) return false;
+    const entry = report.vulnerabilities[name];
+    if (!Array.isArray(entry?.via) || entry.via.length === 0) return false;
+    const visited = new Set([...ancestors, name]);
+    return entry.via.every((via) => typeof via === "string"
+      ? isAccepted(via, visited)
+      : via?.name === "picomatch" && via.dependency === "picomatch" &&
+        via.severity === "high" && via.url === acceptedPicomatchAdvisory
+    );
+  }
+  return high.every(([name]) => isAccepted(name));
+}
+
 export function classifyAuditResult(result) {
   const exitCode = Number.isInteger(result.code) && result.code > 0 ? result.code : 1;
   if (result.error) return failure(`npm 无法运行：${result.error.message}`, false, exitCode);
@@ -51,6 +77,13 @@ export function classifyAuditResult(result) {
 
   // 完整报告优先：漏洞标题、URL 或说明里的网络错误字样不能触发重试。
   if (isAuditReport(report)) {
+    if (result.code === 1 && hasOnlyAcceptedHighVulnerabilities(report)) {
+      return {
+        exitCode: 0,
+        retryable: false,
+        reason: "警告：临时接受 GHSA-fc5q-39xc-vjpf（picomatch 及其传递影响），漏洞尚未修复；其余高危漏洞仍阻断"
+      };
+    }
     return result.code === 0
       ? { exitCode: 0, retryable: false, reason: "审计通过" }
       : failure("审计未通过安全门槛", false, exitCode);

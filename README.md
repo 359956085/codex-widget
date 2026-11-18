@@ -189,6 +189,8 @@ E_i = 100 × C_i / ΔP_i
 
 ### 本地开发
 
+`npm run check` 包含前端检查、npm 安全审计和 Rust 检查。审计暂时接受尚无上游修复版的 [picomatch 公告 GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)及其传递影响：保留原始报告并输出警告，允许后续检查和构建继续。其他高危、严重漏洞及审计无法完成的错误仍会阻断；上游修复发布后应升级依赖并移除此例外。
+
 安装依赖：
 
 ```powershell

@@ -36,6 +36,28 @@ function endpointError(statusCode = 503) {
   };
 }
 
+function picomatchReport(change = () => {}) {
+  const report = {
+    auditReportVersion: 2,
+    vulnerabilities: {
+      picomatch: {
+        severity: "high",
+        via: [{
+          name: "picomatch", dependency: "picomatch", severity: "high",
+          url: "https://github.com/advisories/GHSA-fc5q-39xc-vjpf"
+        }]
+      },
+      fdir: { severity: "high", via: ["picomatch"] },
+      tinyglobby: { severity: "high", via: ["fdir", "picomatch"] },
+      vite: { severity: "high", via: ["fdir", "picomatch", "tinyglobby"] },
+      vitest: { severity: "high", via: ["picomatch", "tinyglobby"] }
+    },
+    metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 5, critical: 0, total: 5 } }
+  };
+  change(report);
+  return { code: 1, stdout: JSON.stringify(report), stderr: "" };
+}
+
 function startAudit(results, signal) {
   const attempt = vi.fn();
   for (const result of results) attempt.mockResolvedValueOnce(result);
@@ -109,6 +131,68 @@ describe("npm 审计结果分类", () => {
 
   it("完整漏洞报告优先于 stderr 的网络警告，并保留 npm 退出码", () => {
     expect(classifyAuditResult({ ...auditReport("high", 7), stderr: "npm warn audit 503 Service Unavailable" }))
+      .toMatchObject({ exitCode: 7, retryable: false });
+  });
+});
+
+describe("picomatch 单条公告临时例外", () => {
+  it("五个高危条目全部来自已接受公告时放行并明确警告", async () => {
+    const report = picomatchReport();
+    const run = startAudit([report]);
+    expect(await run.completion).toBe(0);
+    expect(run.attempt).toHaveBeenCalledOnce();
+    expect(run.writeStdout).toHaveBeenCalledWith(report.stdout);
+    expect(run.log).toHaveBeenLastCalledWith(expect.stringContaining("警告：临时接受 GHSA-fc5q-39xc-vjpf"));
+    expect(run.log).toHaveBeenLastCalledWith(expect.stringContaining("漏洞尚未修复"));
+  });
+
+  it("无关的中危漏洞仍遵循原有 high 门槛", () => {
+    const result = picomatchReport((report) => {
+      report.vulnerabilities.other = { severity: "moderate", via: [{ url: "https://example.com/other" }] };
+      report.metadata.vulnerabilities.moderate += 1;
+      report.metadata.vulnerabilities.total += 1;
+    });
+    expect(classifyAuditResult(result)).toMatchObject({ exitCode: 0, retryable: false });
+  });
+
+  it.each(["high", "critical"])("同时出现其他 %s 漏洞仍失败", (severity) => {
+    const result = picomatchReport((report) => {
+      report.vulnerabilities.other = { severity, via: [{ url: "https://example.com/other" }] };
+      report.metadata.vulnerabilities[severity] += 1;
+      report.metadata.vulnerabilities.total += 1;
+    });
+    expect(classifyAuditResult(result)).toMatchObject({ exitCode: 1, retryable: false });
+  });
+
+  it("picomatch 同时出现另一公告时仍失败", () => {
+    const result = picomatchReport((report) => {
+      report.vulnerabilities.picomatch.via.push({
+        name: "picomatch", dependency: "picomatch", severity: "high",
+        url: "https://github.com/advisories/GHSA-another-advisory"
+      });
+    });
+    expect(classifyAuditResult(result)).toMatchObject({ exitCode: 1, retryable: false });
+  });
+
+  it.each([
+    ["缺失传递依赖", (report) => { delete report.vulnerabilities.picomatch; }],
+    ["循环依赖", (report) => { report.vulnerabilities.picomatch.via = ["vite"]; }],
+    ["空 via", (report) => { report.vulnerabilities.picomatch.via = []; }],
+    ["未知严重性", (report) => { report.vulnerabilities.picomatch.severity = "unknown"; }],
+    ["高危计数不一致", (report) => { report.metadata.vulnerabilities.high = 6; }],
+    ["公告来自其他包", (report) => { report.vulnerabilities.picomatch.via[0].dependency = "other"; }],
+    ["公告 URL 仅前缀相同", (report) => { report.vulnerabilities.picomatch.via[0].url += "-other"; }],
+    ["公告仅存在于描述", (report) => {
+      const advisory = report.vulnerabilities.picomatch.via[0];
+      advisory.title = advisory.url;
+      delete advisory.url;
+    }]
+  ])("异常或不匹配报告不放行：%s", (_label, change) => {
+    expect(classifyAuditResult(picomatchReport(change))).toMatchObject({ exitCode: 1, retryable: false });
+  });
+
+  it("已接受公告不覆盖其他 npm 退出码", () => {
+    expect(classifyAuditResult({ ...picomatchReport(), code: 7 }))
       .toMatchObject({ exitCode: 7, retryable: false });
   });
 });
