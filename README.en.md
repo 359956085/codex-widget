@@ -107,10 +107,12 @@ A weekly window is identified as `10080` minutes; reset times drifting by no mor
 
 #### Built-in price table
 
-Price table date: `2026-10-28`. All prices are USD per million Tokens, ordered as input, cached input, and output.
+Price table date: `2026-11-18`. All prices are USD per million Tokens, ordered as input, cached input, and output.
 
 | Model | Input | Cached input | Output |
 |---|---:|---:|---:|
+| [GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol) | 2 | 0.10 | 10 |
+| [GPT-6.2 Astra](https://developers.openai.com/api/docs/models/gpt-6.2-astra) | 8 | 0.40 | 40 |
 | [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) | 10 | 1 | 50 |
 | [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) | 2 | 0.10 | 10 |
 | [GPT-6.1 Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra) | 1 | 0.05 | 5 |
@@ -122,7 +124,7 @@ Price table date: `2026-10-28`. All prices are USD per million Tokens, ordered a
 | [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
 | [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
 
-GPT-6 models match only their official model IDs. GPT-6 Astra (`gpt-6-astra`) has a cache-write price of `12.50`; GPT-6.1 Sol (`gpt-6.1-sol`) has cached input priced at `0.10` and cache writes at `2.50`; GPT-6.1 Terra (`gpt-6.1-terra`) uses `0.05` and `1.25`; GPT-6 Sol (`gpt-6-sol`) uses `0.20` and `2.50`; GPT-6 Luna (`gpt-6-luna`) uses `0.01` and `0.125`. GPT-6 and GPT-5.6 cache writes use `1.25×` the input price. Estimates retain the Standard API-equivalent basis and 30-minute cache-write rates; they do not distinguish 12-hour caching, Fast, Ultrafast, Batch, Flex, or regional rates. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
+GPT-6 models match only their official model IDs. GPT-6.2 Sol (`gpt-6.2-sol`) has cached input priced at `0.10` and cache writes at `2.50`; GPT-6.2 Astra (`gpt-6.2-astra`) uses `0.40` and `10`; GPT-6 Astra (`gpt-6-astra`) has a cache-write price of `12.50`; GPT-6.1 Sol (`gpt-6.1-sol`) has cached input priced at `0.10` and cache writes at `2.50`; GPT-6.1 Terra (`gpt-6.1-terra`) uses `0.05` and `1.25`; GPT-6 Sol (`gpt-6-sol`) uses `0.20` and `2.50`; GPT-6 Luna (`gpt-6-luna`) uses `0.01` and `0.125`. GPT-6 and GPT-5.6 cache writes use `1.25×` the input price. Estimates retain the Standard API-equivalent basis and 30-minute cache-write rates; they do not distinguish 12-hour caching, Fast, Ultrafast, Batch, Flex, or regional rates. GPT-5.4, including `codex-auto-review`, has no separate cache-write rate, so cache writes use the normal input price; `0.25` applies only to cache hits. GPT-5.5 has no built-in public cache-write price, so events containing cache-write Tokens remain unpriced.
 
 #### Per-event cost
 

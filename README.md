@@ -107,10 +107,12 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 
 #### 内置价格表
 
-价格表日期：`2026-10-28`。价格单位均为“美元 / 百万 Token”，列顺序为输入、缓存输入、输出。
+价格表日期：`2026-11-18`。价格单位均为“美元 / 百万 Token”，列顺序为输入、缓存输入、输出。
 
 | 模型 | 输入 | 缓存输入 | 输出 |
 |---|---:|---:|---:|
+| [GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol) | 2 | 0.10 | 10 |
+| [GPT-6.2 Astra](https://developers.openai.com/api/docs/models/gpt-6.2-astra) | 8 | 0.40 | 40 |
 | [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) | 10 | 1 | 50 |
 | [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) | 2 | 0.10 | 10 |
 | [GPT-6.1 Terra](https://developers.openai.com/api/docs/models/gpt-6.1-terra) | 1 | 0.05 | 5 |
@@ -122,7 +124,7 @@ Codex 额度小组件是一个桌面悬浮工具。它通过本机已登录的 C
 | [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) | 5 | 0.5 | 30 |
 | [GPT-5.4](https://developers.openai.com/api/docs/models/gpt-5.4) | 2.5 | 0.25 | 15 |
 
-GPT-6 系列仅匹配正式模型名。GPT-6 Astra（`gpt-6-astra`）的缓存写入价格为 `12.50`；GPT-6.1 Sol（`gpt-6.1-sol`）的缓存读取价格为 `0.10`、缓存写入价格为 `2.50`；GPT-6.1 Terra（`gpt-6.1-terra`）分别为 `0.05`、`1.25`；GPT-6 Sol（`gpt-6-sol`）分别为 `0.20`、`2.50`；GPT-6 Luna（`gpt-6-luna`）分别为 `0.01`、`0.125`。GPT-6 系列和 GPT-5.6 缓存写入均按输入价格的 `1.25×` 计算，沿用标准 API 等价值及 30 分钟缓存写入口径；不识别 12 小时缓存、Fast、Ultrafast、Batch、Flex 或区域费率。GPT-5.4（包括 `codex-auto-review`）没有独立缓存写入费率，因此按普通输入价格计算；`0.25` 仅用于缓存命中读取。GPT-5.5 没有内置公开缓存写入价格；出现缓存写入 Token 时，该事件不计价。
+GPT-6 系列仅匹配正式模型名。GPT-6.2 Sol（`gpt-6.2-sol`）的缓存读取价格为 `0.10`、缓存写入价格为 `2.50`；GPT-6.2 Astra（`gpt-6.2-astra`）分别为 `0.40`、`10`；GPT-6 Astra（`gpt-6-astra`）的缓存写入价格为 `12.50`；GPT-6.1 Sol（`gpt-6.1-sol`）的缓存读取价格为 `0.10`、缓存写入价格为 `2.50`；GPT-6.1 Terra（`gpt-6.1-terra`）分别为 `0.05`、`1.25`；GPT-6 Sol（`gpt-6-sol`）分别为 `0.20`、`2.50`；GPT-6 Luna（`gpt-6-luna`）分别为 `0.01`、`0.125`。GPT-6 系列和 GPT-5.6 缓存写入均按输入价格的 `1.25×` 计算，沿用标准 API 等价值及 30 分钟缓存写入口径；不识别 12 小时缓存、Fast、Ultrafast、Batch、Flex 或区域费率。GPT-5.4（包括 `codex-auto-review`）没有独立缓存写入费率，因此按普通输入价格计算；`0.25` 仅用于缓存命中读取。GPT-5.5 没有内置公开缓存写入价格；出现缓存写入 Token 时，该事件不计价。
 
 #### 单次事件费用
 
